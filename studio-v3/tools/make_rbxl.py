@@ -59,18 +59,49 @@ def chunk(name: bytes, payload: bytes) -> bytes:
 
 # ---------------- arvore do place ----------------
 
-# Services reais persistidos por um jogo 2026 (extraidos de miners-haven.rbxl,
-# sem artefatos de game: FilteredSelection/Selection).
+# Services reais persistidos num place moderno (DataModel completo).
+# Os 7 "devidos" do ARKHER: ReplicatedStorage (kits), ReplicatedFirst
+# (bootstrap server), ServerScriptService (server principal), ServerStorage
+# (dados privados), StarterPlayer > StarterPlayerScripts/StarterCharacterScripts
+# (client), StarterGui (UI), StarterPack (tool) + NetworkClient (canal legado).
 SERVICES = [
+    # raiz/ambiente
     "Workspace", "Lighting", "Players", "ReplicatedStorage", "ReplicatedFirst",
     "SoundService", "CSGDictionaryService", "NonReplicatedCSGDictionaryService",
-    "Chat", "TimerService", "TweenService", "StarterPlayer", "StarterPack",
-    "StarterGui", "LocalizationService", "TeleportService", "CollectionService",
-    "PhysicsService", "Geometry", "InsertService", "GamePassService", "Debris",
-    "CookiesService", "VRService", "ContextActionService", "ScriptService",
-    "AssetService", "TouchInputService", "ServerScriptService", "ServerStorage",
-    "LuaWebService", "HttpService", "AnalyticsService", "VirtualInputManager",
-    "TestService", "Teams", "StudioData",
+    "Chat", "TimerService", "TweenService",
+    # starters
+    "StarterPlayer", "StarterPack", "StarterGui",
+    # identidade/assistencia
+    "LocalizationService", "TeleportService", "CollectionService",
+    "PhysicsService", "Geometry", "InsertService", "GamePassService",
+    "Debris", "CookiesService", "VRService", "ContextActionService",
+    "ScriptService", "AssetService", "TouchInputService",
+    # server
+    "ServerScriptService", "ServerStorage",
+    # web/legacy client
+    "LuaWebService", "HttpService", "NetworkClient",
+    # analytics/teste
+    "AnalyticsService", "VirtualInputManager", "TestService", "Teams",
+    "StudioData",
+    # storage/dados modernos
+    "AvatarStoreService", "BadgeService", "Backpack", "ChangeHistoryService",
+    "CloudAuthService", "CloudStorageService", "ContentProvider",
+    "DataStoreCustomEvent", "DiscoveryApi", "ExperienceService",
+    "FriendService", "GameLocalizationService", "GamePublishService",
+    "GroupService", "MacroService", "MaterialService", "MarketplaceService",
+    "MemoryStoreService", "MetricsService", "MessagingService",
+    "MicrosoftStoreService", "NextGenCompressedVideoService",
+    "NotificationService", "OauthService", "PathfindingService",
+    "PluginManager", "PolicyService", "PurchaseService", "RandomService",
+    "RankedStatsService", "RobloxDataStoreService", "RunService",
+    "ShareService", "ShaderCacheService", "ShopService", "SpatialAudioService",
+    "StatisticsService", "StudioService", "SubscriptionService",
+    "TextBoxService", "TextureService", "TicketService", "TimeService",
+    "TranslateService", "TrustBadgesService", "UGCChatService",
+    "UserInfoService", "VideoService", "VideoLumaService", "VipService",
+    "WorldRoot",
+    # gui
+    "CoreGui",
 ]
 
 # (classe, nome, parent=None=raiz)

@@ -146,6 +146,8 @@ def decode(t: int, buf: bytes, n: int):
         a = [dec_array_u32(buf[k * c:(k + 1) * c], n) for k in range(4)]
         return [(rb_to_flt(a[0][i]), rb_to_flt(a[1][i]),
                  rb_to_flt(a[2][i]), rb_to_flt(a[3][i])) for i in range(n)]
+    if t == 11:  # BrickColor: u32 BE puro (interleaved), sem transformacao
+        return [v for v in dec_array_u32(buf, n)]
     if t == 18:  # Enum: u32 puro
         return [v for v in dec_array_u32(buf, n)]
     raise SystemExit(f"tipo nao suportado: {t}")
@@ -185,6 +187,8 @@ def encode(t: int, vals: list) -> bytes:
     if t == 0x18:
         a = [enc_array_u32([flt_to_rb(v[k]) for v in vals]) for k in range(4)]
         return b"".join(a)
+    if t == 11:  # BrickColor
+        return enc_array_u32([v for v in vals])
     if t == 18:
         return enc_array_u32([v for v in vals])
     raise SystemExit(f"tipo nao suportado: {t}")
@@ -268,5 +272,12 @@ if __name__ == "__main__":
     # 10) Bool
     if decode(2, bytes([0, 1, 0, 1]), 4) != [False, True, False, True]:
         print("FAIL Bool"); fails += 1
+
+    # 11) BrickColor (spec: 1004, 37, 1010)
+    bc = hx("00 00 00 00 00 00 03 00 03 EC 25 F2")
+    if decode(11, bc, 3) != [1004, 37, 1010]:
+        print("FAIL BrickColor decode"); fails += 1
+    if encode(11, [1004, 37, 1010]) != bc:
+        print("FAIL BrickColor encode"); fails += 1
 
     print("TESTES:", "TODOS OK" if fails == 0 else f"{fails} FALHAS")

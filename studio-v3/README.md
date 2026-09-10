@@ -72,10 +72,17 @@ executa uma vez; `ARKHER.boot()` é idempotente.
 ## Instalar no Roblox Studio
 
 **Caminho 1 (recomendado) — abrir o place completo:**
-`commandbar/arkher-v3.rbxl` já é o place inteiro: 37 services, **todo o
-catálogo V2** (`ReplicatedStorage.ARKHER`: 290.000 customs + 333 generated +
-core/editors/maps/systems/ui — 290.361 fontes byte-idênticas ao V2), a engine
-V3, a UI original no `StarterGui` e o boot. `File > Open` e pronto.
+`commandbar/arkher-v3.rbxl` já é o place inteiro: **90 services** com cada
+script no seu devido serviço — ReplicatedFirst (S0), ServerScriptService
+(S1 Boot + installers), ServerStorage (ArkherData + ArkherCloud),
+StarterPlayerScripts (engine + 24 UIs), **StarterCharacterScripts** (C0),
+StarterGui (UI original do V2), **StarterPack** (ArkherTool),
+**NetworkClient** (N0 legado), **SoundService** (SFX), **Lighting**
+(Atmosphere + ColorCorrection), **Teams** (ARKHER), **TestService**
+(T0 self-test), **Workspace** (Spawn) — além de **todo o catálogo V2**
+(`ReplicatedStorage.ARKHER`: 290.000 customs + 333 generated +
+core/editors/maps/systems/ui — 290.361 fontes byte-idênticas ao V2).
+290.617 instâncias no total. `File > Open` e pronto.
 Detalhes em `commandbar/estrutura-completa/LEIA-ME.md`.
 
 **Caminho 2 — Command Bar num place existente:**

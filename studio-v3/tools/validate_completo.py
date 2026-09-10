@@ -32,6 +32,8 @@ TMP = "/tmp/v3check.json"
 
 from make_rbxl import (SERVICE_CLASSES, SERVICES)  # noqa: E402
 
+SV = len(SERVICES)
+
 PAINELS = ["UI_AI", "UI_About", "UI_Animator", "UI_Audio", "UI_Camera",
            "UI_City", "UI_Cloud", "UI_CommandPalette", "UI_Console",
            "UI_Lighting", "UI_Map", "UI_Modeler", "UI_NPCs", "UI_Open",
@@ -110,7 +112,7 @@ if len(sys.argv) > 1 and sys.argv[1] == "A":
         out["names"][str(i)] = name.get(i, "")
         out["cls"][str(i)] = cls.get(i, "")
         out["parents"][str(i)] = parent.get(i, -1)
-    for i in range(37, 37 + 290461):
+    for i in range(SV, SV + 290461):
         if cls.get(i) in ("ModuleScript", "LocalScript", "Script") and i in src:
             out["src_hash"][str(i)] = h(src[i])
     for i, d in props.items():
@@ -146,7 +148,7 @@ bad_src = 0
 checked = 0
 bad_props = 0
 for idx, v2r in enumerate(v2_ns):
-    my = 37 + idx
+    my = SV + idx
     # 1) estrutura esperada no meu arquivo
     if mine["cls"].get(str(my)) != cls[v2r]:
         bad_src += 1
@@ -157,13 +159,13 @@ for idx, v2r in enumerate(v2_ns):
         bad_src += 1
         print("NOME", my)
     par = parent.get(v2r, -1)
-    # parent esperado: service V2 -> index em SERVICES; nao-service -> 37+rank
+    # parent esperado: service V2 -> index em SERVICES; nao-service -> SV+rank
     if par == -1:
         exp_par = -1
     elif par in svc:
         exp_par = SERVICES.index(cls[par])
     else:
-        exp_par = 37 + v2_ns.index(par)
+        exp_par = SV + v2_ns.index(par)
     if mine["parents"].get(str(my)) != exp_par:
         bad_src += 1
         print("PARENT", my, mine["parents"].get(str(my)), exp_par)
@@ -187,17 +189,24 @@ print(f"PASS B: {checked} fontes comparadas, "
       f"{bad_src} divergencias estrutura/fonte, {bad_props} props divergentes")
 
 # V3: conferir presenca/nomes
-v3_names = {"ArkherV3", "ALL", "Arkher", "Panels", "ArkherData"} | set(PAINELS) | \
+V3_N = 66
+v3_names = {"ArkherV3", "ALL", "Remotes", "ArkherPublish", "ArkherData",
+            "Arkher_S0_First", "Arkher_S1_Boot", "Arkher", "ArkherCloud",
+            "Published", "Backups", "Panels", "StarterCharacterScripts",
+            "Arkher_C0_Character", "ArkherTool", "Handle", "ToolUI",
+            "Arkher_N0_Legacy", "ArkherSfx", "Click", "Success", "Error",
+            "ArkherAtmos", "ArkherGrade", "ARKHER", "Spawn",
+            "Arkher_T0_SelfTest"} | set(PAINELS) | \
     {"ArkherMainUI", "ArkherBundle_Editors", "ArkherBundle_Scene",
      "ArkherBundle_System", "ArkherALL_Assemble", "ALL_P1", "ALL_P2",
      "ALL_P3", "ArkherKit_A", "ArkherKit_B", "ArkherKit_Installer_A",
      "ArkherKit_Installer_B"}
 found_v3 = 0
-for i in range(37 + 290461, 37 + 290461 + 42):
+for i in range(SV + 290461, SV + 290461 + V3_N):
     nm = mine["names"].get(str(i), "")
     if nm in v3_names:
         found_v3 += 1
-print(f"V3: {found_v3}/42 nomes esperados presentes")
+print(f"V3: {found_v3}/{V3_N} nomes esperados presentes")
 
 # ------------------------------------------------- gerador do CB da UI
 sg_ref = next(r for r in range(N2)

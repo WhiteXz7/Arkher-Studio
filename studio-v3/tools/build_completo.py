@@ -5,7 +5,7 @@
    290.000 customs + 333 generated + core/editors/maps/systems/ui + UI no
    StarterGui + ARKHER_Boot + ARKHER_HUD + Ground).
 2. Reescreve o .rbxl no formato v0 com compressao LZ4 (igual ao V2) contendo:
-   - os 37 services (place completo)
+   - os 93 services (place completo)
    - ReplicatedStorage.ARKHER = catalogo V2 inteiro (fontes byte-identicas)
    - ReplicatedStorage.ArkherV3 = kits + chunks ALL (engine V3)
    - StarterPlayerScripts.ARKHER_HUD (V2) + Arkher (launchers/24 paineis/assemble)
@@ -133,30 +133,343 @@ PAINELS = ["UI_AI", "UI_About", "UI_Animator", "UI_Audio", "UI_Camera",
 
 A_SPS = "Arkher_SPS"
 A_SSS = "Arkher_SSS"
+A_WS = "Arkher_WS"
+
+# -------------------------------------------------- fontes dos novos scripts
+S0_FIRST = '''\
+--[[ =====================================================================
+  ARKHER V3 — S0 First (ReplicatedFirst)
+  Roda ANTES de qualquer outro script: prepara os contêineres de
+  dados em ServerStorage (Arkher Cloud local — publicaçaõ SEM depender
+  da Open API do Roblox) e a estrutura ArkherV3/Remotes.
+====================================================================== ]]
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
+local Players = game:GetService("Players")
+
+local function ensure(parent, cls, n)
+    local o = parent:FindFirstChild(n)
+    if not o or o.ClassName ~= cls then
+        if o then o:Destroy() end
+        o = Instance.new(cls)
+        o.Name = n
+        o.Parent = parent
+    end
+    return o
+end
+
+local ark = ensure(ReplicatedStorage, "Folder", "ArkherV3")
+local remotes = ensure(ark, "Folder", "Remotes")
+ensure(remotes, "RemoteEvent", "ArkherPublish")
+ensure(remotes, "RemoteEvent", "ArkherData")
+
+local data = ensure(ServerStorage, "Folder", "ArkherData")
+local cloud = ensure(ServerStorage, "Folder", "ArkherCloud")
+ensure(cloud, "Folder", "Published")
+ensure(cloud, "Folder", "Backups")
+
+local function onJoin(p)
+    local f = data:FindFirstChild(p.UserId)
+    if not f or f.ClassName ~= "Folder" then
+        if f then f:Destroy() end
+        f = Instance.new("Folder", data)
+        f.Name = p.UserId
+        local meta = Instance.new("StringValue", f)
+        meta.Name = "meta"
+        meta.Value = string.format('{"user":"%s","joined":"%s"}', p.Name, os.date('%Y-%m-%dT%H:%M:%S'))
+    end
+end
+Players.PlayerAdded:Connect(onJoin)
+for _, p in ipairs(Players:GetPlayers()) do onJoin(p) end
+
+print("[ARKHER] S0 First (ReplicatedFirst): ArkherV3/Remotes + ServerStorage prontos")
+'''
+
+S1_BOOT = '''\
+--[[ =====================================================================
+  ARKHER V3 — S1 Boot (ServerScriptService)
+  O servidor da V3:
+  * cria/valida os Remotes (ReplicatedStorage.ArkherV3.Remotes)
+  * PUBLISH: recebe o bundle do client e grava em
+    ServerStorage.ArkherCloud.Published  (Arkher Cloud local,
+    sem depender da Open API / cloud do Roblox)
+  * DATA:   grava o profile do jogador em ServerStorage.ArkherData
+  * INSTALLERS: habilita os ArkherKit_Installer (SSS.Arkher)
+====================================================================== ]]
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local ServerStorage = game:GetService("ServerStorage")
+local SSS = game:GetService("ServerScriptService")
+
+local ark = ReplicatedStorage:WaitForChild("ArkherV3")
+local remotes = ark:FindFirstChild("Remotes")
+if not remotes then
+    remotes = Instance.new("Folder", ark)
+    remotes.Name = "Remotes"
+end
+local function remote(n)
+    local r = remotes:FindFirstChild(n)
+    if not r then
+        r = Instance.new("RemoteEvent", remotes)
+        r.Name = n
+    end
+    return r
+end
+local publishEv = remote("ArkherPublish")
+local dataEv = remote("ArkherData")
+
+local cloud = ServerStorage:WaitForChild("ArkherCloud")
+local published = cloud:WaitForChild("Published")
+local data = ServerStorage:WaitForChild("ArkherData")
+
+-- habilita os installers (SSS.Arkher) — backup de instalacao dos kits
+local instFolder = SSS:FindFirstChild("Arkher")
+if instFolder then
+    for _, i in ipairs(instFolder:GetChildren()) do
+        if i:IsA("BaseScript") then i.Disabled = false end
+    end
+end
+
+publishEv.OnServerEvent:Connect(function(plr, payload)
+    if typeof(payload) ~= "table" then return end
+    local nm = tostring(payload.Name or plr.Name)
+    local bundle = tostring(payload.Bundle or "")
+    if #bundle == 0 then return end
+    local obj = published:FindFirstChild(nm)
+    if not obj or obj.ClassName ~= "StringValue" then
+        if obj then obj:Destroy() end
+        obj = Instance.new("StringValue", published)
+        obj.Name = nm
+    end
+    obj.Value = bundle
+    local man = published:FindFirstChild(nm .. "_manifest")
+    if not man or man.ClassName ~= "StringValue" then
+        if man then man:Destroy() end
+        man = Instance.new("StringValue", published)
+        man.Name = nm .. "_manifest"
+    end
+    man.Value = string.format('{"name":"%s","by":"%s","at":"%s","size":%d}',
+        nm, plr.Name, os.date('%Y-%m-%d %H:%M:%S'), #bundle)
+    print(string.format("[ARKHER] S1 Boot: publish '%s' por %s (%d KB) na Arkher Cloud",
+        nm, plr.Name, math.floor(#bundle / 1024)))
+end)
+
+dataEv.OnServerEvent:Connect(function(plr, payload)
+    if typeof(payload) ~= "table" then return end
+    local f = data:FindFirstChild(plr.Name)
+    if not f or f.ClassName ~= "Folder" then
+        if f then f:Destroy() end
+        f = Instance.new("Folder", data)
+        f.Name = plr.Name
+    end
+    local key = tostring(payload.Key or "profile")
+    local v = f:FindFirstChild(key)
+    if not v or v.ClassName ~= "StringValue" then
+        if v then v:Destroy() end
+        v = Instance.new("StringValue", f)
+        v.Name = key
+    end
+    v.Value = tostring(payload.Value or "")
+end)
+
+Players.PlayerAdded:Connect(function(plr)
+    print("[ARKHER] S1 Boot: " .. plr.Name .. " entrou no ARKHER")
+end)
+
+print("[ARKHER] S1 Boot (ServerScriptService): server pronto (Remotes + Arkher Cloud + Data)")
+'''
+
+C0_CHAR = '''\
+--[[ =====================================================================
+  ARKHER C0 — PERSONAGEM (StarterCharacterScripts — roda por personagem)
+  Expoe model/humanoid para as UIs (Animator/Modeler) e aplica os
+  padroes do ARKHER (sandbox: sem morte por queda).
+====================================================================== ]]
+local char = script.Parent
+if not char then return end
+local hum = char:WaitForChild("Humanoid", 10)
+local root = char:WaitForChild("HumanoidRootPart", 10)
+if not hum or not root then return end
+
+_G.ARKHER_CHAR = {Model = char, Humanoid = hum, Root = root}
+hum.BreakJointsOnDeath = false
+
+print("[ARKHER] C0 Character: personagem pronto (Humanoid + Root expostos)")
+'''
+
+TOOL_UI = '''\
+--[[ =====================================================================
+  ARKHER Tool — clique (Ativar) abre o shell do ARKHER (command palette)
+  Funciona quando a engine (ArkherMainUI) ja carregou; senao avisa.
+====================================================================== ]]
+local tool = script.Parent
+tool.Activated:Connect(function()
+    local ARKHER = _G.ARKHER
+    if ARKHER and ARKHER.cmd then
+        ARKHER.cmd("view.palette")
+    else
+        print("[ARKHER] Tool: engine ainda nao carregou (abra o place com o ArkherMainUI ativo)")
+    end
+end)
+'''
+
+N0_LEGACY = '''\
+--[[ =====================================================================
+  ARKHER N0 — CANAL LEGADO (NetworkClient)
+  Camada de compatibilidade: mantem o estado de rede do client
+  (latencia suavizada + status) em _G.ARKHER_NET — lido pelas UIs
+  About/Performance. NetworkClient e o servico legado de rede client.
+====================================================================== ]]
+local RunService = game:GetService("RunService")
+
+_G.ARKHER_NET = {
+    Ping = 0,
+    Connected = true,
+    Legacy = true,
+    Host = "arkher-local",
+}
+
+local acc, n = 0, 0
+RunService.Heartbeat:Connect(function(dt)
+    acc = acc + dt
+    n = n + 1
+    if n >= 30 then
+        _G.ARKHER_NET.Ping = acc / n * 1000
+        acc, n = 0, 0
+    end
+end)
+
+print("[ARKHER] N0 Legacy (NetworkClient): canal legado ativo")
+'''
+
+T0_SELFTEST = '''\
+--[[ =====================================================================
+  ARKHER T0 — SELF-TEST (TestService — marque Enable para rodar)
+  Valida a estrutura completa do place e imprime [ARKHER] T0: ...
+====================================================================== ]]
+local RS = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
+local StarterGui = game:GetService("StarterGui")
+local StarterPlayer = game:GetService("StarterPlayer")
+
+local function has(p, n)
+    local o = p
+    for _, part in ipairs(n) do
+        o = o and o:FindFirstChild(part)
+    end
+    return o ~= nil
+end
+
+local checks = {
+    {"ReplicatedStorage.ArkherV3",          has(RS, {"ArkherV3"})},
+    {"ArkherKit_A/B",                       has(RS, {"ArkherV3", "ArkherKit_A"}) and has(RS, {"ArkherV3", "ArkherKit_B"})},
+    {"ALL_P1/P2/P3",                        has(RS, {"ArkherV3", "ALL", "ALL_P1"}) and has(RS, {"ArkherV3", "ALL", "ALL_P2"}) and has(RS, {"ArkherV3", "ALL", "ALL_P3"})},
+    {"Remotes/ArkherPublish+ArkherData",    has(RS, {"ArkherV3", "Remotes", "ArkherPublish"}) and has(RS, {"ArkherV3", "Remotes", "ArkherData"})},
+    {"ServerStorage.ArkherData",            has(ServerStorage, {"ArkherData"})},
+    {"ArkherCloud.Published+Backups",       has(ServerStorage, {"ArkherCloud", "Published"}) and has(ServerStorage, {"ArkherCloud", "Backups"})},
+    {"StarterGui.ARKHER_Studio",            has(StarterGui, {"ARKHER_Studio"})},
+    {"StarterPlayerScripts (ARKHER_HUD)",   has(StarterPlayer, {"StarterPlayerScripts", "ARKHER_HUD"})},
+    {"StarterCharacterScripts (C0)",        has(StarterPlayer, {"StarterCharacterScripts", "Arkher_C0_Character"})},
+}
+local ok = 0
+for _, c in ipairs(checks) do
+    if c[2] then ok = ok + 1 end
+    print(("[ARKHER] T0: %-38s %s"):format(c[1], c[2] and "OK" or "FALTA"))
+end
+print(("[ARKHER] T0: %d/%d — %s"):format(ok, #checks, ok == #checks and "ESTRUTURA COMPLETA" or "HA FALTAS"))
+'''
+
 V3 = [
-    ("Folder", "ArkherV3", "ReplicatedStorage", None, False),
-    ("ModuleScript", "ArkherKit_A", "ArkherV3", S["ArkherKit_A.lua"], False),
-    ("ModuleScript", "ArkherKit_B", "ArkherV3", S["ArkherKit_B.lua"], False),
-    ("Folder", "ALL", "ArkherV3", None, False),
-    ("ModuleScript", "ALL_P1", "ALL", MODULE_ALL[0], False),
-    ("ModuleScript", "ALL_P2", "ALL", MODULE_ALL[1], False),
-    ("ModuleScript", "ALL_P3", "ALL", MODULE_ALL[2], False),
-    ("Folder", "Arkher", "StarterPlayerScripts", None, False),
-    ("LocalScript", "ArkherMainUI", A_SPS, S["ArkherStudio_MainUI.lua"], False),
-    ("LocalScript", "ArkherBundle_Editors", A_SPS, S["UI_Bundle_Editors.lua"], False),
-    ("LocalScript", "ArkherBundle_Scene", A_SPS, S["UI_Bundle_Scene.lua"], False),
-    ("LocalScript", "ArkherBundle_System", A_SPS, S["UI_Bundle_System.lua"], False),
-    ("LocalScript", "ArkherALL_Assemble", A_SPS, ASM_SRC, True),
-    ("Folder", "Panels", A_SPS, None, False),
-] + [("LocalScript", p, "Panels", S[f"{p}.lua"], True) for p in PAINELS] + [
-    ("Folder", "Arkher", "ServerScriptService", None, False),
-    ("Script", "ArkherKit_Installer_A", A_SSS, S["ArkherKit_Installer_A.lua"], True),
-    ("Script", "ArkherKit_Installer_B", A_SSS, S["ArkherKit_Installer_B.lua"], True),
-    ("Folder", "ArkherData", "ServerStorage", None, False),
+    # ---- ReplicatedStorage: engine V3 (mods compartilhados)
+    ("Folder", "ArkherV3", "ReplicatedStorage", None, False, None),
+    ("ModuleScript", "ArkherKit_A", "ArkherV3", S["ArkherKit_A.lua"], False, None),
+    ("ModuleScript", "ArkherKit_B", "ArkherV3", S["ArkherKit_B.lua"], False, None),
+    ("Folder", "ALL", "ArkherV3", None, False, None),
+    ("ModuleScript", "ALL_P1", "ALL", MODULE_ALL[0], False, None),
+    ("ModuleScript", "ALL_P2", "ALL", MODULE_ALL[1], False, None),
+    ("ModuleScript", "ALL_P3", "ALL", MODULE_ALL[2], False, None),
+    ("Folder", "Remotes", "ArkherV3", None, False, None),
+    ("RemoteEvent", "ArkherPublish", "Remotes", None, False, None),
+    ("RemoteEvent", "ArkherData", "Remotes", None, False, None),
+    # ---- ReplicatedFirst: bootstrap server (roda primeiro no server)
+    ("Script", "Arkher_S0_First", "ReplicatedFirst", S0_FIRST, False, None),
+    # ---- ServerScriptService: server principal + installers (backup)
+    ("Script", "Arkher_S1_Boot", "ServerScriptService", S1_BOOT, False, None),
+    ("Folder", "Arkher", "ServerScriptService", None, False, None),
+    ("Script", "ArkherKit_Installer_A", A_SSS, S["ArkherKit_Installer_A.lua"], True, None),
+    ("Script", "ArkherKit_Installer_B", A_SSS, S["ArkherKit_Installer_B.lua"], True, None),
+    # ---- ServerStorage: dados privados
+    ("Folder", "ArkherData", "ServerStorage", None, False, None),
+    ("Folder", "ArkherCloud", "ServerStorage", None, False, None),
+    ("Folder", "Published", "ArkherCloud", None, False, None),
+    ("Folder", "Backups", "ArkherCloud", None, False, None),
+    # ---- StarterPlayer > StarterPlayerScripts: client por jogador
+    ("Folder", "Arkher", "StarterPlayerScripts", None, False, None),
+    ("LocalScript", "ArkherMainUI", A_SPS, S["ArkherStudio_MainUI.lua"], False, None),
+    ("LocalScript", "ArkherBundle_Editors", A_SPS, S["UI_Bundle_Editors.lua"], False, None),
+    ("LocalScript", "ArkherBundle_Scene", A_SPS, S["UI_Bundle_Scene.lua"], False, None),
+    ("LocalScript", "ArkherBundle_System", A_SPS, S["UI_Bundle_System.lua"], False, None),
+    ("LocalScript", "ArkherALL_Assemble", A_SPS, ASM_SRC, True, None),
+    ("Folder", "Panels", A_SPS, None, False, None),
+] + [("LocalScript", p, "Panels", S[f"{p}.lua"], True, None) for p in PAINELS] + [
+    # ---- StarterPlayer > StarterCharacterScripts: por personagem
+    ("Folder", "StarterCharacterScripts", "StarterPlayer", None, False, None),
+    ("LocalScript", "Arkher_C0_Character", "StarterCharacterScripts", C0_CHAR, False, None),
+    # ---- StarterPack: tool no backpack
+    ("Tool", "ArkherTool", "StarterPack", None, False, None),
+    ("Part", "Handle", "ArkherTool", None, False, {
+        "Position": (14, (0.0, 0.0, 0.0)),
+        "Size": (14, (0.4, 0.2, 0.4)),
+        "Material": (18, 12),
+        "Anchored": (2, False),
+    }),
+    ("LocalScript", "ToolUI", "ArkherTool", TOOL_UI, False, None),
+    # ---- NetworkClient: canal legado client
+    ("LocalScript", "Arkher_N0_Legacy", "NetworkClient", N0_LEGACY, False, None),
+    # ---- SoundService: SFX da UI
+    ("Folder", "ArkherSfx", "SoundService", None, False, None),
+    ("Sound", "Click", "ArkherSfx", None, False, {
+        "SoundId": (1, "rbxassetid://0"), "Volume": (4, 0.5),
+    }),
+    ("Sound", "Success", "ArkherSfx", None, False, {
+        "SoundId": (1, "rbxassetid://0"), "Volume": (4, 0.5),
+    }),
+    ("Sound", "Error", "ArkherSfx", None, False, {
+        "SoundId": (1, "rbxassetid://0"), "Volume": (4, 0.5),
+    }),
+    # ---- Lighting: identidade visual do place
+    ("Atmosphere", "ArkherAtmos", "Lighting", None, False, {
+        "Density": (4, 0.15), "Offset": (4, 0.1), "Haze": (4, 1.2),
+        "Glare": (4, 0.1), "OpticalDensity": (4, 2.0),
+        "Color": (12, (0.054901961237192154, 0.0784313753247261, 0.1882352977991104)),
+        "DuskColor": (12, (0.054901961237192154, 0.0784313753247261, 0.1882352977991104)),
+        "SunsetColor": (12, (0.054901961237192154, 0.0784313753247261, 0.1882352977991104)),
+    }),
+    ("ColorCorrectionEffect", "ArkherGrade", "Lighting", None, False, {
+        "Brightness": (4, 0.0), "Contrast": (4, 0.05),
+        "Saturation": (4, -0.05),
+        "TintColor": (12, (1.0, 1.0, 1.0)),
+    }),
+    # ---- Teams
+    ("Team", "ARKHER", "Teams", None, False, {
+        "TeamColor": (11, 42),
+    }),
+    # ---- Workspace: spawn + zona
+    ("Folder", "Arkher", "Workspace", None, False, None),
+    ("SpawnLocation", "Spawn", A_WS, None, False, {
+        "Position": (14, (0.0, 3.0, 0.0)),
+        "Size": (14, (4.0, 1.0, 4.0)),
+        "Color3": (12, (0.054901961237192154, 0.0784313753247261, 0.1882352977991104)),
+        "Anchored": (2, True),
+        "CanCollide": (2, True),
+    }),
+    # ---- TestService: self-test (desativado)
+    ("Script", "Arkher_T0_SelfTest", "TestService", T0_SELFTEST, True, None),
 ]
 
 # ------------------------------------------------------------- montagem tree
-rank2 = {r: 37 + i for i, r in enumerate(v2_non_service)}
+SV = len(SERVICES)
+rank2 = {r: SV + i for i, r in enumerate(v2_non_service)}
 svc_name2my = {sv: i for i, sv in enumerate(SERVICES)}
 MY = []
 for sv in SERVICES:
@@ -172,8 +485,14 @@ for r in v2_non_service:
     MY.append((v2_cls[r], v2_name[r], par_ref, v2_src.get(r), False))
 
 name2ref = {MY[i][1]: i for i in range(len(SERVICES))}
+# "StarterPlayerScripts" e instancia V2 (filha de StarterPlayer), nao service —
+# registra o nome p/ os parents V3 que apontam pra ele
+for i in range(SV, len(MY)):
+    if MY[i][1] == "StarterPlayerScripts":
+        name2ref["StarterPlayerScripts"] = i
 v3_start = len(MY)
-for cls, nm, par, src, dis in V3:
+v3props = {}  # idx_MY -> {pname: (t, valor)}
+for cls, nm, par, src, dis, props in V3:
     idx = len(MY)
     MY.append((cls, nm, None, src, dis))
     if (par, nm) in name2ref:
@@ -182,12 +501,18 @@ for cls, nm, par, src, dis in V3:
     if nm not in name2ref:
         name2ref[nm] = idx
     if cls == "Folder" and nm == "Arkher":
-        name2ref[A_SPS if name2ref.get(A_SPS) is None else A_SSS] = idx
+        alias = {"StarterPlayerScripts": A_SPS,
+                 "ServerScriptService": A_SSS,
+                 "Workspace": A_WS}.get(par)
+        if alias:
+            name2ref[alias] = idx
     if par in name2ref:
         MY[idx] = (cls, nm, name2ref[par], src, dis)
+    if props:
+        v3props[idx] = props
 
 N = len(MY)
-print(f"tree final: {N} instancias (37 services + {len(v2_non_service)} V2 + "
+print(f"tree final: {N} instancias ({SV} services + {len(v2_non_service)} V2 + "
       f"{len(V3)} V3)", flush=True)
 
 type_order, type_refs = [], {}
@@ -237,21 +562,36 @@ for tid, cls in enumerate(type_order):
                 raise SystemExit(f"{MY[i][1]} > 100k chars")
             parts.append(s(src))
         out += chunk(b"PROP", b"".join(parts))
-    extra = collections.defaultdict(list)
+    # uniao de props: decodificadas do V2 + specs por instancia da V3
+    # (spec: TODAS as instancias de uma classe devem ter as mesmas props —
+    #  instancias V2 que nao tinham a prop ganham o DEFAULT do motor, o que
+    #  e exatamente o estado em que estavam por omissao)
+    wanted = {}
     for i in refs:
-        if 37 <= i < v3_start:
-            v2r = v2_non_service[i - 37]
+        if SV <= i < v3_start:
+            v2r = v2_non_service[i - SV]
             for pname, val in v2_props.get(v2r, {}).items():
-                extra[pname].append((i, val))
+                wanted.setdefault(pname, {})[i] = val
+        else:
+            for pname, val in v3props.get(i, {}).items():
+                wanted.setdefault(pname, {})[i] = val
+    # default do motor p/ props novas que a classe ja tinha instancia no V2
+    CLASS_DEFAULTS = {
+        ("Part", "Position"): (0.0, 0.0, 0.0),
+        ("Part", "Size"): (0.0, 0.0, 0.0),
+        ("Part", "Material"): 0,   # Smooth
+        ("Part", "Anchored"): False,
+    }
     # valores default p/ props do V2 que a V3 nao tem (explicit default = legal)
     DEFAULTS = {("Script", "RunContext"): 1}
-    for pname, vals in extra.items():
-        t = vals[0][1][0]
-        byref = dict(vals)
+    for pname, byref in wanted.items():
+        t = byref[next(iter(byref))][0]
         values = []
         for i in refs:
             if i in byref:
                 values.append(byref[i][1])
+            elif SV <= i < v3_start and (cls, pname) in CLASS_DEFAULTS:
+                values.append(CLASS_DEFAULTS[(cls, pname)])
             elif (cls, pname) in DEFAULTS:
                 values.append(DEFAULTS[(cls, pname)])
             else:
