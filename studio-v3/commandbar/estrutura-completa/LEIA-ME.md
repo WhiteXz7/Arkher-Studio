@@ -1,92 +1,92 @@
-# ARKHER V3 — ESTRUTURA COMPLETA (Command Bar)
+# ARKHER V3 — ENTREGA COMPLETA
 
-Estes **13 scripts de paste & run** constroem a estrutura COMPLETA do ARKHER V3
-dentro do seu place — os **33 scripts do repositório** viram instâncias reais nos
-services corretos, do jeito igual da print do Studio.
+Dois artefatos, dois caminhos:
 
-| Arquivo | O que cria |
-|---|---|
-| `CB01.lua` | `ReplicatedStorage.ArkherV3.ArkherKit_A` (ModuleScript) |
-| `CB02.lua` | `ReplicatedStorage.ArkherV3.ArkherKit_B` (ModuleScript) |
-| `CB03.lua` | `StarterPlayerScripts.Arkher.ArkherMainUI` + `ArkherBundle_Editors` (LocalScripts ativos) |
-| `CB04.lua` | `StarterPlayerScripts.Arkher.ArkherBundle_Scene` (LocalScript ativo) |
-| `CB05.lua` | `StarterPlayerScripts.Arkher.ArkherBundle_System` (LocalScript ativo) |
-| `CB06.lua` | `StarterPlayerScripts.Arkher.Panels` — 12 painéis (UI_AI … UI_Modeler), LocalScripts **desativados** |
-| `CB07.lua` | `StarterPlayerScripts.Arkher.Panels` — 12 painéis (UI_NPCs … UI_UIDesigner), LocalScripts **desativados** |
-| `CB08.lua` | `ServerScriptService.Arkher.ArkherKit_Installer_A` (Script **desativado**) |
-| `CB09.lua` | `ServerScriptService.Arkher.ArkherKit_Installer_B` (Script **desativado**) + `ServerStorage.ArkherData` (Folder) |
-| `CB10.lua` | `ReplicatedStorage.ArkherV3.ALL.ALL_P1` (ModuleScript — chunk 1/3 do ArkherStudio_ALL, 251 KB) |
-| `CB11.lua` | `ReplicatedStorage.ArkherV3.ALL.ALL_P2` (ModuleScript — chunk 2/3) |
-| `CB12.lua` | `ReplicatedStorage.ArkherV3.ALL.ALL_P3` (ModuleScript — chunk 3/3) |
-| `CB13.lua` | `StarterPlayerScripts.Arkher.ArkherALL_Assemble` (LocalScript **desativado** — junta os 3 chunks e roda o ALL completo) |
+| Artefato | O que é | Como usar |
+|---|---|---|
+| **`commandbar/arkher-v3.rbxl`** | **O place completo** — abre e já é o ARKHER inteiro: os 37 services, **todo o catálogo V2 (290.000 customs + 333 generated + core/editors/maps/systems/ui)**, a engine V3 (kits + ALL + 24 UIs), a UI original do V2 no `StarterGui` e o boot. | `File > Open` no Roblox Studio. Fim. |
+| **`estrutura-completa/CB_UI_StarterGui.lua`** | **A única Command Bar**: um script que gera **toda a UI original do V2** no `StarterGui.ARKHER_Studio` (88 instâncias, 570 propriedades — fiel ao arquivo do V2, a mesma UI que o script original do V2 fez). | Num place que já tem a estrutura: `View > Command Bar` > cole **tudo** > `Run`. |
 
-## Por que o ALL fica em 3 chunks?
-`ArkherStudio_ALL.lua` tem **250.993 chars** — passa do limite de ~100 KB de
-`Script.Source` do Roblox. Por isso ele é dividido em 3 ModuleScripts
-(`ALL_P1/P2/P3`) e o `ArkherALL_Assemble` faz:
+> Os 13 scripts `CB01.lua … CB13.lua` desta pasta são **legado** da entrega
+> anterior (montar a engine V3 por paste). Eles ficaram para histórico — o
+> `.rbxl` já contém tudo que eles criavam, no service certo de cada um.
 
-```lua
-local src = require(ALL_P1) .. require(ALL_P2) .. require(ALL_P3)
-loadstring(src)()
-```
-
-A concatenação reconstrói o arquivo **byte a byte** (validado).
-
-## Como rodar (passo a passo)
-
-1. Abra o **place destino** no Roblox Studio.
-2. Menu **View → Command Bar** (no topo do Studio).
-3. Cole o conteúdo **inteiro** de `CB01.lua` na Command Bar e aperte **Run**.
-4. Repita **na ordem CB01 → CB13** (cada um imprime `[ARKHER V3] (x/13) ...`).
-5. Pronto — Hierarchy mostra a estrutura completa:
+## Estrutura do place (`arkher-v3.rbxl` — 290.540 instâncias)
 
 ```
 game
+├─ 37 services do place completo
 ├─ ReplicatedStorage
-│  └─ ArkherV3
-│     ├─ ArkherKit_A            (ModuleScript)
-│     ├─ ArkherKit_B            (ModuleScript)
-│     └─ ALL
-│        ├─ ALL_P1 / ALL_P2 / ALL_P3   (ModuleScripts)
+│  ├─ ARKHER ·················································  290.369 instâncias
+│  │  ├─ customs/    290.000 × ARKHER_CUST_NNNN   (o catálogo — os "milhares de sistemas")
+│  │  ├─ generated/          333 módulos
+│  │  ├─ editors/               9
+│  │  ├─ ui/                   12
+│  │  ├─ systems/               4
+│  │  ├─ core/                  2   (config + theme)
+│  │  └─ maps/                  1   (world_map)
+│  └─ ArkherV3 ······································ engine V3 (33 fontes do repo)
+│     ├─ ArkherKit_A / ArkherKit_B   (ModuleScripts)
+│     └─ ALL/ALL_P1 · ALL_P2 · ALL_P3   (ArkherStudio_ALL em 3 chunks — limite 100K)
+├─ ServerScriptService
+│  ├─ ARKHER_Boot            (Script V2, ativo)
+│  └─ Arkher/ArkherKit_Installer_A · _B   (Scripts, desativados — backup server)
+├─ StarterGui
+│  └─ ARKHER_Studio          (ScreenGui — UI original do V2: 88 instâncias, tudo fiel)
 ├─ StarterPlayer
 │  └─ StarterPlayerScripts
+│     ├─ ARKHER_HUD          (LocalScript V2, ativo)
 │     └─ Arkher
-│        ├─ ArkherMainUI         (LocalScript, ativo)
-│        ├─ ArkherBundle_Editors (LocalScript, ativo)
-│        ├─ ArkherBundle_Scene   (LocalScript, ativo)
-│        ├─ ArkherBundle_System  (LocalScript, ativo)
-│        ├─ ArkherALL_Assemble   (LocalScript, desativado)
-│        └─ Panels
-│           └─ 24 × UI_*         (LocalScripts, desativados)
-├─ ServerScriptService
-│  └─ Arkher
-│     ├─ ArkherKit_Installer_A   (Script, desativado)
-│     └─ ArkherKit_Installer_B   (Script, desativado)
-└─ ServerStorage
-   └─ ArkherData                 (Folder — namespace de dados server)
+│        ├─ ArkherMainUI · UI_Bundle_Editors · UI_Bundle_Scene · UI_Bundle_System   (ativos)
+│        ├─ ArkherALL_Assemble          (desativado — junta os 3 chunks e roda o ALL)
+│        └─ Panels/  24 × UI_*          (desativados — enable um por vez)
+├─ ServerStorage
+│  └─ ArkherData             (Folder)
+└─ Workspace
+   └─ Ground                 (Part do V2)
 ```
 
-## Depois de rodar
+### Os sistemas/features do V2
 
-- **Testar um painel**: `Panels > UI_X` → marque **Enable** (um por vez — cada UI é independente).
-- **Rodar o ALL completo**: `Arkher > ArkherALL_Assemble` → **Enable** → aperte **F5**.
-- **Reinstalar/atualizar**: rode de novo o CB desejado — é **idempotente** (atualiza o `Source` sem duplicar nada).
-- Os installers em `ServerScriptService.Arkher` ficam **desativados** de propósito
-  (servem como backup do código dos kits no lado server).
+O catálogo `ReplicatedStorage.ARKHER` é a V2 inteira decodificada do
+`ARKHER_V2.rbxl`: **290.361 fontes byte-idênticas** (validadas por sha1),
+sendo 290.000 customs + 333 generated + core/editors/maps/systems/ui. O
+manifest da V2 (`ARKHER_MANIFEST.json`) indexa **17.188 sistemas nomeados**
+em 30 categorias e 290.271 features — todos dentro do `.rbxl`.
 
-## Alternativa: abrir o .rbxl direto
+### Como a UI original funciona
 
-`arkher-v3.rbxl` (aqui na pasta do repositório: `commandbar/arkher-v3.rbxl`)
-já contém **exatamente** esta estrutura — 81 instâncias, mesmas 33 fontes
-byte a byte, mesma tree acima. Dá pra `File > Open` em vez de colar os 13.
-(Se preferir o caminho Command Bar, é o que você pediu — e o .rbxl serve
-de espelho/backup.)
+No V2, a UI `StarterGui.ARKHER_Studio` já vem criada no place (estática) e o
+`ARKHER_HUD` (StarterPlayerScripts) a usa/move no runtime. O
+`CB_UI_StarterGui.lua` recria **exatamente** essa árvore estática (mesma
+classe, nome, parent, cor, tamanho, posição, fonte e alinhamento de cada
+instância) — útil para injetar a UI num place que não tem o `.rbxl` completo.
 
-## Validações feitas (2026-09-09)
+## Validações (2026-09-09)
 
-- [x] Simulação em stub do Roblox (lupa/LuaJIT): os 13 scripts executam sem erro
-- [x] 37/37 verificações da árvore criada (classe, nome, parent, `Disabled`, source byte a byte)
-- [x] `ALL_P1 + ALL_P2 + ALL_P3` == `ArkherStudio_ALL.lua` (250.993 chars, idêntico)
-- [x] Sintaxe Lua dos 13 scripts (compilador Lua)
-- [x] `.rbxl`: round-trip 100% (decode → 81 instâncias → todas as fontes idênticas)
-- [x] Nenhum script passa de 85.000 chars (limite prático da Command Bar)
+Feito com `tools/build_completo.py` (build) + `tools/validate_completo.py`
+(validação em 2 passes para caber na RAM) + `tools/rbxcodec.py` (codec da
+spec do binário — Int32 BE+zigzag, Float32 formato Roblox, arrays
+byte-interleaved):
+
+- [x] **290.540/290.540 instâncias** no `.rbxl` (37 services + 290.461 V2 + 42 V3)
+- [x] **290.361/290.361 fontes byte-idênticas** ao V2 (sha1)
+- [x] **0 divergências de estrutura** (classe/nome/parent de cada instância V2)
+- [x] **0 divergências de propriedades** (valores decodificados, 606 props)
+- [x] V3: 42/42 instâncias no lugar (kits, ALL, launchers, 24 painéis, installers)
+- [x] `RunContext`/`Disabled` corretos (Boot/HUD ativos; 24 painéis + assemble + 2 installers desativados)
+- [x] `CB_UI_StarterGui.lua`: sintaxe OK; simulação em stub Roblox → **88/88
+      instâncias e 570/570 propriedades idênticas** à UI do V2
+- [x] `ALL_P1+ALL_P2+ALL_P3 == ArkherStudio_ALL.lua` (byte a byte)
+
+## Ferramentas (tools/)
+
+| Arquivo | Função |
+|---|---|
+| `pyrbxl2.py` | decoder do binário moderno do Roblox (header `<roblox!`, chunks LZ4/ZSTD) |
+| `rbxcodec.py` | codec dos valores PROP segundo a spec (com testes unitários: `python3 rbxcodec.py`) |
+| `make_rbxl.py` | encoder base (header, chunks, referent arrays) |
+| `build_completo.py` | **build do place completo** (ler V2 → montar → escrever `.rbxl` + gerar `CB_UI`) |
+| `validate_completo.py` | validação 2-passes (`A` meu arquivo → json; `B` V2 → comparar + gerar `CB_UI`) |
+| `make_estrutura_completa.py` | gerador dos 13 CBs de legado |
+| `simulate_commandbar.py` | simulador dos CBs em stub Lua |

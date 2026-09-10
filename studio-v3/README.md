@@ -69,7 +69,22 @@ Globals vazam entre modules (comportamento do Roblox): o Kit A define `ARKHER`,
 `Bus` etc.; o Kit B e os launchers os usam. `require` com cache — cada module
 executa uma vez; `ARKHER.boot()` é idempotente.
 
-## Instalar no Roblox Studio (6 pastes)
+## Instalar no Roblox Studio
+
+**Caminho 1 (recomendado) — abrir o place completo:**
+`commandbar/arkher-v3.rbxl` já é o place inteiro: 37 services, **todo o
+catálogo V2** (`ReplicatedStorage.ARKHER`: 290.000 customs + 333 generated +
+core/editors/maps/systems/ui — 290.361 fontes byte-idênticas ao V2), a engine
+V3, a UI original no `StarterGui` e o boot. `File > Open` e pronto.
+Detalhes em `commandbar/estrutura-completa/LEIA-ME.md`.
+
+**Caminho 2 — Command Bar num place existente:**
+`commandbar/estrutura-completa/CB_UI_StarterGui.lua` (View > Command Bar >
+colar tudo > Run) recria a UI original do V2 no `StarterGui.ARKHER_Studio`
+(88 instâncias, 570 propriedades — fiel). A engine V3 vai junto dentro do
+`.rbxl` (ou, em place avulso, use os CBs de legado `estrutura-completa/CB01…CB13`).
+
+**Caminho 3 — paste manual dos 6 scripts da engine** (sem o .rbxl):
 Rode `./build.sh` e cole, na ordem:
 1. `commandbar/ArkherKit_Installer_A.lua` → num **Script** (cria o ModuleScript Kit A)
 2. `commandbar/ArkherKit_Installer_B.lua` → num **Script** (cria o ModuleScript Kit B)
