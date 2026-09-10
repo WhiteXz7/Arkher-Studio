@@ -1,15 +1,27 @@
 # ARKHER V3 — ENTREGA COMPLETA
 
-Dois artefatos, dois caminhos:
+Três artefatos:
 
 | Artefato | O que é | Como usar |
 |---|---|---|
 | **`commandbar/arkher-v3.rbxl`** | **O place completo** — abre e já é o ARKHER inteiro: **90 services** com cada script no seu devido serviço, **todo o catálogo V2 (290.000 customs + 333 generated + core/editors/maps/systems/ui)**, a engine V3 (kits + ALL + 24 UIs), a UI original do V2 no `StarterGui`, o Tool, o personagem, o sound, o lighting, o Team e o boot. | `File > Open` no Roblox Studio. Fim. |
-| **`estrutura-completa/CB_UI_StarterGui.lua`** | **A única Command Bar**: um script que gera **toda a UI original do V2** no `StarterGui.ARKHER_Studio` (88 instâncias, 570 propriedades — fiel ao arquivo do V2, a mesma UI que o script original do V2 fez). | Num place que já tem a estrutura: `View > Command Bar` > cole **tudo** > `Run`. |
+| **`estrutura-completa/CB_UI_TODAS_UIS.lua`** | **A Command Bar que gera TODAS as UIs no StarterGui**: as 24 UIs únicas da V3 + o shell do editor + a UI original do V2 — **26 janelas, 4.807 instâncias** — cada Frame/Texto/Cor/Tamanho/Posição **fiel ao `build()` que a fez** (capturado executando o engine de verdade). | Num place: `View > Command Bar` > cole **tudo** > `Run`. Depois: `ArkherUI.show("ArkherMap")`, `ArkherUI.hide(...)`, `ArkherUI.toggle(...)`, `ArkherUI.list()`. |
+| **`estrutura-completa/CB_UI_StarterGui.lua`** | Só a **UI original do V2** (88 instâncias, 570 propriedades — fiel ao arquivo do V2). | `View > Command Bar` > cole **tudo** > `Run`. |
 
 > Os 13 scripts `CB01.lua … CB13.lua` desta pasta são **legado** da entrega
 > anterior (montar a engine V3 por paste). Eles ficaram para histórico — o
 > `.rbxl` já contém tudo que eles criavam, no service certo de cada um.
+
+### Como a Command Bar gera TODAS as UIs "de acordo com o script que fez"
+
+O `CB_UI_TODAS_UIS.lua` é um snapshot exato do que cada `build()` cria: o
+engine V3 inteiro foi executado num simulador (`tools/dump_v3_uis.py` +
+`tests/shim.lua`), o `build()` de cada uma das 24 UIs + o shell rodou de
+verdade, e a árvore resultante (classe, nome, parent, cor, tamanho,
+posição, fonte, texturas de gradiente) foi serializada. Ao executar na
+Command Bar, ela recria as 26 janelas no `StarterGui` com aquela estrutura
+exata — validada instância a instância por `tools/verify_cb_uis.py`
+(**0 divergências**).
 
 ## Estrutura do place (`arkher-v3.rbxl` — 290.617 instâncias)
 
@@ -115,7 +127,9 @@ Feito com `tools/build_completo.py` (build) + `tools/validate_completo.py`
 (validação em 2 passes para caber na RAM) + `tools/rbxcodec.py` (codec da
 spec do binário — Int32 BE+zigzag, Float32 formato Roblox, arrays
 byte-interleaved, BrickColor/UDim/UDim2/Color3/Vector3/Enum) +
-`tools/smoke_test_v3.py` (execução dos 6 scripts novos em stub Lua):
+`tools/smoke_test_v3.py` (execução dos 6 scripts novos em stub Lua) +
+`tools/dump_v3_uis.py`/`tools/verify_cb_uis.py` (snapshot + verificação das
+UIs geradas pela Command Bar):
 
 - [x] **290.617/290.617 instâncias** no `.rbxl` (90 services + 290.461 V2 + 66 V3)
 - [x] **290.361/290.361 fontes byte-idênticas** ao V2 (sha1)
@@ -130,9 +144,27 @@ byte-interleaved, BrickColor/UDim/UDim2/Color3/Vector3/Enum) +
   Atmosphere/ColorCorrection, Team.TeamColor=BrickColor, Sounds, RemoteEvents)
 - [x] **Smoke test**: S0, S1, C0, N0 e T0 executados em stub Lua — 0 erros;
   T0 self-test **9/9 — ESTRUTURA COMPLETA**
+- [x] **`CB_UI_TODAS_UIS.lua`**: executa num stub limpo e recria **26/26
+      janelas, 4.807/4.807 instâncias, 0 divergências** de classe/nome/parent/
+      propriedade vs o que o `build()` de cada UI cria (as 24 UIs + shell +
+      UI original do V2) — tudo no `StarterGui`
 - [x] `CB_UI_StarterGui.lua`: sintaxe OK; simulação em stub Roblox → **88/88
       instâncias e 570/570 propriedades idênticas** à UI do V2
 - [x] `ALL_P1+ALL_P2+ALL_P3 == ArkherStudio_ALL.lua` (byte a byte)
+- [x] **55/55 testes do engine** (`python3 tests/run.py`)
+
+### Bugs reais encontrados e corrigidos pela inspeção das UIs
+
+O dump executando os `build()` de verdade (em stub fiel) capturou valores
+que **quebrariam o build no Roblox real** — corrigidos no source e no
+`.rbxl`:
+
+- **`K.btn` com 7 args** em 5 UIs (About, AI, City, Performance, SaveOpen):
+  o nome era omitido → `Size = UDim2.new(0, 24, 0, <Color3>)` → erro de tipo
+  no Roblox. Agora: `K.btn(bar, "Close"/"Diag"/"Sim"/"Rep"/"Close", ...)`.
+- **`K.grad`** gravava `UIGradient.Color = ColorSequence` (propriedade espera
+  `Color3`) → erro no Roblox (afetava About, Map, Publish). Agora
+  `UIGradient.ColorSequence = ColorSequence.new(c1, c2)`.
 
 ## Ferramentas (tools/)
 
@@ -144,5 +176,9 @@ byte-interleaved, BrickColor/UDim/UDim2/Color3/Vector3/Enum) +
 | `build_completo.py` | **build do place completo** (ler V2 → montar → escrever `.rbxl` + gerar `CB_UI`) |
 | `validate_completo.py` | validação 2-passes (`A` meu arquivo → json; `B` V2 → comparar + gerar `CB_UI`) |
 | `smoke_test_v3.py` | execução dos 6 scripts V3 novos em stub Lua (lupa) |
+| `dump_v3_uis.py` | executa o engine no stub e captura a árvore REAL das 25 janelas da V3 |
+| `extract_v2ui.py` | extrai a UI original do V2 (88 insts) do `.rbxl` no mesmo formato |
+| `gen_cb_uis.py` | **gera `CB_UI_TODAS_UIS.lua`** (26 janelas, formato compacto com dedup) |
+| `verify_cb_uis.py` | roda o `CB_UI_TODAS_UIS.lua` num stub limpo e compara instância a instância |
 | `make_estrutura_completa.py` | gerador dos 13 CBs de legado |
 | `simulate_commandbar.py` | simulador dos CBs em stub Lua |

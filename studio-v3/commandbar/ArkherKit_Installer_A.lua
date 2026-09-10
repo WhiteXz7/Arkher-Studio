@@ -79,7 +79,7 @@ function K.stroke(f, color, th)
 end
 function K.grad(f, c1, c2, rot)
 	local g = Instance.new("UIGradient")
-	g.Color = ColorSequence.new(c1, c2)
+	g.ColorSequence = ColorSequence.new(c1, c2)
 	g.Rotation = rot or 90
 	g.Parent = f
 	return g

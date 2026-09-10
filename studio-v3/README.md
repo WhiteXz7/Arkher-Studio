@@ -86,10 +86,12 @@ core/editors/maps/systems/ui — 290.361 fontes byte-idênticas ao V2).
 Detalhes em `commandbar/estrutura-completa/LEIA-ME.md`.
 
 **Caminho 2 — Command Bar num place existente:**
-`commandbar/estrutura-completa/CB_UI_StarterGui.lua` (View > Command Bar >
-colar tudo > Run) recria a UI original do V2 no `StarterGui.ARKHER_Studio`
-(88 instâncias, 570 propriedades — fiel). A engine V3 vai junto dentro do
-`.rbxl` (ou, em place avulso, use os CBs de legado `estrutura-completa/CB01…CB13`).
+`commandbar/estrutura-completa/CB_UI_TODAS_UIS.lua` (View > Command Bar >
+colar tudo > Run) cria **TODAS as UIs no StarterGui** — as 24 UIs únicas da
+V3 + o shell do editor + a UI original do V2 (26 janelas, 4.807 instâncias,
+estrutura exata do `build()` que fez cada uma). Depois use
+`ArkherUI.show("ArkherMap")` / `hide` / `toggle` / `list`.
+Só a UI original do V2: `CB_UI_StarterGui.lua` (88 instâncias, fiel).
 
 **Caminho 3 — paste manual dos 6 scripts da engine** (sem o .rbxl):
 Rode `./build.sh` e cole, na ordem:
