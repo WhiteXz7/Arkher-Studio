@@ -12,6 +12,19 @@ Três artefatos:
 > anterior (montar a engine V3 por paste). Eles ficaram para histórico — o
 > `.rbxl` já contém tudo que eles criavam, no service certo de cada um.
 
+### Redução de peso do `.rbxl` (32,17 MB → 8,84 MB, sem tirar nada)
+
+O `arkher-v3.rbxl` foi re-comprimido com `tools/reencode_zstd.py`: cada um
+dos 305 chunks foi descomprimido e re-escrito no codec mais compacto entre
+**sem compressão / LZ4 / ZSTD (nível 15)**. O decoder do Roblox escolhe o
+codec pelo magic do corpo do chunk (`28 b5 2f fd` ⇒ ZSTD; caso contrário
+LZ4) — comportamento documentado na spec do formato
+(dom.rojo.space/binary.html) e usado pelo próprio Studio. **Nenhum byte de
+conteúdo mudou**: a comparação 2-passes (`tools/validate_completo.py`)
+confirma 290.617 instâncias, 290.361 fontes idênticas ao V2 e 0
+divergências de estrutura/propriedade. Resultado: **9.265.720 B (8,84 MB)**
+em disco, ~72,5 % menor que a versão LZ4 (33.702.137 B).
+
 ### Como a Command Bar gera TODAS as UIs "de acordo com o script que fez"
 
 O `CB_UI_TODAS_UIS.lua` é um snapshot exato do que cada `build()` cria: o
@@ -175,6 +188,7 @@ que **quebrariam o build no Roblox real** — corrigidos no source e no
 | `make_rbxl.py` | encoder base (header, chunks, referent arrays, lista de 90 services) |
 | `build_completo.py` | **build do place completo** (ler V2 → montar → escrever `.rbxl` + gerar `CB_UI`) |
 | `validate_completo.py` | validação 2-passes (`A` meu arquivo → json; `B` V2 → comparar + gerar `CB_UI`) |
+| `reencode_zstd.py` | **re-comprime um `.rbxl` sem alterar conteúdo** — por chunk escolhe o menor entre bruto/LZ4/ZSTD(nv15); foi o que levou o arquivo de 32,17 MB → 8,84 MB |
 | `smoke_test_v3.py` | execução dos 6 scripts V3 novos em stub Lua (lupa) |
 | `dump_v3_uis.py` | executa o engine no stub e captura a árvore REAL das 25 janelas da V3 |
 | `extract_v2ui.py` | extrai a UI original do V2 (88 insts) do `.rbxl` no mesmo formato |

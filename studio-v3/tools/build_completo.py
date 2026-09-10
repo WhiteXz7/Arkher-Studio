@@ -4,7 +4,8 @@
 1. Extrai a arvore INTEIRA do ARKHER_V2.rbxl (290.467 instancias:
    290.000 customs + 333 generated + core/editors/maps/systems/ui + UI no
    StarterGui + ARKHER_Boot + ARKHER_HUD + Ground).
-2. Reescreve o .rbxl no formato v0 com compressao LZ4 (igual ao V2) contendo:
+2. Reescreve o .rbxl no formato v0 com compressao ZSTD (nivel 15; o decoder
+   do Studio detecta pelo magic 28 b5 2f fd, fallback LZ4/bruto) contendo:
    - os 93 services (place completo)
    - ReplicatedStorage.ARKHER = catalogo V2 inteiro (fontes byte-identicas)
    - ReplicatedStorage.ArkherV3 = kits + chunks ALL (engine V3)
@@ -523,11 +524,27 @@ for i, (cls, *_r) in enumerate(MY):
     type_refs[cls].append(i)
 
 
+try:
+    import zstandard as _zstd
+    _ZSTD = _zstd.ZstdCompressor(level=15)
+except Exception:  # sem zstandard instalado -> so LZ4
+    _ZSTD = None
+
+
 def chunk(name: bytes, payload: bytes) -> bytes:
-    if len(payload) > 512:
-        c = lz4.block.compress(payload, store_size=False)
-        if len(c) < len(payload):
-            return name + struct.pack("<III", len(c), len(payload), 0) + c
+    # Escolhe o MENOR entre sem compressao / LZ4 / ZSTD. O decoder do Studio
+    # detecta o codec pelo magic (28 b5 2f fd => ZSTD; senao => LZ4 block).
+    if len(payload) > 512 and name != b"END\x00":
+        cands = [(len(payload), None)]  # (tamanho, bytes)  None => bruto
+        c_lz4 = lz4.block.compress(payload, store_size=False)
+        cands.append((len(c_lz4), c_lz4))
+        if _ZSTD is not None:
+            c_zstd = _ZSTD.compress(payload)
+            cands.append((len(c_zstd), c_zstd))
+        cands.sort(key=lambda t: t[0])
+        size, body = cands[0]
+        if body is not None and size < len(payload):
+            return name + struct.pack("<III", size, len(payload), 0) + body
     return name + struct.pack("<III", 0, len(payload), 0) + payload
 
 

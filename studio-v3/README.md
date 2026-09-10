@@ -85,6 +85,14 @@ core/editors/maps/systems/ui — 290.361 fontes byte-idênticas ao V2).
 290.617 instâncias no total. `File > Open` e pronto.
 Detalhes em `commandbar/estrutura-completa/LEIA-ME.md`.
 
+> **Peso do arquivo: 8,84 MB** (9.265.720 B). O place é gravado no formato
+> binário v0 com **ZSTD (nível 15)** nos chunks grandes — o decoder do
+> Studio detecta o codec pelo magic do chunk (`28 b5 2f fd`), como a própria
+> spec do formato prevê (dom.rojo.space/binary.html). Nada de conteúdo foi
+> removido: os 305 chunks descomprimem byte-a-byte idênticos à versão
+> anterior (validação 2-passes: 290.361 fontes, 0 divergências). A re-
+> compressão é reproduzível com `tools/reencode_zstd.py`.
+
 **Caminho 2 — Command Bar num place existente:**
 `commandbar/estrutura-completa/CB_UI_TODAS_UIS.lua` (View > Command Bar >
 colar tudo > Run) cria **TODAS as UIs no StarterGui** — as 24 UIs únicas da
