@@ -431,7 +431,6 @@ local function buildTerrain(win)
 				TextSize = 9, TextColor3 = th.muted, BorderSizePixel = 0,
 				TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
 			}, catList)
-			cb.Position = nil
 			H(cb, 5)
 			cb.MouseButton1Click:Connect(function()
 				for _, ch in ipairs(catList:GetChildren()) do
