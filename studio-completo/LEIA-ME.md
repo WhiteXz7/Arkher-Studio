@@ -139,7 +139,28 @@ em cada um dos 121 chunks PROP (#StudioSafe). Baixe novamente a placa atual.
 - `Arkher_06_RigX` + `Arkher_07_MeshX`: painéis que se ACOPLAM ao dock do
   05 (sem alterá-lo), mesmo tema, ícones desenhados (palito-rig, cubo-wire).
 
-Regerar: `python3 tools/inject_arkherx.py ../ArkherStudio_Completo_Pro.rbxl ../ArkherStudio_Completo_X.rbxl` → valida **1.743 inst, 32 tipos (157.707 B)**, PRNT/END corretos. Testes: `python3 tools/run_tests.py` (109+ asserts, 27 painéis).
+Regerar: `python3 tools/inject_arkherx.py ../ArkherStudio_Completo_Pro.rbxl ../ArkherStudio_Completo_X.rbxl` → valida **1.744 inst, 32 tipos (169.163 B)**, PRNT/END corretos. Testes: `python3 tools/run_tests.py` (109+ asserts, 27 painéis).
+
+**CAMADA AUTOMÁTICA + FABRICATOR (2026-09, round 2):**
+- **`fabx.luau` (FABX)** — o FABRICATOR universal: gramática procedural com ~48 classes
+  (árvore/pinheiro/palmeira/cacto/flor/pedra/cristal/ilha/vulcão/montanha · casa/prédio/
+  torre/ponte/muro/cerca/porta/janela/coluna/fonte/escada/arco/telhado · mesa/cadeira/
+  sofá/cama/estante/lâmpada/vaso · carro/barco/avião/nave/roda · espada/escudo/caixa/
+  barril/baú/placa/estátua · personagem/criatura/ave/peixe · antena) determinísticas por
+  seed, aceitando **PT ou EN** ("árvore"/"tree"), com matéria real (TX.MATTER) e
+  **registro automático no RRW** na hora da criação. Aba **FABRICAR · TUDO** na topbar.
+- **RRX camada de aplicação automática**: `autoBind` captura tudo do workspace (e todo
+  spawn futuro via DescendantAdded); **Semantic World Graph** (nós por entidade +
+  consultas); **AWI — Adaptive World Intelligence** (importância dinâmica pela atenção
+  do jogador + D preditivo); `createEarth` (Terra em equiretangular, 12 placas,
+  escala paisagem 4m/planetária 640m, gravidade calibrada) e **`earthStream`**
+  (streaming celular com histerese D-O15 — entra cedo, abstrai tarde, nunca destrói).
+- **Hidrologia viva no WORLDX**: `rivers` (steepest-descent real que **entalha o leito**
+  via escovas-delta), `materializeRivers` (fitas d'água), `riverMoist` (umidade→vegetação)
+  e `hydroStep` (ciclo d'água: evapora→nuvens→chuva→erosão que aprende) bombeado no
+  Heartbeat do RRX. `statsReport` agora reporta stream/AWI/chuvas/terra.
+- Servidor **44 comandos** (`rrx_autobind`, `awi_on`, `earth_generate`, `earth_stream`,
+  `world_rivers`, `hydro_on`, `fabricate`, `fabricate_list`, `graph_stats`, `npc_spawn`…).
 
 **REMAKE RRW (2026-09):** três motores núcleo novos + topbar de abas (barra lateral removida):
 - `studio-v3/core/theoryx.luau` (THX) — teoria codificada: Tese dos D (D⃗, histerese,

@@ -504,5 +504,122 @@ function WX.tool(id, w, p)
 	return { tool = id, cat = t2.cat, applied = n, msg = t2.msg }
 end
 
+
+-- ============ HIDROLOGIA REAL (cat. L: rios + ciclo dagua, 6001-6700) ============
+-- steepest-descent sobre height(): nasce em zona alta e umida; entalha o leito
+-- via deltas (regra ARKHER: rio e PROCESSO, nao textura azul).
+function WX.rivers(w, count, seed)
+	w.rivers = w.rivers or {}
+	local sea = w.sea or (w.scale and w.scale.seaLevel) or 10
+	local rng = Random.new((seed or w.seed) + 4242)
+	local half = w.size / 2
+	local step = math.max(w.cell * 2, 8)
+	local made = 0
+	for t = 1, (count or 6) * 6 do
+		if made >= (count or 6) then break end
+		local x = rng:NextNumber(-half * 0.8, half * 0.8)
+		local z = rng:NextNumber(-half * 0.8, half * 0.8)
+		local h = WX.height(w, x, z)
+		local _, cl = WX.biomeAt(w, x, z)
+		if h > sea * 1.8 and cl then
+			local path = { { x = x, z = z, h = h } }
+			local px, pz, ph = x, z, h
+			for era = 1, 400 do
+				-- 4-vizinhanca, vai na maior descida
+				local bx, bz, bh = px, pz, ph
+				for _, d in ipairs({ { step, 0 }, { -step, 0 }, { 0, step }, { 0, -step } }) do
+					local nh = WX.height(w, px + d[1], pz + d[2])
+					if nh < bh then bx, bz, bh = px + d[1], pz + d[2], nh end
+				end
+				if bh >= ph - 0.01 then break end -- lago/depressao: para
+				px, pz, ph = bx, bz, bh
+				table.insert(path, { x = px, z = pz, h = ph })
+				if ph <= sea + 0.5 then break end -- desaguou no oceano
+				if (px * px + pz * pz) ^ 0.5 > half then break end
+			end
+			if #path >= 8 then
+				made = made + 1
+				table.insert(w.rivers, path)
+				-- entalha o leito: cada 2 pontos, brush negativo
+				for i = 2, #path, 2 do
+					local q = path[i]
+					brush(w, q.x, q.z, step * 1.4, -2.2, function(t2) return t2 end)
+				end
+			end
+		end
+	end
+	return made
+end
+
+-- materializa os rios em fitas d'agua (RRW: superficie por polilinha real)
+function WX.materializeRivers(w, parent)
+	if not w.rivers or #w.rivers == 0 then return 0 end
+	local M = parent or workspace:FindFirstChild("ArkherX_Rivers") or Instance.new("Model")
+	M.Name = "ArkherX_Rivers"
+	M.Parent = workspace
+	local n = 0
+	for _, path in ipairs(w.rivers) do
+		for i = 2, #path do
+			local a, b = path[i - 1], path[i]
+			local midX, midZ = (a.x + b.x) / 2, (a.z + b.z) / 2
+			local sea = w.sea or (w.scale and w.scale.seaLevel) or 10
+		local y = math.max(sea, ((a.h + b.h) / 2)) + 0.4
+			local dx, dz = b.x - a.x, b.z - a.z
+			local len = (dx * dx + dz * dz) ^ 0.5 + 0.5
+			local p = Instance.new("Part")
+			p.Name = "RiverSeg"
+			p.Anchored = true
+			p.CanCollide = false
+			p.Color = Color3.fromRGB(58, 140, 210)
+			p.Transparency = 0.18
+			p.Material = Enum.Material.SmoothPlastic
+			p.Size = V3(len, 0.5, math.max(4, len * 0.5))
+			p.CFrame = CFrame.new(midX, y, midZ) * CFrame.Angles(0, -math.atan2(dz, dx), 0)
+			p.Parent = M
+			n = n + 1
+			if n >= 900 then return n end
+		end
+	end
+	return n
+end
+
+-- umidade por proximidade de rio (boost de vegetacao e wetness da materia)
+function WX.riverMoist(w, x, z)
+	if not w.rivers then return 0 end
+	local best = 1e9
+	for _, path in ipairs(w.rivers) do
+		for i = 1, #path, 3 do
+			local q = path[i]
+			local d = ((x - q.x) ^ 2 + (z - q.z) ^ 2) ^ 0.5
+			if d < best then best = d end
+		end
+	end
+	return math.clamp(1 - best / (w.cell * 14), 0, 1)
+end
+
+-- CICLO DAGUA (bombeado pelo RRX): evapora (T/so), acumula nuvens, precipita
+-- quando satura (com orografia) -> re-umidifica + micro-erosao episodica.
+-- estado hidrologico por mundo em w.hydro (crio lazily)
+function WX.hydroStep(w, dt)
+	w.hydro = w.hydro or { humidity = 0.6, clouds = 0.1, rainEvents = 0, sat = 1.0 }
+	local hy = w.hydro
+	local season = math.sin((w.season or 0.3) * math.pi * 2)
+	local evap = (0.04 + math.max(0, season) * 0.05) * dt
+	hy.humidity = math.clamp(hy.humidity + evap, 0, 1.4)
+	hy.clouds = math.clamp(hy.clouds + hy.humidity * 0.12 * dt - hy.clouds * 0.03 * dt, 0, 1.2)
+	if hy.clouds > hy.sat and hy.humidity > 0.9 then
+		hy.rainEvents = hy.rainEvents + 1
+		hy.humidity = hy.humidity - 0.55
+		hy.clouds = hy.clouds * 0.35
+		-- a chuva REAL: aprende com o mundo (erosao leve + re-umidificacao)
+		WX.erode(w, math.max(20, (w.tier and w.tier.erosionDrops or 120) / 6))
+		local l = w.learn or { runs = 0 }
+		l.rains = (l.rains or 0) + 1
+		TX.memPut("wldx", "learn_" .. w.seed, l)
+		return true, hy
+	end
+	return false, hy
+end
+
 _G.ArkherWorldX = WX
 return WX

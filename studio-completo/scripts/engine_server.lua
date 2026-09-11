@@ -24,7 +24,7 @@ if not engines then
 	error("ArkherEngines ausente no ServerStorage (ver probes acima)")
 end
 
-local ORDER = { "DM", "THX", "WLDX", "RRX", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX", "RIGX", "MSHX" }
+local ORDER = { "DM", "THX", "WLDX", "RRX", "FABX", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX", "RIGX", "MSHX" }
 for _, nm in ipairs(ORDER) do
 	local ok, err = pcall(function() require(engines["ArkherX_" .. nm]) end)
 	if not ok then warn("[ArkherX] motor " .. nm .. " falhou: " .. tostring(err)) end
@@ -129,6 +129,92 @@ function CMD.anim_autophysics(p)
 	assert(ArkherRigX, "RIGX off")
 	local lv = ArkherRigX.setAutoPhysics((p and p.level) or 0.6)
 	return { msg = "AutoPhysics = " .. string.format("%.2f", lv) .. " (0=off 0.35=secundaria 0.7=+balance 1=+balistica)" }
+end
+
+
+function CMD.rrx_autobind(p)
+	assert(ArkherRealityX and ArkherRealityX.autoBind, "RRX off")
+	local n = ArkherRealityX.autoBind(p and p.on ~= false)
+	return { msg = ("AUTO-BIND RRW: %d objetos do workspace capturados; TODO spawn futuro entra automaticamente"):format(n) }
+end
+
+function CMD.awi_on(p)
+	assert(ArkherRealityX, "RRX off")
+	ArkherRealityX.S.awi.on = (p and p.on ~= false)
+	return { msg = "AWI (Adaptive World Intelligence) " .. (ArkherRealityX.S.awi.on and "ON — mundo aprende com a atencao do jogador" or "OFF") }
+end
+
+function CMD.earth_generate(p)
+	assert(ArkherRealityX and ArkherRealityX.createEarth, "RRX off")
+	local w = ArkherRealityX.createEarth((p and p.scale) or "paisagem")
+	return { msg = ("TERRA escala '%s' gerada: 12 placas, 32 biomas, 1 stud = %sm, gravidade ajustada"):format(
+		(p and p.scale) or "paisagem", tostring(w.earthScale.studToM)) }
+end
+
+function CMD.earth_stream(p)
+	assert(ArkherRealityX and ArkherRealityX.earthStream, "RRX off")
+	local on = ArkherRealityX.earthStream(p and p.on ~= false, p or {})
+	return { msg = on and "STREAMING DA TERRA: ligado (histerese D-O15: entra cedo, abstrai tarde, NUNCA destroi sem abstrair)" or "streaming desligado" }
+end
+
+function CMD.world_rivers(p)
+	assert(ArkherRealityX and ArkherWorldX, "RRW off")
+	local w = ArkherRealityX.S.earth or ArkherRealityX.S.world
+	if not w then return { msg = "gere um mundo primeiro (planeta ou terra)" } end
+	local n = ArkherWorldX.rivers(w, (p and p.n) or 6)
+	local segs = ArkherWorldX.materializeRivers(w)
+	return { msg = ("%d rios REAIS por queda-dagua (entalharam o leito), %d segmentos d'agua materializados"):format(n, segs) }
+end
+
+function CMD.hydro_on(p)
+	assert(ArkherRealityX, "RRX off")
+	ArkherRealityX.S.hydroOn = (p and p.on ~= false)
+	return { msg = "CICLO D'AGUA " .. (ArkherRealityX.S.hydroOn and "ON — evapora > nuvens > chuva (que erode e aprende) > rios" or "OFF") }
+end
+
+function CMD.fabricate(p)
+	assert(ArkherFabricX, "FABX off")
+	p = p or {}
+	local res, err = ArkherFabricX.fabricate(p, { pos = Vector3.new(p.x or 0, p.y or 0, p.z or -14) })
+	if not res then return { msg = "✗ " .. tostring(err) } end
+	return { msg = ("FABRICADO: %s (seed %s) — %d parts de materia real, JA registrado no RRW automatico"):format(res.kind, tostring(res.seed), res.parts) }
+end
+
+function CMD.fabricate_list()
+	assert(ArkherFabricX, "FABX off")
+	local l = ArkherFabricX.list()
+	return { kinds = l, count = #l }
+end
+
+function CMD.graph_stats(p)
+	if not (ArkherRealityX and ArkherRealityX.graphStats) then return { msg = "grafo off" } end
+	local g = ArkherRealityX.graphStats()
+	local parts = {}
+	for k, v in pairs(g.byMatter) do parts[#parts + 1] = k .. "=" .. v end
+	return { msg = ("GRAFO SEMANTICO: %d nos — materia: %s"):format(g.nodes, table.concat(parts, " ")) }
+end
+
+function CMD.npc_spawn(p)
+	assert(ArkherRigX and ArkherRealityX, "RIGX/RRX off")
+	local preset = (p and p.preset) or "bipede"
+	local c = ArkherRigX.autoRig(nil, preset)
+	local parts = {}
+	for i = 1, #c.bones do
+		local prt = workspace:FindFirstChild("NPC_b" .. i) or Instance.new("Part")
+		prt.Name = "NPC_b" .. i
+		prt.Color = Color3.fromRGB(240, 190, 90)
+		prt.Material = Enum.Material.Neon
+		prt.Anchored = true
+		prt.Parent = workspace
+		table.insert(parts, prt)
+		ArkherRealityX.register(prt, { kind = "part", matter = "soil", importance = 0.9,
+			meta = { npc = true, baseTransparency = 0 } })
+	end
+	_G.ArkherX_NPC = ArkherRigX.playTarget(c, {
+		center = c.root + Vector3.new(4, 2, 0), radius = 3.4, speed = 0.9,
+		parts = parts, thickness = 0.42, color = Color3.fromRGB(240, 190, 90),
+	})
+	return { msg = ("NPC '%s' vivo: %d ossos FABRIK + balanco + importancia 0.9 no RRW (AutoPhysics conforme slider)"):format(preset, #c.bones) }
 end
 
 function CMD.stats()
@@ -435,4 +521,4 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
-print("[ArkherX] EngineServer pronto — 14 motores no vault (THX/WLDX/RRW ativos) + ponte ArkherNet")
+print("[ArkherX] EngineServer pronto — 15 motores no vault (RRW universal + FABX) + ponte ArkherNet")

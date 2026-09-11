@@ -130,6 +130,14 @@ function RX.pump(dt)
 			end
 		end
 	end
+	-- AWI (inteligencia adaptativa do mundo), streaming celular da Terra,
+	-- ciclo d'agua — TUDO no mesmo pulso automatico (sec. D-O15: adaptador universal)
+	pcall(function() if RX.awiStep then RX.awiStep(dt) end end)
+	pcall(function() if RX.streamPump then RX.streamPump() end end)
+	if S.hydroOn and S.world and WX and WX.hydroStep then
+		local rain = WX.hydroStep(S.world, dt)
+		if rain then S.stats.rains = (S.stats.rains or 0) + 1 end
+	end
 	-- luz ambiental a cada ciclo curto (simulacao fisica do ceu)
 	if WX and lightAcc > 1.5 and S.world then
 		lightAcc = 0
@@ -246,7 +254,222 @@ function RX.statsReport()
 		entities = entN, materialized = S.stats.materialized,
 		parallaxActive = S.stats.parallaxAtivo, veg = S.stats.learnedVeg or 0,
 		erodeRuns = (l and l.runs) or 0,
+		autobind = S.autobind, awi = S.awi and S.awi.on or false,
+		attend = S.awi and S.awi.attend or 0,
+		stream = S.stream and S.stream.on or false,
+		streamChunks = S.stats.streamChunks or 0,
+		rains = S.stats.rains or 0,
+		earth = S.earth ~= nil,
 	}
+end
+
+
+-- ========================================================================
+-- CAMADA DE APLICACAO AUTOMATICA (o RRW em TUDO, sem ninguem chamar nada)
+-- ========================================================================
+
+-- heuristica de MATERIA por cor/nome/material do objeto (matéria, nao textura)
+local MAT_KEYS = { "rock", "sand", "grass", "soil", "snow", "ice", "mud", "lava", "scree", "coral" }
+function RX.matterOf(obj)
+	if obj:IsA("Terrain") then return "soil" end
+	local nm = (obj.Name or ""):lower()
+	for _, k in ipairs(MAT_KEYS) do if nm:find(k) then return k end end
+	if nm:find("tree") or nm:find("leaf") or nm:find("copa") then return "grass" end
+	if nm:find("trunk") or nm:find("wood") or nm:find("madeira") then return "soil" end
+	if nm:find("water") or nm:find("agua") or nm:find("river") or nm:find("sea") then return "ice" end
+	local m = obj:IsA("BasePart") and tostring(obj.Material):lower() or ""
+	if m:find("grass") then return "grass" end
+	if m:find("sand") then return "sand" end
+	if m:find("snow") or m:find("ice") or m:find("glacier") then return "snow" end
+	if m:find("rock") or m:find("cobble") or m:find("concrete") or m:find("basalt") then return "rock" end
+	if m:find("ground") or m:find("mud") then return "mud" end
+	if m:find("lava") or m:find("neon") and (obj:IsA("BasePart") and obj.Color.R > 0.7) then return "lava" end
+	if m:find("slate") or m:find("granite") or m:find("marble") then return "scree" end
+	return "soil"
+end
+
+-- ---------- SEMANTIC WORLD GRAPH (tech ARKHER original Z) ----------
+-- cada entidade vira NO com tags semanticas; consultas unem espaco+materia+import.
+S.graph = { nodes = 0, links = 0 }
+function RX.graphNode(ent)
+	return { kind = ent.kind, matter = ent.matter, importance = ent.importance,
+		meta = ent.meta, parent = ent.parent }
+end
+function RX.queryGraph(pred)
+	local out = {}
+	for obj, ent in pairs(S.entities) do
+		local n = RX.graphNode(ent)
+		n.obj = obj
+		if pred(n) then out[#out + 1] = n end
+	end
+	return out
+end
+function RX.graphStats()
+	local byMatter, byKind = {}, {}
+	for _, ent in pairs(S.entities) do
+		byMatter[ent.matter] = (byMatter[ent.matter] or 0) + 1
+		byKind[ent.kind] = (byKind[ent.kind] or 0) + 1
+	end
+	return { nodes = #RX.queryGraph(function() return true end), byMatter = byMatter, byKind = byKind }
+end
+
+-- ---------- AUTO-BIND: capture o workspace inteiro, PRA SEMPRE ----------
+-- qualquer coisa criada por QUALQUER sistema (ou pelo usuario) entra no RRW.
+S.autobind = false
+local function shouldBind(obj)
+	if not (obj:IsA("BasePart")) then return false end
+	if obj.Anchored == false and obj:IsDescendantOf(game:GetService("Players")) then return false end
+	local nm = obj.Name or ""
+	if nm:sub(1, 4) == "Human" or nm == "Head" or nm == "Torso" then return false end
+	if S.entities[obj] then return false end
+	return true
+end
+local function bindOne(obj)
+	local imp = 0.5
+	local nm = (obj.Name or ""):lower()
+	if nm:find("baseplate") or nm:find("spawn") then imp = 0.4 end
+	local model = obj:FindFirstAncestorOfClass("Model")
+	local ent = RX.register(obj, { kind = "part", matter = RX.matterOf(obj),
+		importance = imp, parent = model,
+		meta = { baseTransparency = obj.Transparency, auto = true } })
+	S.graph.nodes = S.graph.nodes + 1
+	return ent
+end
+function RX.autoBind(on)
+	S.autobind = on and true or false
+	local n = 0
+	if on then
+		for _, d in ipairs(workspace:GetDescendants()) do
+			if shouldBind(d) then bindOne(d) n = n + 1 end
+		end
+		if not S._bindConn then
+			S._bindConn = workspace.DescendantAdded:Connect(function(d)
+				if not S.autobind then return end
+				task.defer(function()
+					if shouldBind(d) then bindOne(d) end
+				end)
+			end)
+			S._unbindConn = workspace.DescendantRemoving:Connect(function(d)
+				if S.entities[d] then RX.unregister(d) end
+			end)
+		end
+	end
+	return n
+end
+
+-- ---------- ADAPTIVE WORLD INTELLIGENCE (tech ARKHER Z: AWI) ----------
+-- o mundo APRENDE com o jogador: importancia dinamica por atencao (vetor
+-- velocidade da camera) + memoria de projeto (THX.MEM), nenhum preset.
+S.awi = { on = true, vel = V3(), lastCam = nil, attend = 0 }
+function RX.awiStep(dt)
+	if not S.awi.on then return end
+	local cam = workspace.CurrentCamera
+	if not cam then return end
+	local cp = cam.CFrame.Position
+	if S.awi.lastCam and dt > 0 then
+		S.awi.vel = (cp - S.awi.lastCam) / dt
+	end
+	S.awi.lastCam = cp
+	local dir = cam.CFrame.LookVector
+	-- atencao: quanto da camera converge pra frente = quanto o player EXPLORA
+	S.awi.attend = math.clamp(0.5 + S.awi.vel.Magnitude / 60, 0, 1)
+	local i = 0
+	for obj, ent in pairs(S.entities) do
+		i = i + 1
+		if (i + S.learnRounds) % 7 == 0 and obj:IsA("BasePart") and obj.Parent then
+			local to = obj.Position - cp
+			local dist = to.Magnitude
+			-- predicao D: na frente da camera e chegando -> importancia sobe
+			local facing = dist > 1 and (to.Unit:Dot(dir) + 1) / 2 or 1
+			local targetImp = math.clamp(0.25 + facing * 0.55 + S.awi.attend * 0.2, 0.1, 1)
+			if dist < 90 then targetImp = math.min(1, targetImp + 0.25) end
+			ent.importance = ent.importance + (targetImp - ent.importance) * math.min(1, dt * 2)
+		end
+	end
+end
+
+-- ---------- PLANETA TERRA EM ESCALA REAL + STREAMING ----------
+-- equiretangular: z mapeia latitude -90..90; 12 placas; budget D-O15 por tier.
+function RX.createEarth(scaleId)
+	local scale = TX.SCALES[scaleId or "paisagem"] or TX.SCALES.paisagem
+	local w = WX.new({
+		seed = 7, size = 10015 * 2 * 0.28 / scale.studToM, -- ~circunf. real em studs
+		cell = 12, season = 0.35, scale = scale, plates = 12, driftT = 6,
+	})
+	w.earth = true
+	w.earthScale = scale
+	S.earth = w
+	-- gravidade real relativa a escala (vee: 9.81 m/s2 => studs/s2)
+	local studs = 196.2 * (scale.studToM / 0.28)
+	pcall(function() workspace.Gravity = math.clamp(studs, 16, 320) end)
+	return w
+end
+
+-- streaming celular geodesico: materializa so o Anel de percepcao ao redor
+-- da camera; histerese (Tese dos D 82): entra cedo (Rin), abstrai tarde (Rout).
+S.stream = { on = false, rin = 480, rout = 900, cell = 24, chunks = {} }
+function RX.earthStream(on, opts)
+	S.stream.on = on and true or false
+	if opts then for k, v in pairs(opts) do S.stream[k] = v end end
+	if on and (not S.earth) then RX.createEarth("paisagem") end
+	return S.stream.on
+end
+
+function RX.streamPump()
+	if not S.stream.on or not S.earth then return end
+	local st = S.stream
+	local w = S.earth
+	local tier = TX.TIERS[S.tier] or TX.TIERS.doze
+	local budget = math.max(4, math.floor(18 * tier.pixelBudget))
+	local cx = math.floor(cameraPos.X / st.cell) * st.cell
+	local cz = math.floor(cameraPos.Z / st.cell) * st.cell
+	local created = 0
+	local parent = workspace:FindFirstChild("ArkherX_EarthStream") or Instance.new("Model")
+	parent.Name = "ArkherX_EarthStream"
+	parent.Parent = workspace
+	for gx = cx - st.rout, cx + st.rout, st.cell do
+		for gz = cz - st.rout, cz + st.rout, st.cell do
+			if created >= budget then break end
+			local d = ((gx - cameraPos.X) ^ 2 + (gz - cameraPos.Z) ^ 2) ^ 0.5
+			local key = gx .. ":" .. gz
+			local cur = st.chunks[key]
+			if d < st.rin and not cur then
+				local h = WX.height(w, gx, gz)
+				if h > -60 then
+					local bi, cl = WX.biomeAt(w, gx, gz)
+					local mat = WX.materialAt(w, gx, gz, cl, bi)
+					local r16 = WX.render16k(w, gx, gz, mat)
+					local p = Instance.new("Part")
+					p.Name = "ES_" .. mat
+					p.Anchored = true
+					p.Size = V3(st.cell, math.max(1.2, h + 62), st.cell)
+					p.Position = V3(gx, (h - 62) / 2, gz)
+					p.Color = r16.color
+					p.Material = Enum.Material.SmoothPlastic
+					p.TopSurface = Enum.SurfaceType.Smooth
+					p.Parent = parent
+					st.chunks[key] = p
+					RX.register(p, { kind = "terrain", matter = mat, importance = 0.6,
+						meta = { stream = true, baseTransparency = 0, mat16k = function(px, pz)
+							local b2, c2 = WX.biomeAt(w, px, pz)
+							local m2 = WX.materialAt(w, px, pz, c2, b2)
+							return WX.render16k(w, px, pz, m2).color
+						end } })
+					created = created + 1
+				end
+			elseif cur and d > st.rout then
+				-- NAO-DESTRUICAO (sec. 80): abstrai, nao apaga
+				pcall(function() cur.Transparency = math.min(cur.Transparency + 0.3, 0.9) end)
+				if cur.Transparency >= 0.9 then
+					RX.unregister(cur)
+					cur:Destroy()
+					st.chunks[key] = nil
+				end
+			end
+		end
+	end
+	S.stats.streamChunks = 0
+	for _ in pairs(st.chunks) do S.stats.streamChunks = S.stats.streamChunks + 1 end
 end
 
 function RX.start()

@@ -97,8 +97,8 @@ B("TextLabel", {
 
 local status = B("TextLabel", {
 	Name = "Status",
-	Size = UDim2.new(1, -820, 1, 0),
-	Position = UDim2.new(0, 820, 0, 0),
+	Size = UDim2.new(1, -838, 1, 0),
+	Position = UDim2.new(0, 830, 0, 0),
 	BackgroundTransparency = 1,
 	Text = "RRW automático: pronto. Passe o mouse numa tool p/ ver o que ela faz.",
 	Font = t.fontm, TextSize = 11, TextColor3 = t.muted,
@@ -106,7 +106,7 @@ local status = B("TextLabel", {
 }, strip)
 
 local tabHolder = B("Frame", {
-	Size = UDim2.fromOffset(740, 30), Position = UDim2.fromOffset(66, 0),
+	Size = UDim2.fromOffset(760, 30), Position = UDim2.fromOffset(62, 0),
 	BackgroundTransparency = 1,
 }, strip)
 local tabLay = Instance.new("UIListLayout")
@@ -225,6 +225,32 @@ function BUILD.planeta()
 	end)
 	toolBtn("Stats RRW", "Entidades, células materializadas, vegetação, relógio do mundo, runs de erosão aprendidas", function()
 		return remoteMsg("rrx_stats", {})
+	end)
+	section("RRW EM TUDO (AUTOMÁTICO)", t.gold)
+	toolBtn("⛓ Auto-Bind ON", "Captura AUTOMÁTICA: tudo que existir ou vier a existir no workspace entra no RRW (matéria/D/LOD) — nada escapa", function()
+		return remoteMsg("rrx_autobind", { on = true })
+	end)
+	toolBtn("🧠 AWI ON", "Adaptive World Intelligence: o mundo aprende com a atenção do jogador (importância dinâmica + D preditivo)", function()
+		return remoteMsg("awi_on", { on = true })
+	end)
+	toolBtn("🕸 Grafo Semântico", "Semantic World Graph: nós por entidade com tags matéria/importância — conteúdo do mundo consultável", function()
+		return remoteMsg("graph_stats", {})
+	end)
+	section("PLANETA TERRA REAL (escala/densidade)", Color3.fromRGB(43, 160, 243))
+	toolBtn("🌎 Terra paisagem 4m/stud", "Planeta em equiretangular: 12 placas, latitudes reais Köppen, 1 stud = 4 m, gravidade física calibrada", function()
+		return remoteMsg("earth_generate", { scale = "paisagem" })
+	end)
+	toolBtn("🛰 Terra planetária 640m", "Vista planetária: 1 stud = 640 m (rotação de biomas por latitude completa)", function()
+		return remoteMsg("earth_generate", { scale = "planeta" })
+	end)
+	toolBtn("📡 Streaming ON", "Streaming celular geodésico: materializa só o anel de percepção (histerese D-O15); nunca destrói sem abstrair", function()
+		return remoteMsg("earth_stream", { on = true })
+	end)
+	toolBtn("Rios Reais", "Rios por queda-d'água (steepest descent) que ENTALHAM o leito e viram fitas d'água — processo, não textura", function()
+		return remoteMsg("world_rivers", { n = 6 })
+	end)
+	toolBtn("💧 Ciclo d'Água ON", "evapora→nuvens→chuva→erosão que aprende→rios: o mundo fica VIVO sozinho", function()
+		return remoteMsg("hydro_on", { on = true })
 	end)
 	section("TIER D-O15 (D* = argmax Q−C)", t.purple)
 	toolBtn("D12 · DOZE", "Tier máximo: materialização total (octavas 16K, parallax 7 cascas, erosão máxima)", function()
@@ -396,6 +422,35 @@ function BUILD.animator()
 	toolBtn("Cube Pump (AAX)", "Timeline 24fps: spring+bounce em pingpong", function()
 		return remoteMsg("aax_demo", {})
 	end)
+	toolBtn("NPC Vivo", "NPC com esqueleto real + importância 0.9 no RRW (AWI aprende com ele)", function()
+		return remoteMsg("npc_spawn", { preset = "bipede" })
+	end)
+end
+
+-- ---- FABRICAR · TUDO (o "qualquer coisa") ----
+function BUILD.fabricar()
+	section("FABRICATOR UNIVERSAL (gramatica procedural real)", Color3.fromRGB(255, 130, 90))
+	toolBtn("Listar Classes", "Todas as classes que a gramatica sabe compor (PT ou EN, deterministico por seed)", function()
+		local res = remote("fabricate_list")
+		if type(res) == "table" and res.kinds then
+			return ("%d classes: %s"):format(res.count, table.concat(res.kinds, ", "))
+		end
+		return tostring(res)
+	end)
+	local quick = {
+		{ "tree", "árvore" }, { "pine", "pinheiro" }, { "palm", "palmeira" }, { "cactus", "cacto" },
+		{ "flower", "flor" }, { "rock", "pedra" }, { "crystal", "cristal" }, { "island", "ilha" },
+		{ "house", "casa" }, { "building", "prédio" }, { "tower", "torre" }, { "bridge", "ponte" },
+		{ "car", "carro" }, { "boat", "barco" }, { "plane", "avião" }, { "ufo", "nave" },
+		{ "character", "personagem" }, { "creature", "criatura" }, { "bird", "ave" }, { "fish", "peixe" },
+		{ "sword", "espada" }, { "chest", "baú" }, { "statue", "estátua" }, { "fountain", "fonte" },
+	}
+	for _, q in ipairs(quick) do
+		local kind, label = q[1], q[2]
+		toolBtn(label, ("FABX/%s — seed 7 deterministico; entra no RRW automaticamente"):format(kind), function()
+			return remoteMsg("fabricate", { kind = kind, seed = 7 })
+		end)
+	end
 end
 
 -- ---- CENA · FX ----
@@ -430,8 +485,11 @@ function BUILD.stats()
 		end
 		return tostring(res)
 	end)
-	toolBtn("Stats RRW", "Daemon da realidade: entidades/células/vegetação/tier/relógio", function()
+	toolBtn("Stats RRW", "Daemon da realidade: entidades/células/vegetação/tier/relógio/stream/chuvas", function()
 		return remoteMsg("rrx_stats", {})
+	end)
+	toolBtn("Grafo Semântico", "Quantos nós, por matéria — o mundo como conhecimento vivo", function()
+		return remoteMsg("graph_stats", {})
 	end)
 end
 
@@ -443,6 +501,7 @@ local TABS = {
 	{ id = "clima",    title = "CLIMA · LUZ",   col = t.gold },
 	{ id = "veget",    title = "VEGET",         col = Color3.fromRGB(120, 220, 130) },
 	{ id = "modeler",  title = "MODELER ·100",  col = t.purple },
+	{ id = "fabricar", title = "FABRICAR ·TUDO", col = Color3.fromRGB(255, 130, 90) },
 	{ id = "animator", title = "ANIMATOR",      col = t.purple },
 	{ id = "cena",     title = "CENA · FX",     col = t.cyan },
 	{ id = "stats",    title = "STATS",         col = t.green },
