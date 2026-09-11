@@ -139,7 +139,30 @@ em cada um dos 121 chunks PROP (#StudioSafe). Baixe novamente a placa atual.
 - `Arkher_06_RigX` + `Arkher_07_MeshX`: painéis que se ACOPLAM ao dock do
   05 (sem alterá-lo), mesmo tema, ícones desenhados (palito-rig, cubo-wire).
 
-Regerar: `python3 tools/inject_arkherx.py ../ArkherStudio_Completo_Pro.rbxl ../ArkherStudio_Completo_X.rbxl` → valida **1.750 inst, 32 tipos (178.319 B)**, PRNT/END corretos.
+Regerar: `python3 tools/inject_arkherx.py ../ArkherStudio_Completo_Pro.rbxl ../ArkherStudio_Completo_X.rbxl` → valida **1.753 inst, 32 tipos (184.584 B)**, PRNT/END corretos.
+
+**TECH Z + K (2026-09, round 4 — 3 blocos em qualidade máxima):**
+- `rlayer.luau` (RLX, tech Z OBRIGATÓRIA — **Reality Layer**): a realidade em
+  **5 camadas vivas** — GEO/HYDRO/ATMO/BIO/URB — cada uma evoluindo sozinha
+  (advecção do vento WEAX, evaporação/condensação, logística da BIO, deposição
+  urbana do CIVIX) e **compondo juntas** a matéria de cada célula; o RRX aplica
+  o tint das camadas nas entidades (wet escurece, BIO esverdeia, URB acinzenta,
+  nuvem densa sombreia).
+- `dpred.luau` (DPX, tech Z/S — **D-O15 Predictive**): EMA de velocidade+acentuação
+  da câmera com horizonte adaptativo por tier (0.9+0.45·weatherHz), anti-spike
+  (clamp 140 st/s) e saturação 260; o **anel de streaming anda com a previsão**
+  (bias até 60% do Rin) → materializa ANTES da percepção chegar; **mapa de
+  atenção por célula** (dwell) persistido em THX.MEM e consumido por AWI.
+- `mindx.luau` (MINDX, cat. K — NMN recodificado no padrão RRW): **mentes reais**
+  acopladas automaticamente a todo humano DAYX — necessidades (hunger/energy/
+  social), objetivos com causalidade, **memória auditável com PORQUÊ** (`mind_why`),
+  percepção por grade espacial O(células), pontos de comida (assentamentos CIVIX
+  viram spots automáticos); o wander aleatório cede lugar à decisão da mente.
+- Integrações: `RX.register` guarda baseColor; `materialize` aplica tint RL em
+  D médio/alto; pump do RRX chama `DPred.step` ANTES do stream; DAYX obedece à mente.
+- Servidor **61 comandos** (`rl_build`, `rl_stats`, `pred_on`, `pred_stats`,
+  `mind_stats`, `mind_why`, `mind_food`); CIVIX agora **urbaniza a Reality Layer**
+  e alimenta as mentes; injetor: **24 ModuleScripts**.
 
 **MUNDO VIVO (2026-09, round 3 — famílias J/H/L/M/X):**
 - `dayx.luau` (DAYX, cat. J) — **humano digital procedural**: respiração 0.25 Hz,

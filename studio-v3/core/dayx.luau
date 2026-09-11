@@ -115,7 +115,7 @@ function DAYX.step(dt)
 			end
 			-- deambular com caminhada procedural
 			h.wanderT = h.wanderT - dt
-			if h.wanderT <= 0 then
+			if h.wanderT <= 0 and not h.mind then
 				h.wanderT = 4 + (math.sin(h.phase * 7.3) + 1) * 3.5
 				local rng = DM and DM.rng((h.phase * 100) % 99991 + 11)
 				h.target = h.root + V3(rng(-18, 18), 0, rng(-18, 18))

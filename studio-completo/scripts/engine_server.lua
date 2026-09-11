@@ -24,7 +24,7 @@ if not engines then
 	error("ArkherEngines ausente no ServerStorage (ver probes acima)")
 end
 
-local ORDER = { "DM", "THX", "WLDX", "RRX", "FABX", "DAYX", "ECOX", "WEAX", "CIVIX", "SECX", "PHYSX", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX", "RIGX", "MSHX" }
+local ORDER = { "DM", "THX", "WLDX", "RRX", "FABX", "DAYX", "ECOX", "WEAX", "CIVIX", "SECX", "PHYSX", "RLX", "DPX", "MINDX", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX", "RIGX", "MSHX" }
 for _, nm in ipairs(ORDER) do
 	local ok, err = pcall(function() require(engines["ArkherX_" .. nm]) end)
 	if not ok then warn("[ArkherX] motor " .. nm .. " falhou: " .. tostring(err)) end
@@ -254,6 +254,12 @@ function CMD.civ_fabricate(p)
 	assert(ArkherCiviX, "CIVIX off")
 	p = p or {}
 	local res = ArkherCiviX.fabricate(p)
+	if ArkherRLayer and ArkherRLayer.urbanize then
+		ArkherRLayer.urbanize(tonumber(p.x) or 0, tonumber(p.z) or -90, res.kind == "metropole" and 220 or 90, res.kind == "metropole" and 0.9 or 0.65)
+	end
+	if ArkherMindX and ArkherMindX.addFoodSpot then
+		ArkherMindX.addFoodSpot(tonumber(p.x) or 0, tonumber(p.z) or -90)
+	end
 	return { msg = ("ASSENTAMENTO '%s' (seed %d): %d pecas — malha viaria + FABX, tudo no RRW automatico"):format(res.kind, res.seed, res.pieces) }
 end
 
@@ -282,6 +288,54 @@ function CMD.sec_stats()
 	local st = ArkherSecX.stats()
 	return { msg = ("SECX %s | %d violacoes | %d eventos auditados | recentes: %s"):format(
 		st.on and "ON" or "off", st.violations, st.audited, st.recent) }
+end
+
+
+function CMD.rl_build()
+	assert(ArkherRLayer, "RLX off")
+	local w = ArkherRealityX and (ArkherRealityX.S.earth or ArkherRealityX.S.world)
+	if not w then return { msg = "gere um mundo primeiro" } end
+	local n = ArkherRLayer.build(w)
+	return { msg = ("REALITY LAYER: %d células × 5 camadas (GEO/HYDRO/ATMO/BIO/URB) — realidade composta, não terreno pelado"):format(n) }
+end
+
+function CMD.rl_stats()
+	assert(ArkherRLayer, "RLX off")
+	local st = ArkherRLayer.stats()
+	return { msg = ("RL: %d células | %d áreas urbanas | %d tints aplicados às entidades"):format(
+		st.cells, st.urbSpots, st.tintApplied) }
+end
+
+function CMD.pred_on(p)
+	assert(ArkherDPred, "DPX off")
+	ArkherRealityX.S.dpredOn = (p and p.on ~= false)
+	ArkherDPred.setOn(ArkherRealityX.S.dpredOn)
+	return { msg = "D-O15 PREDICTIVE " .. (ArkherDPred.S.on and "ON — o mundo materializa ANTES da percepção chegar" or "OFF") }
+end
+
+function CMD.pred_stats()
+	assert(ArkherDPred, "DPX off")
+	local st = ArkherDPred.stats()
+	return { msg = ("PREDICTIVE: vel %.1f st/s | horizonte %s | alvo previsto (%s) | %d células de atenção | hotspots: %s"):format(
+		st.vel, st.horizon, st.pred, st.heatCells, st.hotspots) }
+end
+
+function CMD.mind_stats()
+	assert(ArkherMindX, "MINDX off")
+	local st = ArkherMindX.stats()
+	return { msg = ("MENTES: %d vivas | objetivos: %s | pontos de comida: %d"):format(st.minds, st.goals, st.food) }
+end
+
+function CMD.mind_why(p)
+	assert(ArkherMindX, "MINDX off")
+	return { msg = ArkherMindX.why(p and p.name) }
+end
+
+function CMD.mind_food(p)
+	assert(ArkherMindX, "MINDX off")
+	p = p or {}
+	local n = ArkherMindX.addFoodSpot(p.x or 0, p.z or 0)
+	return { msg = ("Comida registrada (%d total) — mentes famintas vão buscar sozinhas (causalidade auditável)"):format(n) }
 end
 
 function CMD.stats()
@@ -598,4 +652,4 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
-print("[ArkherX] EngineServer pronto — 21 motores (RRW universal: humana+eco+frentes+civ+fisica+SECX) + ponte ArkherNet")
+print("[ArkherX] EngineServer pronto — 24 motores (RRW+RL+Predictive+Mentes) + ponte ArkherNet")

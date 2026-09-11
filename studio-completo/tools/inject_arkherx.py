@@ -36,7 +36,7 @@ V3_CORE = os.path.join(ROOT, "..", "studio-v3", "core")
 
 MAGIC = b"<roblox!\x89\xff\r\n\x1a\n"
 
-ENGINE_MODULES = ["DM", "THX", "WLDX", "RRX", "FABX", "DAYX", "ECOX", "WEAX", "CIVIX", "SECX", "PHYSX", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX", "RIGX", "MSHX"]
+ENGINE_MODULES = ["DM", "THX", "WLDX", "RRX", "FABX", "DAYX", "ECOX", "WEAX", "CIVIX", "SECX", "PHYSX", "RLX", "DPX", "MINDX", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX", "RIGX", "MSHX"]
 
 
 def inst_chunk_payload(tid, class_name, is_s, refs):
@@ -176,6 +176,7 @@ def main():
                         "FABX": "fabx",
                         "DAYX": "dayx", "ECOX": "ecox", "WEAX": "weax", "CIVIX": "civix",
                         "SECX": "secx", "PHYSX": "physx",
+                        "RLX": "rlayer", "DPX": "dpred", "MINDX": "mindx",
                         "ATX": "terrainx", "AWX": "waterx", "ASXN": "scenex",
                         "AAX": "animx", "AUX": "audiomix", "AEX": "atmosx", "APX": "particlesx",
                         "RPX": "ropex", "RIGX": "rigx", "MSHX": "meshx",

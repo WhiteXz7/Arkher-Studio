@@ -27,6 +27,10 @@ RX.S = S
 -- kind: "terrain" | "veg" | "water" | "rope" | "part" | "mesh" | "sky"
 function RX.register(obj, opts)
 	opts = opts or {}
+	local meta = opts.meta or {}
+	if obj:IsA("BasePart") and meta.baseColor == nil then
+		pcall(function() meta.baseColor = obj.Color end)
+	end
 	local ent = {
 		obj = obj,
 		kind = opts.kind or "part",
@@ -34,7 +38,7 @@ function RX.register(obj, opts)
 		importance = math.clamp(opts.importance or 0.5, 0, 1),
 		d = 1.0,
 		dT = 1.0,
-		meta = opts.meta or {},
+		meta = meta,
 		lastAdapt = 0,
 	}
 	S.entities[obj] = ent
@@ -81,9 +85,19 @@ local function materialize(ent)
 		if ent.d > 0.65 and ent.meta and ent.meta.mat16k then
 			pcall(function()
 				if obj:IsA("BasePart") then
-					obj.Color = ent.meta.mat16k(obj.Position.X, obj.Position.Z)
+					local col = ent.meta.mat16k(obj.Position.X, obj.Position.Z)
+					local RL = rawget(_G, "ArkherRLayer")
+					if RL and RL.tintFor then col = RL.tintFor(obj.Position.X, obj.Position.Z, col, ent) end
+					obj.Color = col
 					obj.Material = Enum.Material.SmoothPlastic
 				end
+			end)
+		end
+		-- tint das CAMADAS (Reality Layer) ate em D medio: realidade composta
+		local RL2 = rawget(_G, "ArkherRLayer")
+		if RL2 and RL2.tintFor and obj:IsA("BasePart") and ent.d > 0.35 and ent.d <= 0.65 and ent.meta and ent.meta.baseColor then
+			pcall(function()
+				obj.Color = RL2.tintFor(obj.Position.X, obj.Position.Z, ent.meta.baseColor, ent)
 			end)
 		end
 		-- parallax TRUE: cascas ligam/desligam por D (D-O15, nao preset)
@@ -138,6 +152,11 @@ function RX.pump(dt)
 		local rain = WX.hydroStep(S.world, dt)
 		if rain then S.stats.rains = (S.stats.rains or 0) + 1 end
 	end
+	-- D-O15 PREDICTIVE: calcula a posicao prevista da percepcao ANTES do stream
+	pcall(function()
+		local DP = rawget(_G, "ArkherDPred")
+		if DP and DP.step then DP.step(dt) end
+	end)
 	-- hooks dos motores vivos (humanos digitais, ecossistemas, clima, fisica…)
 	if S.hooks then
 		for nm, fn in pairs(S.hooks) do pcall(fn, dt) end
@@ -265,6 +284,8 @@ function RX.statsReport()
 		rains = S.stats.rains or 0,
 		earth = S.earth ~= nil,
 		hooks = (function() local n = 0 for _ in pairs(S.hooks or {}) do n = n + 1 end return n end)(),
+		rlayer = rawget(_G, "ArkherRLayer") ~= nil,
+		predictive = rawget(_G, "ArkherDPred") ~= nil and (S.predPos ~= nil),
 	}
 end
 
@@ -435,8 +456,15 @@ function RX.streamPump()
 	local w = S.earth
 	local tier = TX.TIERS[S.tier] or TX.TIERS.doze
 	local budget = math.max(4, math.floor(18 * tier.pixelBudget))
-	local cx = math.floor(cameraPos.X / st.cell) * st.cell
-	local cz = math.floor(cameraPos.Z / st.cell) * st.cell
+	-- centro do anel: REAL + bias preditivo (ate 60% do Rin) — materializa ANTES
+	local ppX, ppZ = cameraPos.X, cameraPos.Z
+	if S.predPos then
+		local bx = math.clamp(S.predPos.X - cameraPos.X, -st.rin * 0.6, st.rin * 0.6)
+		local bz = math.clamp(S.predPos.Z - cameraPos.Z, -st.rin * 0.6, st.rin * 0.6)
+		ppX, ppZ = cameraPos.X + bx, cameraPos.Z + bz
+	end
+	local cx = math.floor(ppX / st.cell) * st.cell
+	local cz = math.floor(ppZ / st.cell) * st.cell
 	local created = 0
 	local parent = workspace:FindFirstChild("ArkherX_EarthStream") or Instance.new("Model")
 	parent.Name = "ArkherX_EarthStream"
@@ -444,7 +472,7 @@ function RX.streamPump()
 	for gx = cx - st.rout, cx + st.rout, st.cell do
 		for gz = cz - st.rout, cz + st.rout, st.cell do
 			if created >= budget then break end
-			local d = ((gx - cameraPos.X) ^ 2 + (gz - cameraPos.Z) ^ 2) ^ 0.5
+			local d = ((gx - ppX) ^ 2 + (gz - ppZ) ^ 2) ^ 0.5
 			local key = gx .. ":" .. gz
 			local cur = st.chunks[key]
 			if d < st.rin and not cur then

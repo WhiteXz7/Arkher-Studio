@@ -17,6 +17,8 @@ local S = {
 	lastWeatherSet = "",
 }
 
+WEAX.S = S
+
 function WEAX.start()
 	S.running = true
 	local w = RX and (RX.S.earth or RX.S.world) or nil
