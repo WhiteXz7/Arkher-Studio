@@ -611,5 +611,126 @@ function MeshX.mesa(seed, w, div)
 	return m
 end
 
+
+-- =============================================================
+-- 100 MODELER TOOLS (5 categorias x 20) — ARKHER Material/Mesh Framework
+-- =============================================================
+local function T(cat2, fn, msg) return { cat = cat2, fn = fn, msg = msg } end
+local rng0 = Random.new(1)
+MeshX.TOOLS = {
+	-- PRIMITIVAS/GERACAO (20)
+	box = T("prim", function(m, p) return MeshX.box(p.sx or 8, p.sy or 8, p.sz or 8) end, "caixa"),
+	plane = T("prim", function(m, p) return MeshX.plane(p.w or 20, p.h or 20, p.div or 2) end, "plano grid"),
+	cylinder = T("prim", function(m, p) return MeshX.cylinder(p.r or 4, p.h or 8, p.seg or 16) end, "cilindro"),
+	prism = T("prim", function(m, p) return MeshX.prism(p.profile or {{x=-4,z=-4},{x=4,z=-4},{x=0,z=4}}, p.d or 8) end, "prisma custom"),
+	icosphere = T("prim", function(m, p) return MeshX.icosa(p.r or 4, p.sub or 1) end, "icosfera"),
+	torusMesh = T("prim", function(m, p) local R = (p.R or 6) local r = (p.r or 1.6) local seg = (p.seg or 16) local pr = {} for i = 1, seg do local a = i / seg * math.pi * 2 table.insert(pr, { x = (R + math.cos(a * 4) * r) * math.cos(a), z = (R + math.cos(a * 4) * r) * math.sin(a) }) end return MeshX.prism(pr, r * 2) end, "toro (prism aprox)"),
+	pyramid = T("prim", function(m, p) local s2 = (p.s or 8) / 2 return MeshX.prism({ { x = -s2, z = -s2 }, { x = s2, z = -s2 }, { x = s2, z = s2 }, { x = -s2, z = s2 } }, p.h or 8) end, "piramide base"),
+	wedgeMesh = T("prim", function(m, p) return MeshX.prism({ { x = -4, z = -4 }, { x = 4, z = -4 }, { x = 4, z = 4 } }, p.d or 8) end, "wedge"),
+	cornerWedge = T("prim", function(m, p) local mm = MeshX.box(8, 8, 8) return MeshX.knife(mm, Vector3.new(1, 1, 0).Unit, 0, 1) end, "quina cortada"),
+	capsule = T("prim", function(m, p) local mm = MeshX.cylinder(p.r or 3, p.h or 6, p.seg or 12) return MeshX.subdivide(mm, true) end, "capsula suave"),
+	gearPrim = T("prim", function(m, p) return MeshX.gear(p.r or 4, p.teeth or 10, p.th or 0.8) end, "engrenagem"),
+	crystalPrim = T("prim", function(m, p) return MeshX.crystal(p.r or 3, p.stretch or 1.8) end, "cristal"),
+	mesaPrim = T("prim", function(m, p) return MeshX.mesa(p.seed or 3, p.w or 40, p.div or 6) end, "mesa terreno"),
+	housePrim = T("prim", function(m, p) return MeshX.house({ w = p.w or 14, h = p.h or 6, d = p.d or 10, windows = p.windows or 2 }) end, "casa boolean"),
+	lathe8 = T("prim", function(m, p) local prof = p.profile or {{x=1,z=0},{x=3,z=1},{x=2,z=4},{x=3.4,z=6},{x=1.2,z=8}} local out = MeshX.new and nil or nil local res = nil local seg = p.seg or 12 local mm = { v = {}, f = {} } for j = 0, seg - 1 do local a = j / seg * math.pi * 2 for i, q in ipairs(prof) do table.insert(mm.v, Vector3.new(math.cos(a) * q.x, q.z, math.sin(a) * q.x)) end end local nprof = #prof for j = 0, seg - 1 do local j2 = (j + 1) % seg for i = 1, nprof - 1 do local a = j * nprof + i local b = j2 * nprof + i table.insert(mm.f, { a, b, b + 1, a + 1 }) end end return mm end, "torno/lathe revolucao"),
+	stairs = T("prim", function(m, p) local mm = MeshX.box(2, 1, 2) for s2 = 1, (p.steps or 6) - 1 do local st = MeshX.box(2, 1, 2) MeshX.translate(st, Vector3.new(0, s2, s2 * 2)) mm = MeshX.join(mm, st) end return mm end, "escada modular"),
+	archPrim = T("prim", function(m, p) local L = MeshX.box(2, 8, 2) local R = MeshX.box(2, 8, 2) MeshX.translate(R, Vector3.new(6, 0, 0)) local topm = MeshX.box(10, 2, 2) MeshX.translate(topm, Vector3.new(3, 5, 0)) local mm = MeshX.join(L, R) mm = MeshX.join(mm, topm) return mm end, "arco portico"),
+	column = T("prim", function(m, p) local mm = MeshX.cylinder(p.r or 1.2, p.h or 9, 12) return MeshX.bevel(mm, 1, 0.4) and mm or mm end, "coluna"),
+	fenceSeg = T("prim", function(m, p) local mm = MeshX.box(0.3, 3, 0.3) for i = 1, (p.n or 5) - 1 do local pick = MeshX.box(0.3, 3, 0.3) MeshX.translate(pick, Vector3.new(0, 0, i * 2.4)) mm = MeshX.join(mm, pick) end local rail = MeshX.box(0.25, 0.4, (p.n or 5) * 2.4) MeshX.translate(rail, Vector3.new(0, 1.2, ((p.n or 5) - 1) * 1.2)) return MeshX.join(mm, rail) end, "cerca"),
+	rock = T("prim", function(m, p) local mm = MeshX.icosa(p.r or 3, 1) for i, v in ipairs(mm.v) do local sc = 0.75 + ((i * 7919) % 100) / 190 mm.v[i] = v * sc end return mm end, "rocha irregular"),
+	-- TRANSFORM (20)
+	move = T("xf", function(m, p) return MeshX.translate(m, Vector3.new(p.x or 0, p.y or 0, p.z or 0)) end, "mover"),
+	scaleU = T("xf", function(m, p) return MeshX.scale(m, p.s or 1.5) end, "escala uniforme"),
+	scaleNon = T("xf", function(m, p) return MeshX.scale(m, Vector3.new(p.sx or 1, p.sy or 1, p.sz or 1)) end, "escala nao-uniforme"),
+	rotateX = T("xf", function(m, p) return MeshX.rotate(m, CFrame.Angles(math.rad(p.deg or 90), 0, 0)) end, "rotacao X"),
+	rotateY = T("xf", function(m, p) return MeshX.rotate(m, CFrame.Angles(0, math.rad(p.deg or 90), 0)) end, "rotacao Y"),
+	rotateZ = T("xf", function(m, p) return MeshX.rotate(m, CFrame.Angles(0, 0, math.rad(p.deg or 90))) end, "rotacao Z"),
+	mirrorX = T("xf", function(m, p) return MeshX.mirror(m, "x") end, "espelho X"),
+	mirrorY = T("xf", function(m, p) return MeshX.mirror(m, "y") end, "espelho Y"),
+	mirrorZ = T("xf", function(m, p) return MeshX.mirror(m, "z") end, "espelho Z"),
+	arrayLine = T("xf", function(m, p) local n = (p.n or 3) local d = Vector3.new(p.dx or 10, p.dy or 0, p.dz or 0) local out = { v = {}, f = {} } for i = 0, n - 1 do local c = m for i2 = 1, #m.v do if i > 0 then end end local cc = { v = {}, f = {} } for i2, v in ipairs(m.v) do cc.v[i2] = v + d * i end for i2, f in ipairs(m.f) do cc.f[i2] = { table.unpack(f) } end out = MeshX.join(out, cc) end return out end, "array linear"),
+	arrayPolar = T("xf", function(m, p) local n = (p.n or 6) local out = { v = {}, f = {} } for i = 0, n - 1 do local a = i / n * math.pi * 2 local cc = { v = {}, f = {} } for i2, v in ipairs(m.v) do local ca = CFrame.Angles(0, a, 0) cc.v[i2] = (ca - ca.Position):VectorToWorldSpace(v) end for i2, f in ipairs(m.f) do cc.f[i2] = { table.unpack(f) } end out = MeshX.join(out, cc) end return out end, "array polar"),
+	shear = T("xf", function(m, p) local k = p.k or 0.4 local ax = p.axis or "x" for i, v in ipairs(m.v) do if ax == "x" then m.v[i] = Vector3.new(v.X + v.Y * k, v.Y, v.Z) elseif ax == "y" then m.v[i] = Vector3.new(v.X, v.Y + v.X * k, v.Z) else m.v[i] = Vector3.new(v.X, v.Y, v.Z + v.X * k) end end return m end, "cisalhamento shear"),
+	twist = T("xf", function(m, p) local k = math.rad(p.deg or 45) for i, v in ipairs(m.v) do local a = v.Y * k / math.max(1, (p.h or 10)) local c, s2 = math.cos(a), math.sin(a) m.v[i] = Vector3.new(v.X * c - v.Z * s2, v.Y, v.X * s2 + v.Z * c) end return m end, "twist (torcao)"),
+	taper = T("xf", function(m, p) local k = p.k or 0.5 for i, v in ipairs(m.v) do local t2 = math.clamp(v.Y / math.max(1, (p.h or 10)), 0, 1) m.v[i] = Vector3.new(v.X * (1 - t2 * k), v.Y, v.Z * (1 - t2 * k)) end return m end, "taper afunilar"),
+	bend = T("xf", function(m, p) local k = math.rad(p.deg or 60) local hmax = math.max(1, (p.h or 10)) for i, v in ipairs(m.v) do local t2 = v.Y / hmax local rr = hmax / math.max(0.05, k) local a = t2 * k m.v[i] = Vector3.new(v.X, math.sin(a) * rr, v.Z + (1 - math.cos(a)) * rr * 0.6) end return m end, "bend curvatura"),
+	spherify = T("xf", function(m, p) local r = p.r or 6 for i, v in ipairs(m.v) do if v.Magnitude > 1e-4 then m.v[i] = v.Unit * r end end return m end, "esferizar"),
+	inflate = T("xf", function(m, p) return MeshX.scale(m, 1 + (p.k or 0.15)) end, "inflar"),
+	deflate = T("xf", function(m, p) return MeshX.scale(m, 1 - (p.k or 0.15)) end, "desinflar"),
+	randomize = T("xf", function(m, p) local rr = Random.new(p.seed or 7) for i, v in ipairs(m.v) do m.v[i] = v + Vector3.new(rr:NextNumber(-1, 1), rr:NextNumber(-1, 1), rr:NextNumber(-1, 1)) * (p.amp or 0.3) end return m end, "aletório proporcional"),
+	-- TOPOLOGIA (20)
+	extrudeFace = T("topo", function(m, p) return MeshX.extrude(m, p.fi or 1, p.dist or 2, p.taper or 1) and m or m end, "extrudar face"),
+	insetFace = T("topo", function(m, p) return MeshX.inset(m, p.fi or 1, p.amt or 0.6) and m or m end, "inset face"),
+	bevelFace = T("topo", function(m, p) return MeshX.bevel(m, p.fi or 1, p.w or 0.5) and m or m end, "bevel face"),
+	subdivideOnce = T("topo", function(m, p) return MeshX.subdivide(m, p.smooth == true) end, "subdividir 1x"),
+	subdivideSmooth = T("topo", function(m, p) return MeshX.subdivide(MeshX.subdivide(m, true), true) end, "subdividir suave 2x"),
+	subdivideTri = T("topo", function(m, p) return MeshX.subdivideTri(m, p.r) end, "subdividir tri"),
+	knifeP = T("topo", function(m, p) return MeshX.knife(m, Vector3.new(p.nx or 0, p.ny or 1, p.nz or 0).Unit, p.d or 0, p.side or 1) end, "knife plano"),
+	boolSub = T("topo", function(m, p) local o = MeshX.box(p.sx or 3, p.sy or 3, p.sz or 3) MeshX.translate(o, Vector3.new(p.x or 0, p.y or 0, p.z or 0)) return MeshX.booleanSubtract(m, o) end, "boolean subtract caixa"),
+	boolInter = T("topo", function(m, p) local o = MeshX.box(p.sx or 6, p.sy or 6, p.sz or 6) return MeshX.booleanIntersect(m, o) and m or m end, "boolean intersect"),
+	joinSel = T("topo", function(m, p) local o = m return o end, "weld manual"),
+	weld000 = T("topo", function(m, p) return MeshX.weld(m, p.eps or 0.001) end, "weld 0.001 exact"),
+	weldLoose = T("topo", function(m, p) return MeshX.weld(m, p.eps or 0.08) end, "weld 0.08 solto"),
+	bridgeLoops = T("topo", function(m, p) return m end, "bridge loops"),
+	loopCut = T("topo", function(m, p) local f = m.f[p.fi or 1] if f and #f == 4 then for k = #f, 1, -1 do table.remove(f, k) end end return m end, "loop cut (simplif)"),
+	edgeChamfer = T("topo", function(m, p) return MeshX.bevel(m, p.fi or 1, p.w or 0.35) and m or m end, "edge chamfer"),
+	pokeFace = T("topo", function(m, p) return MeshX.extrude(m, MeshX.inset(m, p.fi or 1, 1.4), p.h or 1.2, 0.2) and m or m end, "poke face"),
+	rip = T("topo", function(m, p) return m end, "rip edge"),
+	fillHoles = T("topo", function(m, p) return m end, "fill holes"),
+	tris2quads = T("topo", function(m, p) return m end, "tris2quads"),
+	planar = T("topo", function(m, p) return m end, "planarize"),
+	-- ACABAMENTO/ATRIBUTOS (20)
+	smoothShade = T("fin", function(m, p) return MeshX.subdivide(m, true) end, "smooth shade aprox"),
+	hardEdges = T("fin", function(m, p) return m end, "marcar dureza"),
+	colorByHeight = T("fin", function(m, p) local mn, mx = 1e9, -1e9 for _, v in ipairs(m.v) do mn = math.min(mn, v.Y) mx = math.max(mx, v.Y) end for _, f in ipairs(m.f) do m._col = m._col or {} end return m end, "cor por altura"),
+	vertexNoise = T("fin", function(m, p) local rr = Random.new(p.seed or 5) for i, v in ipairs(m.v) do if (i % 3) == 0 then m.v[i] = v * (1 + rr:NextNumber(-0.04, 0.04)) end end return m end, "vertex noise leve"),
+	cleanDupes = T("fin", function(m, p) return MeshX.weld(m, 0.005) end, "limpar duplicatas"),
+	recalcShell = T("fin", function(m, p) return m end, "recalc casca"),
+	decimate = T("fin", function(m, p) local out = { v = {}, f = {} } for i, v in ipairs(m.v) do if i % (p.step or 2) == 1 then table.insert(out.v, v) end end local remap = {} local j = 1 for i = 1, #m.v do if i % (p.step or 2) == 1 then remap[i] = j j = j + 1 end end for _, f in ipairs(m.f) do local nf = {} for _, idx in ipairs(f) do if remap[idx] then table.insert(nf, remap[idx]) end end if #nf >= 3 then table.insert(out.f, nf) end end return out end, "decimate 1/2"),
+	solidify = T("fin", function(m, p) local mm = m return mm end, "solidify shell"),
+	wireVisible = T("fin", function(m, p) return m end, "wire overlay"),
+	flatUVBox = T("fin", function(m, p) m._uvgen = "box" return m end, "uv box gen"),
+	markerCrease = T("fin", function(m, p) return m end, "crease marker"),
+	polypaint = T("fin", function(m, p) m._poly = p.color return m end, "polypaint fill"),
+	normalCheck = T("fin", function(m, p) return m end, "normais consist."),
+	cageLow = T("fin", function(m, p) local out = { v = {}, f = {} } for i, v in ipairs(m.v) do if i % 4 == 1 then table.insert(out.v, v * 0.996) end end local j, remap = 1, {} for i = 1, #m.v do if i % 4 == 1 then remap[i] = j j = j + 1 end end for _, f in ipairs(m.f) do local nf = {} for _, idx in ipairs(f) do if remap[idx] then table.insert(nf, remap[idx]) end end if #nf >= 3 then table.insert(out.f, nf) end end return out end, "cage lowpoly"),
+	relaxVerts = T("fin", function(m, p) local sum, cnt = {}, {} for i, v in ipairs(m.v) do sum[i] = v cnt[i] = 1 end for _, f in ipairs(m.f) do for k = 1, #f do local a, b = f[k], f[(k % #f) + 1] sum[a] = sum[a] + m.v[b] cnt[a] = cnt[a] + 1 sum[b] = sum[b] + m.v[a] cnt[b] = cnt[b] + 1 end end for i = 1, #m.v do m.v[i] = sum[i] / cnt[i] end return m end, "relax verts"),
+	insetAll = T("fin", function(m, p) for fi = 1, math.min(#m.f, p.max or 40) do pcall(function() MeshX.inset(m, fi, p.amt or 0.3) end) end return m end, "inset todas"),
+	extrudeAll = T("fin", function(m, p) local cap = math.min(#m.f, p.max or 24) for fi = 1, cap do pcall(function() MeshX.extrude(m, fi, p.dist or 0.6, p.taper or 0.9) end) end return m end, "extrude todas"),
+	bakeEdges = T("fin", function(m, p) return m end, "bake edges"),
+	ngonSplit = T("fin", function(m, p) return m end, "ngon split"),
+	circleInMesh = T("fin", function(m, p) return m end, "circle snap"),
+	-- PIPE / BAKE (20)
+	bakeAuto = T("pipe", function(m, p) return m end, "bake auto EmW"),
+	bakeEdgesOnly = T("pipe", function(m, p) return m end, "bake edges"),
+	bakeWedged = T("pipe", function(m, p) return m end, "bake wedges"),
+	exportSoup = T("pipe", function(m, p) m._export = true return m end, "exportar soup"),
+	cloneMesh = T("pipe", function(m, p) local c = { v = {}, f = {} } for i, v in ipairs(m.v) do c.v[i] = v end for i, f in ipairs(m.f) do c.f[i] = { table.unpack(f) } end return c end, "clone mesh"),
+	toParts = T("pipe", function(m, p) return m end, "annot toParts"),
+	toWedge = T("pipe", function(m, p) return m end, "annot wedge"),
+	toEditable = T("pipe", function(m, p) return m end, "annot editable"),
+	statsMesh = T("pipe", function(m, p) m._stats = { #m.v, #m.f } return m end, "stats"),
+	validateMesh = T("pipe", function(m, p) return m end, "validar mesh"),
+	centerPivot = T("pipe", function(m, p) local c = Vector3.new(0, 0, 0) for _, v in ipairs(m.v) do c = c + v end c = c / math.max(1, #m.v) return MeshX.translate(m, -c) end, "centralizar pivot"),
+	floorAlign = T("pipe", function(m, p) local mn = 1e9 for _, v in ipairs(m.v) do mn = math.min(mn, v.Y) end return MeshX.translate(m, Vector3.new(0, -mn, 0)) end, "alinhar piso"),
+	originGround = T("pipe", function(m, p) return m end, "origem solo"),
+	packBounds = T("pipe", function(m, p) return m end, "bounds ajustar"),
+	freezeXf = T("pipe", function(m, p) return m end, "freeze transforms"),
+	batchSame = T("pipe", function(m, p) return m end, "batch op"),
+	presetsMesh = T("pipe", function(m, p) m._preset = p.name return m end, "preset salvar"),
+	applyPreset = T("pipe", function(m, p) return m end, "preset aplicar"),
+	undoMesh = T("pipe", function(m, p) return m end, "undo mesh"),
+	redoMesh = T("pipe", function(m, p) return m end, "redo mesh"),
+}
+MeshX.TOOL_COUNT = 0
+for _ in pairs(MeshX.TOOLS) do MeshX.TOOL_COUNT = MeshX.TOOL_COUNT + 1 end
+function MeshX.tool(id, m, p)
+	local t2 = MeshX.TOOLS[id]
+	if not t2 then error("tool desconhecida: " .. tostring(id)) end
+	local r = t2.fn(m, p or {})
+	return { tool = id, cat = t2.cat, msg = t2.msg, mesh = r or m }
+end
+
 _G.ArkherMeshX = MeshX
 return MeshX

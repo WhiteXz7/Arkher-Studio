@@ -24,7 +24,7 @@ if not engines then
 	error("ArkherEngines ausente no ServerStorage (ver probes acima)")
 end
 
-local ORDER = { "DM", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX", "RIGX", "MSHX" }
+local ORDER = { "DM", "THX", "WLDX", "RRX", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX", "RIGX", "MSHX" }
 for _, nm in ipairs(ORDER) do
 	local ok, err = pcall(function() require(engines["ArkherX_" .. nm]) end)
 	if not ok then warn("[ArkherX] motor " .. nm .. " falhou: " .. tostring(err)) end
@@ -37,12 +37,109 @@ local queryF = net:WaitForChild("ArkherXQ")
 -- ---------- comandos (server -> mundo real) ----------
 local CMD = {}
 
+
+function CMD.tier_set(p)
+	assert(ArkherRealityX, "RRX off")
+	local t = ArkherRealityX.setTier((p and p.id) or "doze")
+	return { msg = "D-O15 tier -> " .. t.id .. " (materializacao da realidade ajustada)" }
+end
+
+function CMD.world_generate(p)
+	assert(ArkherRealityX, "RRX off")
+	p = p or {}
+	local w = ArkherRealityX.createWorld({
+		seed = p.seed or 7, size = p.size or 1200, plates = p.plates,
+		season = p.season or 0.35, driftT = p.driftT or 0,
+		clock = p.clock, dayScale = p.dayScale, tier = p.tier,
+	})
+	return { msg = ("RRW planeta gerado: seed %d, %d placas, deriva %.1f Ma, saz %.2f"):format(
+		(p.seed or 7), (p.plates or 7), (p.driftT or 0), (p.season or 0.35)) }
+end
+
+function CMD.world_materialize(p)
+	assert(ArkherRealityX and ArkherRealityX.S.world, "gere o planeta primeiro")
+	local res = ArkherRealityX.materializeWorld(ArkherRealityX.S.world, p or {})
+	return { msg = ("RRW materializado: %d celulas com materia REAL + %d alvos de parallax TRUE"):format(res.cells, res.parallax) }
+end
+
+function CMD.world_tool(p)
+	assert(ArkherWorldX and ArkherWorldX.tool, "WORLDX off")
+	local w = ArkherRealityX.S.world
+	if not w then return { msg = "gere o planeta primeiro" } end
+	p = p or {}
+	p.x = p.x or 0
+	p.z = p.z or 0
+	local res = ArkherWorldX.tool(p.id, w, p)
+	return { msg = "TERRAIN[" .. (p.id or "?") .. "]: " .. res.msg .. " (" .. tostring(res.applied or 0) .. " strokes)" }
+end
+
+function CMD.world_vegetate(p)
+	assert(ArkherRealityX, "RRX off")
+	local w = ArkherRealityX.S.world
+	if not w then return { msg = "gere o planeta primeiro" } end
+	local res = ArkherRealityX.autoVegetate(w, p or {})
+	return { msg = ("VEGETAÇÃO: %d árvores por bioma Whittaker (slots %s)"):format(
+		res.placed, next(ArkherWorldX.S.slots) and "modelos OK" or "protótipo ARKHER") }
+end
+
+function CMD.world_erode(p)
+	assert(ArkherWorldX, "WLDX off")
+	local w = ArkherRealityX.S.world
+	if not w then return { msg = "gere o planeta primeiro" } end
+	local res = ArkherWorldX.erode(w, (p and p.cycles) or 150)
+	return { msg = ("erosão: %d ciclos | run de aprendizado #%d (mapas 3D melhoram sozinhos)"):format(res.cycles, res.learned) }
+end
+
+function CMD.rrx_start(p)
+	assert(ArkherRealityX, "RRX off")
+	return { msg = ArkherRealityX.start() }
+end
+
+function CMD.rrx_stats(p)
+	if not ArkherRealityX then return { msg = "RRX off" } end
+	local s0 = ArkherRealityX.statsReport()
+	return { msg = ("RRW: %d entidades | %d cells | veg %d | tier %s | clock %s | eros runs %d"):format(
+		s0.entities, s0.materialized, s0.veg, s0.tier, s0.clock, s0.erodeRuns or 0) }
+end
+
+
+function CMD.anim_autorig(p)
+	assert(ArkherRigX, "RIGX off")
+	local preset = (p and p.preset) or "bipede"
+	local c = ArkherRigX.autoRig(nil, preset)
+	_G.ArkherX_RigChain = c
+	local parts = {}
+	for i = 1, #c.bones do
+		local prt = workspace:FindFirstChild("RigX_auto_b" .. i) or Instance.new("Part")
+		prt.Name = "RigX_auto_b" .. i
+		prt.Color = Color3.fromRGB(166, 117, 240)
+		prt.Material = Enum.Material.Neon
+		prt.Anchored = true
+		prt.Parent = workspace
+		table.insert(parts, prt)
+	end
+	_G.ArkherX_RigPlay = ArkherRigX.playTarget(c, {
+		center = c.root + Vector3.new(0, 2, 0), radius = 2.4, speed = 1.1,
+		parts = parts, thickness = 0.4, color = Color3.fromRGB(166, 117, 240),
+	})
+	return { msg = "AutoRig '" .. preset .. "': " .. #c.bones .. " ossos (bipede/quadrupede/serpente/monstro)" }
+end
+
+function CMD.anim_autophysics(p)
+	assert(ArkherRigX, "RIGX off")
+	local lv = ArkherRigX.setAutoPhysics((p and p.level) or 0.6)
+	return { msg = "AutoPhysics = " .. string.format("%.2f", lv) .. " (0=off 0.35=secundaria 0.7=+balance 1=+balistica)" }
+end
+
 function CMD.stats()
+
+
 	return {
 		atx = ArkherTerrainX ~= nil, awx = ArkherWaterX ~= nil, asxn = ArkherSceneX ~= nil,
 		aax = ArkherAnimX ~= nil, aux = ArkherAudioX ~= nil, aex = ArkherAtmosX ~= nil,
 		apx = ArkherParticlesX ~= nil, rpx = ArkherRopeX ~= nil,
-		rigx = ArkherRigX ~= nil, meshx = ArkherMeshX ~= nil,
+		rigx = ArkherRigX ~= nil, meshx = ArkherMeshX ~= nil, thx = ArkherTheoryX ~= nil,
+		wldx = ArkherWorldX ~= nil, rrx = ArkherRealityX ~= nil,
 		chains = ArkherRigX and (function() local n = 0 for _ in pairs(ArkherRigX.S.chains) do n = n + 1 end return n end)() or 0,
 		meshops = ArkherMeshX and ArkherMeshX.S.stats.ops or 0,
 		bodies = ArkherWaterX and #ArkherWaterX.bodies or 0,
@@ -51,6 +148,56 @@ function CMD.stats()
 		clock = ArkherAtmosX and ArkherAtmosX.S.clock or 0,
 		sceneReg = ArkherSceneX and #ArkherSceneX._hash.map and "ok" or "ok",
 	}
+end
+
+
+function CMD.world_tools()
+	assert(ArkherWorldX and ArkherWorldX.TOOLS, "WLDX off")
+	local out = {}
+	for id, def in pairs(ArkherWorldX.TOOLS) do
+		out[#out + 1] = { id = id, cat = def.cat or "geral", msg = def.msg or id }
+	end
+	table.sort(out, function(a, b) if a.cat ~= b.cat then return a.cat < b.cat end return a.id < b.id end)
+	return { tools = out, count = #out }
+end
+
+function CMD.mesh_tools()
+	assert(ArkherMeshX and ArkherMeshX.TOOLS, "MSHX off")
+	local out = {}
+	for id, def in pairs(ArkherMeshX.TOOLS) do
+		out[#out + 1] = { id = id, cat = def.cat or "geral", msg = def.msg or id }
+	end
+	table.sort(out, function(a, b) if a.cat ~= b.cat then return a.cat < b.cat end return a.id < b.id end)
+	return { tools = out, count = #out }
+end
+
+function CMD.mesh_tool(p)
+	assert(ArkherMeshX and ArkherMeshX.tool, "MSHX off")
+	p = p or {}
+	local def = ArkherMeshX.TOOLS[p.id]
+	if not def then return { msg = "mesh tool desconhecida: " .. tostring(p.id) } end
+	local buf = _G.ArkherX_MeshBuf or {}
+	_G.ArkherX_MeshBuf = buf
+	local res
+	if def.cat == "prim" then
+		res = ArkherMeshX.tool(p.id, nil, p)
+		buf.mesh = res.mesh
+	else
+		if not buf.mesh then
+			return { msg = "crie uma PRIMITIVA antes (MODELER > geracao) — tools de transformacao precisam de mesh" }
+		end
+		res = ArkherMeshX.tool(p.id, buf.mesh, p)
+		buf.mesh = res.mesh or buf.mesh
+	end
+	if buf.mesh and buf.mesh.v then
+		if buf.model then pcall(function() buf.model:Destroy() end) end
+		buf.model = ArkherMeshX.bake(buf.mesh, {
+			name = "ArkherX_MeshBench", mode = "auto",
+			color = Color3.fromRGB(140, 200, 255), th = 0.06,
+		})
+	end
+	return { msg = ("MESH[%s/%s]: %s — banca com %d verts"):format(
+		p.id, def.cat, def.msg or "ok", buf.mesh and #buf.mesh.v or 0) }
 end
 
 function CMD.terrain_generate(p)
@@ -277,6 +424,7 @@ RunService.Heartbeat:Connect(function(dt)
 	if ArkherAnimX then pcall(function() ArkherAnimX.pump(dt) end) end -- inclui RPX (mesmo pulso)
 	if ArkherAudioX then pcall(function() ArkherAudioX.pump(dt) end) end
 	if ArkherRigX then pcall(function() ArkherRigX.pump(dt) end) end
+	if ArkherRealityX then pcall(function() ArkherRealityX.pump(dt) end) end
 	acc = acc + dt
 	if acc > 0.25 then
 		acc = 0
@@ -287,4 +435,4 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
-print("[ArkherX] EngineServer pronto — 11 motores no vault + ponte ArkherNet ativa")
+print("[ArkherX] EngineServer pronto — 14 motores no vault (THX/WLDX/RRW ativos) + ponte ArkherNet")

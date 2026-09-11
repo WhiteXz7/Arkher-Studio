@@ -80,7 +80,7 @@ local guiX = pg:WaitForChild("ArkherStudioX", 30)
 if not guiX then
 	guiX = B("ScreenGui", { Name = "ArkherStudioX", ResetOnSpawn = false, DisplayOrder = 60 }, pg)
 end
-local dock = guiX:WaitForChild("DockX", 20)
+local dock = guiX:FindFirstChild("DockX")
 
 local win = B("Frame", {
 	Name = "Px_rig", Size = UDim2.fromOffset(340, 300),

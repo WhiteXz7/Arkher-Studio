@@ -356,5 +356,99 @@ function RigX.stopAll()
 	S.plays = {}
 end
 
+
+-- =============================================================
+-- ANIMATOR X upgrade: AUTO-RIG (qualquer corpo) + AUTOPHYSICS
+-- acima do Cascadeur: presets de esqueleto p/ qualquer forma +
+-- slider de fisica real (FABRIK + balance + secundaria + balistica).
+-- =============================================================
+RigX.SKELETONS = {
+	bipede = function(root, h)
+		h = h or 6
+		local u = h / 6
+		return { root = root, pole = root + V3(0, h * 0.4, 3), bones = {
+			{ name = "pelvis", len = 0.5 * u, dir = V3(0, 1, 0), mass = 6 },
+			{ name = "spine", len = 0.9 * u, dir = V3(0, 1, 0), mass = 8 },
+			{ name = "chest", len = 0.9 * u, dir = V3(0, 1, 0), mass = 7 },
+			{ name = "neck", len = 0.35 * u, dir = V3(0, 1, 0), mass = 2 },
+		} }
+	end,
+	quadrupede = function(root, h)
+		h = h or 3
+		local u = h / 3
+		return { root = root, pole = root + V3(0, h * 0.5, 2), bones = {
+			{ name = "hips", len = 0.8 * u, dir = V3(0, 0, 1), mass = 5 },
+			{ name = "spine", len = 0.9 * u, dir = V3(0, 0, 1), mass = 7 },
+			{ name = "neck", len = 0.5 * u, dir = V3(0, 0.5, 0.8), mass = 2 },
+			{ name = "head", len = 0.5 * u, dir = V3(0, 0.5, 0.8), mass = 2 },
+		} }
+	end,
+	serpente = function(root, h)
+		local bones = {}
+		for i = 1, 8 do table.insert(bones, { name = "seg" .. i, len = 0.8, dir = V3(0, 0, 1), mass = 1.2 }) end
+		return { root = root, bones = bones }
+	end,
+	monstro = function(root, h)
+		h = h or 9
+		local u = h / 9
+		return { root = root, pole = root + V3(0, h * 0.3, 4), bones = {
+			{ name = "core", len = 1.6 * u, dir = V3(0, 1, 0), mass = 10 },
+			{ name = "torax", len = 1.8 * u, dir = V3(0, 1, 0), mass = 14 },
+			{ name = "bracoL", len = 1.4 * u, dir = V3(-0.7, -0.6, 0), mass = 4 },
+			{ name = "bracoR", len = 1.4 * u, dir = V3(0.7, -0.6, 0), mass = 4 },
+			{ name = "cranio", len = 0.8 * u, dir = V3(0, 1, 0.2), mass = 5 },
+		} }
+	end,
+}
+
+-- auto-rig: pega modelo com parts nomeadas e monta cadeias (qualquer corpo)
+function RigX.autoRig(model, preset)
+	preset = preset or "bipede"
+	local mk = RigX.SKELETONS[preset] or RigX.SKELETONS.bipede
+	local rootPos = V3(0, 4, 0)
+	local ok, pv = pcall(function() return model:GetPivot().Position end)
+	if ok and pv then rootPos = pv end
+	local spec = mk(rootPos, (model and model:GetExtentsSize().Y) or 6)
+	return RigX.chain(spec)
+end
+
+-- AUTOPHYSICS (slider 0..1 → fisica real aplicada no pump):
+-- 0=Off, ~0.35=Secundaria, ~0.7=+Balance(FABRIK pin), ~1=+Balistica completa
+S.autoPhysics = S.autoPhysics or { level = 0 }
+function RigX.setAutoPhysics(level)
+	S.autoPhysics.level = math.clamp(level or 0, 0, 1)
+	return S.autoPhysics.level
+end
+
+local p2 = S.plays or {}
+-- integra no pump existente: intercepta chamada
+local _pump = RigX.pump
+function RigX.pump(dt)
+	_pump(dt)
+	local lv = S.autoPhysics.level or 0
+	if lv <= 0.001 then return end
+	for _, c in pairs(S.chains) do
+		-- secundaria spring sempre (lv>=0.1)
+		if lv >= 0.1 then RigX.secondary(c, dt, 14 + lv * 40, 5) end
+		-- balance: gruda o COM no suporte quando alvo esta longe (lv>=0.55)
+		if lv >= 0.55 then
+			local sup = { { x = c.root.X - 1, z = c.root.Z - 1 }, { x = c.root.X + 1, z = c.root.Z - 1 },
+				{ x = c.root.X + 1, z = c.root.Z + 1 }, { x = c.root.X - 1, z = c.root.Z + 1 } }
+			local b = RigX.balance(c, sup)
+			if not b.inside then
+				local target = c.end_ or c.bones[#c.bones].pos
+				RigX.fabrik(c, V3(b.closest and b.closest.x or c.root.X, math.min(target.Y, c.root.Y), b.closest and b.closest.z or c.root.Z), { iters = 6 })
+			end
+		end
+		-- balistica: oscilacao vertical por gravidade+impulso (lv>=0.85)
+		if lv >= 0.85 then
+			local t2 = os.clock() * 1.7
+			local apex = math.abs(math.sin(t2))
+			c.root = c.root + V3(0, (apex - 0.5) * 0.06, 0)
+			RigX.forwardKinematics(c)
+		end
+	end
+end
+
 _G.ArkherRigX = RigX
 return RigX

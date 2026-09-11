@@ -36,7 +36,7 @@ V3_CORE = os.path.join(ROOT, "..", "studio-v3", "core")
 
 MAGIC = b"<roblox!\x89\xff\r\n\x1a\n"
 
-ENGINE_MODULES = ["DM", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX", "RIGX", "MSHX"]
+ENGINE_MODULES = ["DM", "THX", "WLDX", "RRX", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX", "RIGX", "MSHX"]
 
 
 def inst_chunk_payload(tid, class_name, is_s, refs):
@@ -89,6 +89,7 @@ def main():
         ("LocalScript", "Arkher_05_StudioX", ref_screengui, os.path.join(ROOT, "scripts", "05_StudioX.lua")),
         ("LocalScript", "Arkher_06_RigX", ref_screengui, os.path.join(ROOT, "scripts", "06_RigX.lua")),
         ("LocalScript", "Arkher_07_MeshX", ref_screengui, os.path.join(ROOT, "scripts", "07_MeshX.lua")),
+        ("LocalScript", "Arkher_08_RealityX", ref_screengui, os.path.join(ROOT, "scripts", "08_RealityX.lua")),
     ]
     # pais dos filhos de folder (Folder referencia ai nao conhecida ainda — resolvemos na 1a passada)
     ref_map = {}
@@ -171,7 +172,8 @@ def main():
                     f = os.path.join(ROOT, "scripts", "modules", "arkher_services.lua")
                 else:
                     f = os.path.join(V3_CORE, {
-                        "DM": "dmath", "ATX": "terrainx", "AWX": "waterx", "ASXN": "scenex",
+                        "DM": "dmath", "THX": "theoryx", "WLDX": "worldx", "RRX": "realityx",
+                        "ATX": "terrainx", "AWX": "waterx", "ASXN": "scenex",
                         "AAX": "animx", "AUX": "audiomix", "AEX": "atmosx", "APX": "particlesx",
                         "RPX": "ropex", "RIGX": "rigx", "MSHX": "meshx",
                     }[src] + ".luau")

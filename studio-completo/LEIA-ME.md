@@ -139,7 +139,29 @@ em cada um dos 121 chunks PROP (#StudioSafe). Baixe novamente a placa atual.
 - `Arkher_06_RigX` + `Arkher_07_MeshX`: painéis que se ACOPLAM ao dock do
   05 (sem alterá-lo), mesmo tema, ícones desenhados (palito-rig, cubo-wire).
 
-Regerar: `python3 tools/inject_arkherx.py ../ArkherStudio_Completo_Pro.rbxl ../ArkherStudio_Completo_X.rbxl` → valida 1733 inst, 32 tipos, PRNT/END corretos. Testes: `python3 tools/run_tests.py` (109+ asserts, 27 painéis).
+Regerar: `python3 tools/inject_arkherx.py ../ArkherStudio_Completo_Pro.rbxl ../ArkherStudio_Completo_X.rbxl` → valida **1.743 inst, 32 tipos (157.707 B)**, PRNT/END corretos. Testes: `python3 tools/run_tests.py` (109+ asserts, 27 painéis).
+
+**REMAKE RRW (2026-09):** três motores núcleo novos + topbar de abas (barra lateral removida):
+- `studio-v3/core/theoryx.luau` (THX) — teoria codificada: Tese dos D (D⃗, histerese,
+  D\* = argmax(Q−C)), tiers D12/D9/D6/D3 com orçamentos, **10 matérias-com-matéria**,
+  **32 biomas Köppen/ESA + Whittaker**, escalas studio/paisagem/planeta, memória de projeto.
+- `studio-v3/core/worldx.luau` (WLDX) — motor planetário REAL: tectônica de placas +
+  deriva, altura/clima (latitude, lapse rate, **sombra de chuva orográfica**, vento),
+  regras mangue/alagado/playa, render **16K** por matéria (mole→escurece, exposição),
+  **parallax TRUE** (N cascas clonadas — não bump), luz ambiente **Kelvin→RGB real**,
+  erosão com **aprendizado** (memória THX), e **~50 tools de terreno** em 8 categorias
+  (sculpt/landform/glacial/eólico/fluvial/cárste/vulcão+costa/erosão).
+- `studio-v3/core/realityx.luau` (RRX) — **daemon RRW automático**: registra entidades,
+  materializa/desmaterializa por distância+importância+tier (histerese/preditivo D-O15),
+  relógio do mundo e luz ambiental sozinhos — **zero operação manual**.
+- `Arkher_08_RealityX` (LocalScript) — **TOPBAR DE ABAS** logo abaixo da topbar original
+  (**só adiciona UI**; a dock lateral direita foi RETIRADA por diretriz do estúdio):
+  RRW·PLANETA / TERRAIN·50 (grade dinâmica das tools reais) / ÁGUA / CLIMA·LUZ
+  (6 céus Kelvin + 7 weathers) / VEGET / MODELER·100 (banca MeshX viva) /
+  ANIMATOR (AutoRig 4 esqueletos + **AutoPhysics 0→1** estilo Cascadeur) / CENA·FX / STATS.
+- `engine_server.lua` agora expõe **34 comandos** (tier_set, world_generate/materialize/
+  tool/tools/vegetate/erode, rrx_start/stats, world_tools dinâmico, mesh_tool/tools com
+  banca, anim_autorig/autophysics…) e o pump Heartbeat roda o RRX junto dos demais.
 
 
 **FIX round 2 (2026-09, log de Play do usuário):**

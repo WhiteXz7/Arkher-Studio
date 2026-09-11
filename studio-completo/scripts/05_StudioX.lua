@@ -175,20 +175,9 @@ local gui = B("ScreenGui", {
 	DisplayOrder = 60, ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 }, Players.LocalPlayer:WaitForChild("PlayerGui"))
 
-local dock = B("Frame", {
-	Name = "DockX", Size = UDim2.fromOffset(38, 380),
-	Position = UDim2.new(1, -46, 0.5, -190),
-	BackgroundColor3 = t.panel, BorderSizePixel = 0,
-}, gui)
-H(dock, 10)
-stroke(dock, 1)
-local pad = Instance.new("UIPadding")
-pad.PaddingTop = UDim.new(0, 6)
-pad.Parent = dock
-local lay = Instance.new("UIListLayout")
-lay.Padding = UDim.new(0, 6)
-lay.HorizontalAlignment = Enum.HorizontalAlignment.Center
-lay.Parent = dock
+-- barra lateral RETIRADA por diretriz: toda a navegacao vai pra TOPBAR (abas).
+-- `dock` fica nil; partes 06/07 verificam antes de acoplar.
+local dock = nil
 
 local row = B("Frame", { Size = UDim2.new(1, 0, 0, 26), BackgroundTransparency = 1 }, dock)
 local tl = B("TextLabel", {
@@ -408,9 +397,9 @@ makePanel("stats", "STATS X — saude do mundo", function(ctx)
 	end)
 end)
 
--- ============ botoes do dock ============
+-- ============ botoes do dock (desativado: topbar assume) ============
 local order = { "terrain", "water", "scene", "atmos", "rope", "px", "anim", "stats" }
-for _, id in ipairs(order) do
+if dock then for _, id in ipairs(order) do
 	local b0 = B("TextButton", {
 		Size = UDim2.fromOffset(30, 30), BackgroundColor3 = t.sect,
 		BorderSizePixel = 0, Text = "", AutoButtonColor = true,
@@ -425,6 +414,6 @@ for _, id in ipairs(order) do
 		for _, w in pairs(panels) do w.Visible = false end
 		panels[id].Visible = true
 	end)
-end
+end end
 
-print("[ArkherX] 05_StudioX: dock com " .. #order .. " editores (icones desenhados) pronto")
+print("[ArkherX] 05_StudioX: paineis prontos (barra lateral removida -> TOPBAR)")
