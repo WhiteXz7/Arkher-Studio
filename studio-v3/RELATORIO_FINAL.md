@@ -130,6 +130,33 @@
 >
 > Status V4-W3: **26 UIs, 20 motores/sistemas, 244/244 — tudo funcional.**
 >
+> **ONDA 4 (V4-W4, 2026-09-11) — VERLET (o que o Roblox NAO tem) + .rbxl**
+> - **ROPE X (RPX)** (`core/ropex.luau`, novo) — corda + TECIDO por
+>   **integracao de Verlet REAL** (o Roblox nao tem cloth/rope; nos temos):
+>   particulas Verlet, constraints de distancia iteradas (5 passes), gravidade
+>   real, **vento vivo do ATMOS X** (tempestade -> bandeira enlouquece,
+>   override para testes), colisao com **esferas** e plano solo, materializacao
+>   com **Parts finas reais por segmento** (geometria no workspace), cloth em
+>   grade W×H com pinos (top/topcorners), flags de 1 chamada. Bombeado dentro
+>   do pump do ANIM X (mesmo pulso fisico).
+> - **Comandos W4**: `rope.demo` / `rope.clear`.
+> - **Singularity W4**: especialista `pano RPX` (pano/tecido/corda/bandeira/
+>   cabelo — "faca uma bandeira" ja nasce no world).
+> - **.RBXL DE ENTREGA**: `tools/make_rbxl.py` (binario v0 moderno, **round-trip
+>   100% validado** no decoder proprio) e `tools/make_rbxlx.py` (zip legacy
+>   XML do Studio, gerado DE esqueleto proprio, XML validado) — agora
+>   contendo **os 5 kits (A-E) + MainUI + 4 bundles**, integrados ao
+>   `build.sh`. Artefatos: `commandbar/arkher-v3.rbxl` (647 KB) e
+>   `commandbar/arkher-v3-studio.rbxlx` (181 KB zip). No Studio: File->Open
+>   ou abrir o .rbxl → F5.
+> - **Testes**: 244 -> **257 verificacoes, 0 falhas** (Verlet: gravidade
+>   desce a ponta livre, pin imovel, constraints seguram esticamento <×1.6,
+>   9+ parts no model real, cloth pende, topo preso, **vento move beirada**,
+>   esfera nao penetra, remove; kitflow com RPX).
+>
+> Status V4-W4: **26 UIs, 21 motores/sistemas, 257/257 — tudo funcional
+> + .rbxl/.rbxlx entregaveis.**
+>
 ---
 
 Data: 2026-09-09 · Branch: `arena/01a087a9-arkher-studio` · Commits: `1db758d`, `a699eae`

@@ -389,6 +389,8 @@ function AAX.pump(dt)
 			table.remove(AAX._clips, i)
 		end
 	end
+	-- Rope X (se carregado): fisica de corda/tecido bombeada no mesmo pulso
+	if ArkherRopeX then pcall(function() ArkherRopeX.pump(dt) end) end
 	return live
 end
 function AAX.stopAll()

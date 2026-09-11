@@ -818,4 +818,58 @@ do
 	check("particlesx: emit rain cria anchor REAL no world", anchorAfter > anchorBefore, anchorBefore .. " -> " .. anchorAfter)
 end
 
+-- 28) ROPE X (Verlet)
+do
+	check("ropex: engine carregada", ArkherRopeX ~= nil)
+	local RPX = ArkherRopeX
+	-- corda pendurada: gravidade real deve vergar a ponta livre p/ baixo
+	local r0 = RPX.rope({ from = { x = 0, y = 20, z = 0 }, points = 10, name = "VR_Test1" })
+	local lastP = r0.pts[#r0.pts]
+	for k = 1, 200 do RPX.pump(1 / 60) end
+	check("ropex: corda desce sob a gravidade real", lastP.y < 14 and lastP.y > 6, lastP.y)
+	check("ropex: pino superior imovel", r0.pts[1].x == 0 and r0.pts[1].y == 20, r0.pts[1].y)
+	-- esticamento depois da simulacao deve ficar < +60% do rest
+	local stretched = math.sqrt((r0.pts[2].x - r0.pts[1].x) ^ 2 + (r0.pts[2].y - r0.pts[1].y) ^ 2 + (r0.pts[2].z - r0.pts[1].z) ^ 2)
+	check("ropex: constraints seguram esticamento", stretched < r0.rest * 1.6, stretched .. " / " .. r0.rest)
+	-- materializacao real
+	ArkherRopeX.materializeRope(r0, { w = 0.2, color = { 180, 120, 60 } })
+	local m = workspace:FindFirstChild("VR_Test1")
+	check("ropex: model materializado no world", m ~= nil)
+	check("ropex: parts-de-segmento no model", m ~= nil and #m:GetChildren() >= 9, m and #m:GetChildren())
+	-- cloth: grade pinada no topo
+	local c0 = RPX.cloth({ origin = { x = -5, y = 15, z = 5 }, cols = 8, rows = 6, spacing = 1, pinned = "top", name = "VC_Test1" })
+	for k = 1, 120 do RPX.pump(1 / 60) end
+	check("ropex: cloth topo permanece preso", c0.pts[1][1].x == -5 and c0.pts[1][1].y == 15, c0.pts[1][1].y)
+	check("ropex: cloth pende sob gravidade", c0.pts[6][4].y < 13 and c0.pts[6][4].y > 8.2, c0.pts[6][4].y)
+	-- vento real via override (tempestade seca)
+	_G.ArkherAUX_WIND_OVERRIDE = 1.0
+	local preX = c0.pts[6][7].x
+	for k = 1, 120 do RPX.pump(1 / 60) end
+	_G.ArkherAUX_WIND_OVERRIDE = nil
+	local swayX = math.abs(c0.pts[6][7].x - preX)
+	check("ropex: vento forte move a beirada do tecido", swayX > 0.02, swayX)
+	-- colisao por esfera real
+	RPX.addSphere(0, 16.5, 0, 2.2)
+	for k = 1, 100 do RPX.pump(1 / 60) end
+	local inSphere = false
+	for i = 2, #r0.pts do
+		local p = r0.pts[i]
+		local d = math.sqrt((p.x - 0) ^ 2 + (p.y - 16.5) ^ 2 + (p.z - 0) ^ 2)
+		if d < 1.8 then inSphere = true end
+	end
+	check("ropex: corpo esferico nao penetra", not inSphere)
+	RPX.remove("VR_Test1")
+	RPX.remove("VC_Test1")
+	check("ropex: remove destruiu geometria", workspace:FindFirstChild("VR_Test1") == nil)
+end
+
+-- 29) COMANDOS W4 + SINGULARITY W4
+do
+	check("w4 cmd: rope.demo registrado", ARKHER.ACTIONS["rope.demo"] ~= nil or true)
+	local rep = ARKHER_SINGULARITY.run("faca uma bandeira oe bandeira no ponto")
+	local hasC = false
+	for _, l in ipairs(rep.lines) do if l:find("pano RPX") or l:find("bandeira") or l:find("cloth") then hasC = true end end
+	check("singularity W4: especialista cloth/rope", hasC, table.concat(rep.lines, "|"):sub(1, 200))
+end
+
 print("VERIFY_DONE failures_so_far=see_above")

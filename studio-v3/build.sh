@@ -177,7 +177,7 @@ echo "== build: Kit_E (ModuleScript) =="
 {
 	echo "$KIT_E_HDR"
 	echo ""
-	for f in core/animx.luau core/audiomix.luau core/scenex.luau core/atmosx.luau core/camerax.luau core/particlesx.luau; do
+	for f in core/animx.luau core/audiomix.luau core/scenex.luau core/atmosx.luau core/camerax.luau core/particlesx.luau core/ropex.luau; do
 		catw "$f"; echo ""
 	done
 } > "$DIST/ArkherKit_E.lua"
@@ -242,7 +242,7 @@ done
 echo "== build: ALL (teste) =="
 {
 	catw "$PRELUDE"; echo ""
-	for f in core/do15.luau core/undo.luau core/publish.luau core/nmn.luau core/places.luau core/actions.luau core/singularity.luau core/live.luau core/dmath.luau core/terrainx.luau core/waterx.luau core/scripterx.luau core/uikitx.luau core/animx.luau core/audiomix.luau core/scenex.luau core/atmosx.luau core/camerax.luau core/particlesx.luau "$BOOT"; do
+	for f in core/do15.luau core/undo.luau core/publish.luau core/nmn.luau core/places.luau core/actions.luau core/singularity.luau core/live.luau core/dmath.luau core/terrainx.luau core/waterx.luau core/scripterx.luau core/uikitx.luau core/animx.luau core/audiomix.luau core/scenex.luau core/atmosx.luau core/camerax.luau core/particlesx.luau core/ropex.luau "$BOOT"; do
 		catw "$f"; echo ""
 	done
 	catw src/ui/main.luau; echo ""
@@ -302,4 +302,6 @@ for f in "$DIST"/*.lua; do
 	printf "  %-40s %7d  %s\n" "$(basename "$f")" "$sz" "$mark"
 done
 
+echo "== place .rbxl/.rbxlx (entregaveis finais) =="
+python3 tools/make_rbxl.py && python3 tools/make_rbxlx.py
 echo "== done =="

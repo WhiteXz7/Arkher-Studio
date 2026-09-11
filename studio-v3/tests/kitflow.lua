@@ -54,7 +54,7 @@ check("kitflow: Kit C standalone (ATX+AWX ativos)", ArkherTerrainX ~= nil and Ar
 require(mD)
 check("kitflow: Kit D standalone (SX+AXI ativos)", ArkherScripterX ~= nil and ArkherUIKitX ~= nil)
 require(mE)
-check("kitflow: Kit E standalone (AAX+AUX+ASXN+AEX+ACX+APX ativos)", ArkherAnimX ~= nil and ArkherAudioX ~= nil and ArkherSceneX ~= nil and ArkherAtmosX ~= nil and ArkherCameraX ~= nil and ArkherParticlesX ~= nil)
+check("kitflow: Kit E standalone (AAX+AUX+ASXN+AEX+ACX+APX ativos)", ArkherAnimX ~= nil and ArkherAudioX ~= nil and ArkherSceneX ~= nil and ArkherAtmosX ~= nil and ArkherCameraX ~= nil and ArkherParticlesX ~= nil and ArkherRopeX ~= nil)
 
 -- 2) LocalScript: MainUI (shell)
 local okM, errM = pcall(function() loadstring(mainUiSrc, "[MainUI]")() end)

@@ -42,6 +42,7 @@ local INTENTS = {
 	clima = { "clima", "weather", "chuva", "rain", "tempestade", "storm", "neve", "snow", "neblina", "fog", "aurora", "trovao", "trovão", "raio", "lightning", "ensolarado", "ceu", "céu", "sky" },
 	camera = { "camera", "câmera", "filme", "film", "cinematic", "cinematica", "cinematográfica", "orbita", "orbit", "crane", "dolly", "shake", "tremor", "fly", "corte", "shot" },
 	particles = { "particulas", "partículas", "particles", "fogo", "fire", "faisca", "faísca", "sparks", "magia", "magic", "explosao", "explosão", "fumaca", "fumaça", "smoke", "splash", "poeira", "dust" },
+	cloth = { "pano", "tecido", "cloth", "corda", "rope", "bandeira", "flag", "cabelo", "hair", "bandame", "banner", "tenda", "drapeando", "pendurada" },
 }
 
 local function detectIntents(text)
@@ -61,7 +62,7 @@ end
 function SG.plan(goal)
 	local intents = detectIntents(goal)
 	local plan = { goal = goal, tasks = {}, mode = ARKHER.STATE.ai.mode }
-	local order = { "place", "terrain", "water", "city", "nature", "space", "material", "light", "npc", "ui", "audio", "anim", "clima", "particles", "camera", "clean", "perf", "check" }
+	local order = { "place", "terrain", "water", "city", "nature", "space", "material", "light", "npc", "ui", "audio", "anim", "clima", "particles", "cloth", "camera", "clean", "perf", "check" }
 	for _, name in ipairs(order) do
 		if intents[name] then table.insert(plan.tasks, name) end
 	end
@@ -442,6 +443,22 @@ function E.particles(ctx)
 	if g:find("explosao") or g:find("explos") then APX.emit(nil, "fumaca") end
 	local bs = APX.budgetScale()
 	ctx.lines[#ctx.lines + 1] = string.format("particulas APX: %s emitido (Emitter REAL, budget D-O15 %.0f%%)", k, bs * 100)
+end
+
+function E.cloth(ctx)
+	if not ArkherRopeX then
+		ctx.lines[#ctx.lines + 1] = "pano: Kit E (RPX) nao carregado — rode ArkherKit_Installer_E"
+		return
+	end
+	local g = (ctx.goal or ""):lower()
+	if g:find("corda") or g:find("rope") then
+		local r = ArkherRopeX.rope({ from = { x = 0, y = 15, z = 0 }, points = 12, name = "RPX_SNG_Rope" })
+		ArkherRopeX.materializeRope(r, { w = 0.22, color = { 185, 130, 70 } })
+		ctx.lines[#ctx.lines + 1] = "pano RPX: corda de Verlet pendurada (gravidade + constraints reais) no world"
+	else
+		local fl = ArkherRopeX.flagAt(0, 14, 0)
+		ctx.lines[#ctx.lines + 1] = "pano RPX: bandeira de tecido (Verlet coluna-grade, vento do AEX real) no world"
+	end
 end
 
 function E.default(ctx)

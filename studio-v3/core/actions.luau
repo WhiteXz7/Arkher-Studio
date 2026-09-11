@@ -697,6 +697,21 @@ A["px.demo"] = function()
 	for _, k in ipairs(kinds) do ArkherParticlesX.emit(nil, k) end
 	ARKHER.out("SUCCESS", "px.demo: fogo + fumaca + magia emitidos")
 end
+-- ================= ROPE X (Verlet cloth/rope) =================
+A["rope.demo"] = function()
+	if not ArkherRopeX then ARKHER.out("WARNING", "rope.*: Kit E nao carregado") return end
+	local r = ArkherRopeX.rope({ from = { x = 0, y = 16, z = -8 }, points = 12, name = "RPX_Demo" })
+	ArkherRopeX.materializeRope(r, { w = 0.22, color = { 180, 120, 60 } })
+	local fl = ArkherRopeX.flagAt(4, 14, 6)
+	ArkherRopeX.addSphere(0, 12.0, -8, 2.4)
+	ARKHER.out("SUCCESS", "rope.demo: corda pendurada + bandeira de Verlet no world (vento liga via AEX)")
+end
+A["rope.clear"] = function()
+	if ArkherRopeX then
+		ArkherRopeX.remove("RPX_Demo") ArkherRopeX.remove("RPX_DemoCloth") ArkherRopeX.clearColliders()
+		ARKHER.out("INFO", "rope.clear")
+	end
+end
 A["px.clear"] = function()
 	if ArkherParticlesX then ArkherParticlesX.clear() ARKHER.out("INFO", "px.clear: todos desligados") end
 end

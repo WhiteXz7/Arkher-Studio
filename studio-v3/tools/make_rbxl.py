@@ -113,16 +113,24 @@ TREE.append(("StarterCharacterScripts", "StarterCharacterScripts", "StarterPlaye
 TREE.append(("Folder", "ArkherV3", "ReplicatedStorage"))
 TREE.append(("ModuleScript", "ArkherKit_A", "ArkherV3"))
 TREE.append(("ModuleScript", "ArkherKit_B", "ArkherV3"))
+TREE.append(("ModuleScript", "ArkherKit_C", "ArkherV3"))
+TREE.append(("ModuleScript", "ArkherKit_D", "ArkherV3"))
+TREE.append(("ModuleScript", "ArkherKit_E", "ArkherV3"))
 TREE.append(("LocalScript", "ArkherMainUI", "StarterPlayerScripts"))
 TREE.append(("LocalScript", "ArkherBundle_Editors", "StarterPlayerScripts"))
+TREE.append(("LocalScript", "ArkherBundle_Code", "StarterPlayerScripts"))
 TREE.append(("LocalScript", "ArkherBundle_Scene", "StarterPlayerScripts"))
 TREE.append(("LocalScript", "ArkherBundle_System", "StarterPlayerScripts"))
 
 SCRIPT_SOURCES = {
     ("ModuleScript", "ArkherKit_A"): os.path.join(DIST, "ArkherKit_A.lua"),
     ("ModuleScript", "ArkherKit_B"): os.path.join(DIST, "ArkherKit_B.lua"),
+    ("ModuleScript", "ArkherKit_C"): os.path.join(DIST, "ArkherKit_C.lua"),
+    ("ModuleScript", "ArkherKit_D"): os.path.join(DIST, "ArkherKit_D.lua"),
+    ("ModuleScript", "ArkherKit_E"): os.path.join(DIST, "ArkherKit_E.lua"),
     ("LocalScript", "ArkherMainUI"): os.path.join(DIST, "ArkherStudio_MainUI.lua"),
     ("LocalScript", "ArkherBundle_Editors"): os.path.join(DIST, "UI_Bundle_Editors.lua"),
+    ("LocalScript", "ArkherBundle_Code"): os.path.join(DIST, "UI_Bundle_Code.lua"),
     ("LocalScript", "ArkherBundle_Scene"): os.path.join(DIST, "UI_Bundle_Scene.lua"),
     ("LocalScript", "ArkherBundle_System"): os.path.join(DIST, "UI_Bundle_System.lua"),
 }
@@ -208,8 +216,10 @@ def main():
     import lz4.block  # noqa: F401
     sys.path.insert(0, HERE)
     import pyrbxl2
-    fx = pyrbxl2.parse(open("/tmp/rbx-dom/rbx_binary/benches/files/modulescripts-100-lines-100.rbxm", "rb").read())
-    for name, payload, parsed in fx.chunks:
+    fixture_path = "/tmp/rbx-dom/rbx_binary/benches/files/modulescripts-100-lines-100.rbxm"
+    if os.path.exists(fixture_path):
+      fx = pyrbxl2.parse(open(fixture_path, "rb").read())
+      for name, payload, parsed in fx.chunks:
         if name == b"PRNT":
             count = int.from_bytes(payload[1:5], "little")
             fx_subjects = payload[5:5 + 4 * count]

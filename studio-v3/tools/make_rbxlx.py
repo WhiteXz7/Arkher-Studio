@@ -26,8 +26,34 @@ DIST = os.path.join(ROOT, "commandbar")
 TEMPLATE = sys.argv[1] if len(sys.argv) > 1 else None
 OUT = os.path.join(DIST, "arkher-v3-studio.rbxlx")
 
+SKELETON = """<?xml version="1.0" encoding="utf-8"?>
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+\t<External>null</External>
+\t<External>nil</External>
+\t<Item class="Workspace" referent="RBXW1">
+\t\t<Properties>
+\t\t\t<string name="Constraints">false</string>
+\t\t\t<string name="Name">Workspace</string>
+\t\t</Properties>
+\t</Item>
+\t<Item class="ReplicatedStorage" referent="RBXRS1">
+\t\t<Properties>
+\t\t\t<string name="Name">ReplicatedStorage</string>
+\t\t</Properties>
+\t</Item>
+\t<Item class="StarterPlayer" referent="RBXSP1">
+\t\t<Properties>
+\t\t\t<string name="Name">StarterPlayer</string>
+\t\t</Properties>
+\t\t<Item class="StarterPlayerScripts" referent="RBXSPS1">
+\t\t\t<Properties>
+\t\t\t\t<string name="Name">StarterPlayerScripts</string>
+\t\t\t</Properties>
+\t\t</Item>
+\t</Item>
+</roblox>"""
 if not TEMPLATE or not os.path.exists(TEMPLATE):
-    sys.exit("uso: make_rbxlx.py <template.rbxlx-baseplate>")
+    TEMPLATE = None  # gera do esqueleto minimo proprio
 
 
 def xml_escape(s: str) -> str:
@@ -57,6 +83,8 @@ def script_item(cls: str, name: str, source: str, indent: str) -> str:
 
 
 def read(path):
+    if path is None:
+        return SKELETON
     with open(path, encoding="utf-8") as f:
         return f.read()
 
@@ -65,8 +93,12 @@ doc = read(TEMPLATE)
 
 kit_a = read(os.path.join(DIST, "ArkherKit_A.lua"))
 kit_b = read(os.path.join(DIST, "ArkherKit_B.lua"))
+kit_c = read(os.path.join(DIST, "ArkherKit_C.lua"))
+kit_d = read(os.path.join(DIST, "ArkherKit_D.lua"))
+kit_e = read(os.path.join(DIST, "ArkherKit_E.lua"))
 main_ui = read(os.path.join(DIST, "ArkherStudio_MainUI.lua"))
 b_ed = read(os.path.join(DIST, "UI_Bundle_Editors.lua"))
+b_cd = read(os.path.join(DIST, "UI_Bundle_Code.lua"))
 b_sc = read(os.path.join(DIST, "UI_Bundle_Scene.lua"))
 b_sy = read(os.path.join(DIST, "UI_Bundle_System.lua"))
 
@@ -83,6 +115,9 @@ folder = (
     f"\t\t</Properties>\n"
     + script_item("ModuleScript", "ArkherKit_A", kit_a, "\t\t")
     + script_item("ModuleScript", "ArkherKit_B", kit_b, "\t\t")
+    + script_item("ModuleScript", "ArkherKit_C", kit_c, "\t\t")
+    + script_item("ModuleScript", "ArkherKit_D", kit_d, "\t\t")
+    + script_item("ModuleScript", "ArkherKit_E", kit_e, "\t\t")
     + "\t</Item>\n"
 )
 doc = doc[:end_item] + folder + doc[end_item:]
@@ -94,6 +129,7 @@ end_item = doc.find("</Item>", anchor)
 launchers = (
     script_item("LocalScript", "ArkherMainUI", main_ui, "\t\t")
     + script_item("LocalScript", "ArkherBundle_Editors", b_ed, "\t\t")
+    + script_item("LocalScript", "ArkherBundle_Code", b_cd, "\t\t")
     + script_item("LocalScript", "ArkherBundle_Scene", b_sc, "\t\t")
     + script_item("LocalScript", "ArkherBundle_System", b_sy, "\t\t")
 )
@@ -113,7 +149,7 @@ size = os.path.getsize(OUT)
 print(f"ok: {OUT} ({size} bytes)")
 print(f"    workspace.rbxl: {len(doc)} chars (xml texto legacy, aceito pelo Studio)")
 print("    instancias:")
-for n in ("ArkherV3", "ArkherKit_A", "ArkherKit_B", "ArkherMainUI",
-          "ArkherBundle_Editors", "ArkherBundle_Scene", "ArkherBundle_System"):
+for n in ("ArkherV3", "ArkherKit_A", "ArkherKit_B", "ArkherKit_C", "ArkherKit_D", "ArkherKit_E", "ArkherMainUI",
+          "ArkherBundle_Editors", "ArkherBundle_Code", "ArkherBundle_Scene", "ArkherBundle_System"):
     m = re.search(rf'<string name="Name">{n}</string>', doc)
     print(f"      {n}: {'ok' if m else 'FALTOU!'}")
