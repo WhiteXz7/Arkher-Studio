@@ -6,6 +6,20 @@ local waits = 0
 function wait(n) waits = waits + 1 if waits > WAIT_BUDGET then return nil end return n or (1/60) end
 loadstring = loadstring or load
 tick = tick or os.clock
+
+-- require global para ModuleScript (compila Source e retorna o resultado, com cache)
+require = function(mod)
+  if type(mod) ~= "table" then error("require: argumento inválido") end
+  local props = rawget(mod, "__props")
+  if not props or props.ClassName ~= "ModuleScript" then error("require: não é um ModuleScript") end
+  local src = props.Source
+  if type(src) ~= "string" or src == "" then error("require: ModuleScript sem Source") end
+  if props._reqCache ~= nil then return props._reqCache end
+  local fn = assert(load(src, "@ArkherModule"))
+  local result = fn()
+  props._reqCache = result
+  return result
+end
 warn = warn or print
 if not math.clamp then math.clamp = function(v, lo, hi) return math.max(lo, math.min(hi, v)) end end
 
@@ -58,6 +72,7 @@ function CFrame:ToOrientation() return 0,0,0 end
 function CFrame:GetComponents() return 0,0,0,0,0,0,0,0,0,0,0,0 end
 UDim2 = {} function UDim2.new(a,b,c,d) return {X={Scale=a or 0,Offset=b or 0},Y={Scale=c or 0,Offset=d or 0},__t="UDim2"} end
 UDim2.fromOffset = function(x,y) return UDim2.new(0,x,0,y) end
+UDim2.fromScale = function(a,b) return UDim2.new(a,0,b,0) end
 UDim = {} function UDim.new(a,b) return {Scale=a or 0,Offset=b or 0,__t="UDim"} end
 Vector2 = {} function Vector2.new(x,y) return {X=x or 0,Y=y or 0,__t="Vector2"} end
 
@@ -371,7 +386,87 @@ function http:JSONEncode(v)
   for _, k in ipairs(keys) do parts[#parts + 1] = '"' .. jesc(tostring(k)) .. '":' .. http:JSONEncode(v[k]) end
   return "{" .. table.concat(parts, ",") .. "}"
 end
-function http:JSONDecode(s) return nil end
+function http:JSONDecode(s)
+  if type(s) ~= "string" or s == "" then return nil end
+  local pos = 1
+  local function err(m) error("JSONDecode: " .. m .. " @" .. pos, 0) end
+  local function skipws()
+    while true do
+      local c = s:sub(pos, pos)
+      if c == " " or c == "\n" or c == "\t" or c == "\r" then pos = pos + 1 else break end
+    end
+  end
+  local parse_value, parse_string, parse_number, parse_array, parse_object
+  parse_value = function()
+    skipws()
+    local c = s:sub(pos, pos)
+    if c == "{" then return parse_object() end
+    if c == "[" then return parse_array() end
+    if c == '"' then return parse_string() end
+    if c == "t" then if s:sub(pos, pos + 3) == "true" then pos = pos + 4 return true end err("literal") end
+    if c == "f" then if s:sub(pos, pos + 4) == "false" then pos = pos + 5 return false end err("literal") end
+    if c == "n" then if s:sub(pos, pos + 3) == "null" then pos = pos + 4 return nil end err("literal") end
+    return parse_number()
+  end
+  parse_string = function()
+    assert(s:sub(pos, pos) == '"', "esperava string @" .. pos)
+    pos = pos + 1
+    local out = {}
+    while true do
+      local c = s:sub(pos, pos)
+      if c == "" then err("string aberta") end
+      if c == '"' then pos = pos + 1 return table.concat(out) end
+      if c == "\\" then
+        local e = s:sub(pos + 1, pos + 1)
+        local map = { ['"'] = '"', ["\\"] = "\\", ["/"] = "/", b = "\b", f = "\f", n = "\n", r = "\r", t = "\t" }
+        if map[e] then out[#out + 1] = map[e]; pos = pos + 2
+        elseif e == "u" then
+          local n = tonumber(s:sub(pos + 2, pos + 5), 16)
+          out[#out + 1] = n and string.char(n) or "?"
+          pos = pos + 6
+        else out[#out + 1] = e; pos = pos + 2 end
+      else out[#out + 1] = c; pos = pos + 1 end
+    end
+  end
+  parse_number = function()
+    local num = s:match("-?%d+%.?%d*[eE]?[+-]?%d*", pos)
+    if not num then err("número") end
+    pos = pos + #num
+    return tonumber(num)
+  end
+  parse_array = function()
+    pos = pos + 1
+    local arr = {}
+    skipws()
+    if s:sub(pos, pos) == "]" then pos = pos + 1 return arr end
+    while true do
+      arr[#arr + 1] = parse_value()
+      skipws()
+      local c = s:sub(pos, pos)
+      if c == "," then pos = pos + 1 elseif c == "]" then pos = pos + 1 return arr else err("array") end
+    end
+  end
+  parse_object = function()
+    pos = pos + 1
+    local obj = {}
+    skipws()
+    if s:sub(pos, pos) == "}" then pos = pos + 1 return obj end
+    while true do
+      skipws()
+      local k = parse_string()
+      skipws()
+      assert(s:sub(pos, pos) == ":", "esperava ':'")
+      pos = pos + 1
+      obj[k] = parse_value()
+      skipws()
+      local c = s:sub(pos, pos)
+      if c == "," then pos = pos + 1 elseif c == "}" then pos = pos + 1 return obj else err("objeto") end
+    end
+  end
+  local ok, v = pcall(parse_value)
+  if not ok then return nil end
+  return v
+end
 function http:GenerateGUID(_d) local n=0 local function r() n=(n*16807)%2147483647 return (n+1) end
   local hex="0123456789abcdef" local out={} for i=1,32 do out[i]=hex:sub((r()%16)+1,(r()%16)+1) end return table.concat(out) end
 function http:GetUuid() return self:GenerateGUID(false) end

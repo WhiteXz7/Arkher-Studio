@@ -386,12 +386,154 @@ end
 
 """
 
+# ================= BLOCO S: ARKHER SERVICES (custom cloud/publish/data/i18n/toolbox/collab) =================
+MODULE_SRC = open("studio-completo/scripts/modules/arkher_services.lua", encoding="utf-8").read()
+assert "]]" not in MODULE_SRC, "fonte do module tem ']]' (quebraria [[...]])"
+
+BLOCK_S = '''
+-- ============ ARKHER SERVICES (custom: cloud, publicar, dados, i18n, toolbox, colaboracao) ============
+-- Camada "custom" que contorna a Cloud API / Open API reais: persiste no place (ServerStorage)
+-- como vault, e "publica" o jogo no perfil do dev (cartao estilo pagina do jogo do Roblox).
+local _SS = game:GetService("ServerStorage")
+local services = nil
+local servicesError = ""
+do
+	local okMod, mod = pcall(function()
+		local vault = _SS:FindFirstChild("ArkherCloudVault")
+		if not vault then vault = Instance.new("Folder") vault.Name = "ArkherCloudVault" vault.Parent = _SS end
+		vault:SetAttribute("ArkherInternal", true)
+		local ms = vault:FindFirstChild("ArkherServices") or Instance.new("ModuleScript")
+		ms.Name = "ArkherServices"
+		ms.Source = [[
+__MODULE__
+]]
+		ms.Parent = vault
+		return require(ms)
+	end)
+	if okMod and type(mod) == "table" then services = mod else servicesError = tostring(mod) end
+end
+local function needSvc()
+	assert(services, "Arkher Services indisponiveis: " .. servicesError)
+	return services
+end
+
+local function buildToolboxTemplate(player, parent, tpl)
+	local items = {}
+	local function addNode(node, nodeParent)
+		local o = create(player, nodeParent, node.class, node.name)
+		if node.size and o:IsA("BasePart") then pcall(function() o.Size = Vector3.new(node.size[1], node.size[2], node.size[3]) end) end
+		if node.color then pcall(function() o.Color = Color3.fromRGB(node.color[1], node.color[2], node.color[3]) end) end
+		if node.mat then pcall(function() o.Material = Enum.Material[node.mat] end) end
+		if node.pos and o:IsA("BasePart") then pcall(function() o.CFrame = CFrame.new(node.pos[1], node.pos[2], node.pos[3]) end) end
+		items[#items + 1] = { o = o, parent = nodeParent, name = node.name }
+		return o
+	end
+	local root = addNode(tpl.nodes[1], parent)
+	for i = 2, #tpl.nodes do
+		local np = (tpl.nodes[1].class == "Model") and root or parent
+		addNode(tpl.nodes[i], np)
+	end
+	local saved = {}
+	for _, it in ipairs(items) do saved[#saved + 1] = { it.o:Clone(), it.parent, it.name } end
+	pushHist(player, {
+		label = "Inserir " .. tpl.name .. " (Toolbox)",
+		cleanup = function() for _, s in ipairs(saved) do if s[1] and not s[1].Parent then s[1]:Destroy() end end end,
+		undo = function() for _, it in ipairs(items) do if it.o.Parent then it.o:Destroy() end unregister(it.o) end end,
+		redo = function() for _, s in ipairs(saved) do if not s[1].Parent then local n = s[1]:Clone() n.Name = s[3] n.Parent = s[2] register(n) end end end,
+	})
+	selected[player] = root
+	queueObject(parent)
+	return { node = record(root), count = #items }
+end
+
+function handlers.CloudStatus(player) needSvc() return services.status() end
+function handlers.CloudList(player) needSvc() return { projects = services.cloudList() } end
+function handlers.CloudSave(player, payload)
+	needSvc()
+	local name = (type(payload.name) == "string" and payload.name ~= "") and payload.name or ("Projeto " .. os.date("%d/%m/%Y %H:%M"))
+	local data = serializeTree(workspace)
+	local n = countTree(data)
+	local json = Http:JSONEncode(data)
+	local rec = services.cloudPut(name, json, #json, n)
+	return { project = rec }
+end
+function handlers.CloudOpen(player, payload)
+	needSvc()
+	local got = services.cloudGet(payload.id)
+	assert(got, "Projeto nao encontrado na cloud.")
+	release(player, true)
+	wipeWorkspace()
+	local data = Http:JSONDecode(got.data)
+	assert(data and data.c, "Snapshot invalido.")
+	-- se a raiz do snapshot eh o Workspace/DataModel, importa os filhos (nao recria a raiz)
+	local rootsToImport = {}
+	if data.c == "Workspace" or data.c == "DataModel" then
+		for _, c in ipairs(data.k or {}) do rootsToImport[#rootsToImport + 1] = c end
+	else
+		rootsToImport[#rootsToImport + 1] = data
+	end
+	local n = 0
+	for _, r in ipairs(rootsToImport) do n = n + countTree(r) end
+	assert(n <= CONFIG.MAX_CREATED_PER_SESSION, "Snapshot excede o limite de objetos.")
+	local last
+	for _, r in ipairs(rootsToImport) do last = deserializeTree(workspace, r) end
+	if last then register(last) selected[player] = last end
+	return { opened = got.record.name, nodes = n }
+end
+function handlers.CloudDelete(player, payload)
+	needSvc()
+	local ok = services.cloudDelete(payload.id)
+	assert(ok, "Projeto nao encontrado.")
+	return { deleted = payload.id }
+end
+function handlers.Publish(player, payload)
+	needSvc()
+	local info = payload or {}
+	local data = serializeTree(workspace)
+	local rec = services.publish(info)
+	rec.workspaceNodes = countTree(data)
+	return { game = rec }
+end
+function handlers.ProfileList(player) needSvc() return { games = services.profileList() } end
+function handlers.ProfileGet(player, payload) needSvc() local g = services.profileGet(payload.id) assert(g, "Jogo nao encontrado.") return { game = g } end
+function handlers.ProfileDelete(player, payload) needSvc() assert(services.profileDelete(payload.id), "Jogo nao encontrado.") return { deleted = payload.id } end
+function handlers.DataList(player) needSvc() return { entries = services.dataList() } end
+function handlers.DataGet(player, payload) needSvc() local e = services.dataGet(payload.key) assert(e, "Chave nao encontrada.") return { entry = e } end
+function handlers.DataSet(player, payload) needSvc() return { entry = services.dataSet(payload.key, payload.value, payload.type) } end
+function handlers.DataDelete(player, payload) needSvc() assert(services.dataDelete(payload.key), "Chave nao encontrada.") return { deleted = payload.key } end
+function handlers.ProjectInfo(player) needSvc() return { info = services.projectInfo() } end
+function handlers.SetProjectInfo(player, payload) needSvc() return { info = services.setProjectInfo(payload or {}) } end
+function handlers.TeamInfo(player) needSvc() return services.team() end
+function handlers.TeamAdd(player, payload) needSvc() assert(type(payload.name) == "string" and #payload.name > 0, "Nome invalido.") return services.teamAdd(payload.name, payload.role or "Editor") end
+function handlers.TeamRemove(player, payload) needSvc() return services.teamRemove(payload.name) end
+function handlers.InviteList(player) needSvc() return { invites = services.inviteList() } end
+function handlers.InviteCreate(player, payload) needSvc() assert(type(payload.email) == "string" and payload.email:match("@"), "E-mail invalido.") return { invite = services.inviteCreate(payload.email, payload.role or "Editor") } end
+function handlers.InviteAccept(player, payload) needSvc() local r = services.inviteAccept(payload.code) assert(r.ok ~= false, r.error or "Convite invalido.") return r end
+function handlers.InviteReject(player, payload) needSvc() local r = services.inviteReject(payload.code) assert(r.ok ~= false, r.error or "Convite invalido.") return r end
+function handlers.Locales(player) needSvc() return services.locales() end
+function handlers.SetLocale(player, payload) needSvc() return services.setLocale(payload.code) end
+function handlers.LocStrings(player) needSvc() return services.strings() end
+function handlers.SetLocString(player, payload) needSvc() return services.setString(payload.key, payload.value, payload.translations) end
+function handlers.ToolboxList(player) needSvc() return services.toolboxList() end
+function handlers.ToolboxInsert(player, payload)
+	needSvc()
+	local tpl = services.toolboxGet(payload.id)
+	assert(tpl, "Template nao encontrado.")
+	local parent = workspace
+	if payload.parentId and objects[payload.parentId] then parent = objects[payload.parentId] end
+	assert(editable(parent), "Pai invalido para este template.")
+	return buildToolboxTemplate(player, parent, tpl)
+end
+'''
+BLOCK_S = BLOCK_S.replace("__MODULE__", MODULE_SRC)
+
+
 # ================= aplicar =================
 src = ORIG
 src = replace_once(src, MARK_A, MARK_A + BLOCK_A, "A")
 src = replace_once(src, "local function getObject(id)", SER_DESER + "local function getObject(id)", "B")
 src = replace_once(src, "local handlers={}", HIST_OPS + "local handlers={}", "C")
-src = replace_once(src, "request.OnServerInvoke=function(player,action,payload)", NEW_HANDLERS + "request.OnServerInvoke=function(player,action,payload)", "D")
+src = replace_once(src, "request.OnServerInvoke=function(player,action,payload)", NEW_HANDLERS + BLOCK_S + "request.OnServerInvoke=function(player,action,payload)", "D")
 # Delete original -> delega para Delete_ (reusa hDelete)
 src = replace_once(
     src,
