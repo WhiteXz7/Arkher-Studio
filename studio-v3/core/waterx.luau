@@ -5,9 +5,9 @@
 -- + flutuabilidade arquimediana de caixas + natacao + ambiente subaquatico.
 -- RRW: realidade -> representacao (campo de ondas+termos fisicos) -> D-O15
 -- (LOD de simulacao/materializacao) -> materializacao (tiles animados).
-ArkherWaterX = ArkherWaterX or {}
-local AWX = ArkherWaterX
-local DM = ArkherDM
+_G.ArkherWaterX = _G.ArkherWaterX or {}
+local AWX = _G.ArkherWaterX
+local DM = rawget(_G, "ArkherDM")
 local floor, abs, sqrt = math.floor, math.abs, math.sqrt
 local sin, cos, pi = math.sin, math.cos, math.pi
 local clamp, lerp = DM.clamp, DM.lerp
@@ -290,8 +290,8 @@ function AWX.materialize(body, opts)
 	opts = opts or {}
 	local ws = workspace
 	local step = opts.tile or 16
-	if ArkherDO15 then
-		local lv = ArkherDO15.state.level
+	if rawget(_G, "ArkherDO15") then
+		local lv = rawget(_G, "ArkherDO15").state.level
 		step = ({ 12, 16, 24, 32 })[lv or 2] or step
 	end
 	local sx = body.radius and body.radius * 2 or body.size.x
@@ -598,3 +598,4 @@ function AWX.stepBoats(dt, t)
 end
 
 AWX._version = "1.0.0"
+return AWX

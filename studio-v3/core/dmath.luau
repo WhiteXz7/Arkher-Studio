@@ -4,8 +4,8 @@
 -- escalares, curvas e classificadores fisicos (Whittaker). Tudo DETERMINISTICO
 -- por semente: a mesma realidade, a mesma materializacao, em qualquer D-O15.
 -- Sem bitwise ops (compatibilidade total Lua 5.1 / Luau / shim de testes).
-ArkherDM = ArkherDM or {}
-local M = ArkherDM
+_G.ArkherDM = _G.ArkherDM or {}
+local M = _G.ArkherDM
 
 local floor, ceil = math.floor, math.ceil
 local abs, sqrt, exp = math.abs, math.sqrt, math.exp
@@ -207,3 +207,4 @@ function M.dewPoint(tempC, rh)
 end
 
 M._version = "1.0.0"
+return M

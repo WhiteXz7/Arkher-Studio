@@ -8,9 +8,9 @@
 -- de repeticao (never-repeats-recent), posicionamento 3D simulado com
 -- rolloff real (inverso-quadratico) + doppler aproximado, e link com AWX
 -- (ondas ressacam => vento/mono de mar alto sobe).
-ArkherAudioX = ArkherAudioX or {}
-local AUX = ArkherAudioX
-local DM = ArkherDM
+_G.ArkherAudioX = _G.ArkherAudioX or {}
+local AUX = _G.ArkherAudioX
+local DM = rawget(_G, "ArkherDM")
 local floor, abs, sqrt, clamp = math.floor, math.abs, math.sqrt, DM.clamp
 local soundService
 do local ok, s = pcall(function() return game:GetService("SoundService") end) if ok then soundService = s end end
@@ -371,3 +371,4 @@ function AUX.stats()
 end
 
 AUX._version = "1.0.0"
+return AUX

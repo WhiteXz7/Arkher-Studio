@@ -320,3 +320,4 @@ function RPX.flagAt(x, y, z)
 end
 
 _G.ArkherRopeX = RPX
+return RPX

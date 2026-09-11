@@ -6,9 +6,9 @@
 -- assemblies de parts (rig sem keyframe manual), serialize/export JSON.
 -- RRW: REALIDADE (leis de movimento) -> REPRESENTACAO (curvas+springs) ->
 -- MATERIALIZACAO (CFrame/Size/Color/atributos reais escritos a cada passo).
-ArkherAnimX = ArkherAnimX or {}
-local AAX = ArkherAnimX
-local DM = ArkherDM
+_G.ArkherAnimX = _G.ArkherAnimX or {}
+local AAX = _G.ArkherAnimX
+local DM = rawget(_G, "ArkherDM")
 local abs, floor, sin, cos, pi, sqrt, exp = math.abs, math.floor, math.sin, math.cos, math.pi, math.sqrt, math.exp
 local clamp, lerp = DM.clamp, DM.lerp
 local HttpService
@@ -390,7 +390,7 @@ function AAX.pump(dt)
 		end
 	end
 	-- Rope X (se carregado): fisica de corda/tecido bombeada no mesmo pulso
-	if ArkherRopeX then pcall(function() ArkherRopeX.pump(dt) end) end
+	if rawget(_G, "ArkherRopeX") then pcall(function() rawget(_G, "ArkherRopeX").pump(dt) end) end
 	return live
 end
 function AAX.stopAll()
@@ -501,3 +501,4 @@ function AAX.pumpDeformers(dt)
 end
 
 AAX._version = "1.0.0"
+return AAX

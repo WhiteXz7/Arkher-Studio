@@ -6,9 +6,9 @@
 -- (arvores/arbustos/pedras/grama geradas como models reais), MERGE/EXPLODE,
 -- alinhamento ARRAY, registro de assoc `LOD de distancia` cooperando com D-O15.
 -- RRW: REPRESENTACAO (hash+regras) -> MATERIALIZACAO (models reais no mundo).
-ArkherSceneX = ArkherSceneX or {}
-local X = ArkherSceneX
-local DM = ArkherDM
+_G.ArkherSceneX = _G.ArkherSceneX or {}
+local X = _G.ArkherSceneX
+local DM = rawget(_G, "ArkherDM")
 local floor, abs, sqrt, min, max = math.floor, math.abs, math.sqrt, math.min, math.max
 local clamp, lerp = DM.clamp, DM.lerp
 local pi, cos, sin = math.pi, math.cos, math.sin
@@ -414,8 +414,8 @@ function X.applyLOD(focusX, focusZ)
 				local dist = sqrt(dx * dx + dz * dz)
 				local ring = dist < e.rings.near and 1 or (dist < e.rings.mid and 2 or (dist < e.rings.far and 3 or 4))
 				-- D-O15: niveis baixos forcam culling mais proximo
-				if ArkherDO15 then
-					local lv = ArkherDO15.state.level
+				if rawget(_G, "ArkherDO15") then
+					local lv = rawget(_G, "ArkherDO15").state.level
 					if lv <= 2 and ring == 3 then ring = 4 end
 					if lv >= 4 and ring == 4 then ring = 3 end
 				end
@@ -487,3 +487,4 @@ function X.alignArray(parts, opts)
 end
 
 X._version = "1.0.0"
+return X

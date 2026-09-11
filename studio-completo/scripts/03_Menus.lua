@@ -1145,6 +1145,9 @@ bj.OnInvoke = function(action, payload)
   elseif action == "FABRICAR" then
     buildMenu("FABRICAR", payload and payload.button)
     return true
+  elseif action == "AGUA" then
+    buildMenu("AGUA", payload and payload.button)
+    return true
   elseif action == "Destroy" then
     closeMenu()
     n.alive = false
@@ -1197,6 +1200,13 @@ MENUS.FABRICAR = {
   { icon = "Folder", label = "Listar classes da gramática", act = "XFabricarList" },
 }
 
+MENUS.AGUA = {
+  { icon = "Part", label = "Editor WATER X (abrir)", act = "XOpenWater" },
+  { sep = true },
+  { icon = "plus", label = "Criar Oceano (água de VERDADE)", act = "XAguaOceano" },
+  { icon = "Players", label = "Teste de Arquimedes (6 densidades reais)", act = "XAguaFlutua" },
+}
+
 local function deckOpen(id, view)
   local d = rawget(_G, "ArkherDeck")
   if d and d.open then return d.open(id, view) end
@@ -1221,10 +1231,13 @@ actions.XOpenFabricar     = function() deckOpen("fabricar", "catalogo") end
 actions.XEspacoSolar      = function() deckCmd("space_preset", { id = "solar" }) deckOpen("espaco", "sistema") end
 actions.XEspacoTerraLua   = function() deckCmd("space_preset", { id = "terra_lua" }) deckOpen("espaco", "sistema") end
 actions.XFabricarList     = function() deckOpen("fabricar", "catalogo") end
+actions.XOpenWater        = function() deckOpen("water", "corpos") end
+actions.XAguaOceano       = function() deckCmd("water_create", { kind = "oceano", preset = "porto", level = 8, size = 512 }) deckOpen("water", "corpos") end
+actions.XAguaFlutua       = function() deckCmd("water_float_test", {}) deckOpen("water", "fisica") end
 
 -- ---- botoes na MenuRow da topbar ORIGINAL (clona estilo do irmao) ----
 do
-  local weekdayALvo = { "MUNDO", "MODELAGEM", "ANIMACAO", "ESPACO", "FABRICAR" }
+  local weekdayALvo = { "MUNDO", "AGUA", "MODELAGEM", "ANIMACAO", "ESPACO", "FABRICAR" }
   local function findBtn(nm)
     for _, c in ipairs(g:GetDescendants()) do
       if c:IsA("GuiButton") and c.Name == nm then return c end
@@ -1250,7 +1263,7 @@ do
         end)
       end
     end
-    print("[ArkherX] Menus X na topbar original: MUNDO / MODELAGEM / ANIMAÇÃO / ESPAÇO / FABRICAR")
+    print("[ArkherX] Menus X na topbar original: MUNDO / ÁGUA / MODELAGEM / ANIMAÇÃO / ESPAÇO / FABRICAR")
   else
     warn("[ArkherX] MenuRow não achada — menus X vivem só via MenusBus")
   end

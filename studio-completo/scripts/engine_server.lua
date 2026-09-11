@@ -30,6 +30,36 @@ for _, nm in ipairs(ORDER) do
 	if not ok then warn("[ArkherX] motor " .. nm .. " falhou: " .. tostring(err)) end
 end
 
+-- Liga os simbolos dos motores NESTE Script. No Roblox cada script tem
+-- environment proprio: "ArkherDM = ..." num Module NAO aparece nos outros.
+-- O padrao ARKHER e exportar em _G e ler de _G — aqui apenas espelhamos
+-- os nomes para o codigo abaixo seguir limpo (busca em runtime, apos boot).
+ArkherDM = rawget(_G, "ArkherDM")
+ArkherTheoryX = rawget(_G, "ArkherTheoryX")
+ArkherWorldX = rawget(_G, "ArkherWorldX")
+ArkherRealityX = rawget(_G, "ArkherRealityX")
+ArkherFabricX = rawget(_G, "ArkherFabricX")
+ArkherDayX = rawget(_G, "ArkherDayX")
+ArkherEcoX = rawget(_G, "ArkherEcoX")
+ArkherWeaX = rawget(_G, "ArkherWeaX")
+ArkherCiviX = rawget(_G, "ArkherCiviX")
+ArkherSecX = rawget(_G, "ArkherSecX")
+ArkherPhysX = rawget(_G, "ArkherPhysX")
+ArkherRLayer = rawget(_G, "ArkherRLayer")
+ArkherDPred = rawget(_G, "ArkherDPred")
+ArkherMindX = rawget(_G, "ArkherMindX")
+ArkherSpaceX = rawget(_G, "ArkherSpaceX")
+ArkherTerrainX = rawget(_G, "ArkherTerrainX")
+ArkherWaterX = rawget(_G, "ArkherWaterX")
+ArkherSceneX = rawget(_G, "ArkherSceneX")
+ArkherAnimX = rawget(_G, "ArkherAnimX")
+ArkherAudioX = rawget(_G, "ArkherAudioX")
+ArkherAtmosX = rawget(_G, "ArkherAtmosX")
+ArkherParticlesX = rawget(_G, "ArkherParticlesX")
+ArkherRopeX = rawget(_G, "ArkherRopeX")
+ArkherRigX = rawget(_G, "ArkherRigX")
+ArkherMeshX = rawget(_G, "ArkherMeshX")
+
 local net = ReplicatedStorage:WaitForChild("ArkherNet", 30)
 local cmdE = net:WaitForChild("ArkherXCmd")
 local queryF = net:WaitForChild("ArkherXQ")
@@ -556,6 +586,117 @@ function CMD.water_boat(p)
 	return { msg = "barco fisico (4 pontos) no " .. b.kind .. " — empuxo Arquimedes real" }
 end
 
+function CMD.water_presets()
+	assert(ArkherWaterX, "AWX off")
+	local kinds = {}
+	for id, w in pairs(ArkherWaterX.WATERS) do
+		kinds[#kinds + 1] = { id = id, nm = w.nm, dens = w.dens, sal = w.sal, temp = w.temp, visc = w.visc }
+	end
+	table.sort(kinds, function(a, b) return a.id < b.id end)
+	local seas = {}
+	for id, pr in pairs(ArkherWaterX.PRESETS) do
+		local maxAmp, total = 0, 0
+		for _, wv in ipairs(pr.waves or {}) do maxAmp = math.max(maxAmp, wv.amp or 0) total = total + 1 end
+		seas[#seas + 1] = { id = id, maxAmp = maxAmp, waves = total, tide = pr.tide }
+	end
+	table.sort(seas, function(a, b) return a.id < b.id end)
+	return { kinds = kinds, seas = seas, count = #kinds }
+end
+
+function CMD.water_create(p)
+	assert(ArkherWaterX, "AWX off")
+	p = p or {}
+	local kind = p.kind or "oceano"
+	local wavePreset = ArkherWaterX.PRESETS[p.preset or "porto"] or ArkherWaterX.PRESETS.calmaria
+	local b = ArkherWaterX.create(kind, {
+		level = p.level or 8,
+		center = { x = p.x or 0, z = p.z or 0 },
+		size = { x = p.size or 512, z = p.size or 512 },
+		waves = wavePreset.waves,
+		tideAmp = wavePreset.tide or 0.2,
+	})
+	ArkherWaterX.materialize(b, { maxSpan = 220 })
+	_G.ArkherSea = b
+	if ArkherWaterX.caustics then pcall(ArkherWaterX.caustics, b, (p.level or 8) - 6, {}) end
+	local pr = b.props
+	return { msg = ("AGUA REAL criada: %s [%s] — %.0f kg/m3, sal %.1f g/kg, %.0f C, %d ondas Gerstner (%s), mare %.1f — %d tiles"):format(
+		pr.nm, b.kind, pr.dens, pr.sal, pr.temp, #b.waves, p.preset or "porto", b.tideAmp, b.tileParts or 0) }
+end
+
+function CMD.water_stats()
+	assert(ArkherWaterX, "AWX off")
+	local nb, nf, nflo, nw = #ArkherWaterX.bodies, 0, 0, 0
+	for _, b in ipairs(ArkherWaterX.bodies) do
+		nflo = nflo + #b.floaters
+		nw = nw + #b.waves
+		nf = nf + ((b.falls and #b.falls) or 0)
+	end
+	return { bodies = nb, floaters = nflo, wavesTotal = nw,
+		msg = ("AWX: %d corpos d'agua | %d ondas Gerstner no pump | %d flutuadores | dispersao omega=sqrt(g*k) REAL"):format(nb, nw, nflo) }
+end
+
+function CMD.water_float_test(p)
+	assert(ArkherWaterX, "AWX off")
+	local b = _G.ArkherSea
+	if not b then return { msg = "crie um corpo d'agua primeiro (AGUA > criar)" } end
+	p = p or {}
+	local mats = {
+		{ nm = "espuma", dens = 40, cor = Color3.fromRGB(240, 240, 220) },
+		{ nm = "madeira", dens = 600, cor = Color3.fromRGB(150, 105, 60) },
+		{ nm = "gelo", dens = 917, cor = Color3.fromRGB(190, 225, 240) },
+		{ nm = "tubarao de borracha", dens = 1090, cor = Color3.fromRGB(90, 90, 100) },
+		{ nm = "concreto", dens = 2400, cor = Color3.fromRGB(140, 140, 140) },
+		{ nm = "ferro", dens = 7850, cor = Color3.fromRGB(80, 84, 92) },
+	}
+	for i, m in ipairs(mats) do
+		local box = Instance.new("Part")
+		box.Name = "AWX_Float_" .. m.nm:gsub(" ", "_")
+		box.Size = Vector3.new(2.4, 2.4, 2.4)
+		box.CFrame = CFrame.new(-30 + i * 8, b.level + 6, p.z or -20)
+		box.Color = m.cor
+		box.Parent = workspace
+		ArkherWaterX.float(b, box, { density = m.dens })
+		local tag = Instance.new("BillboardGui")
+		tag.Size = UDim2.fromOffset(150, 30)
+		tag.StudsOffset = Vector3.new(0, 2.5, 0)
+		tag.AlwaysOnTop = true
+		tag.Parent = box
+		local tl = Instance.new("TextLabel")
+		tl.Size = UDim2.fromScale(1, 1)
+		tl.BackgroundTransparency = 1
+		tl.Text = m.nm .. " " .. m.dens .. "kg/m3"
+		tl.Font = Enum.Font.GothamBold
+		tl.TextSize = 10
+		tl.TextColor3 = Color3.new(1, 1, 1)
+		tl.TextStrokeTransparency = 0.4
+		tl.Parent = tag
+	end
+	return { msg = "TESTE DE ARQUIMEDES: 6 materiais com densidades REAIS (40 a 7850 kg/m3) — observe quem flutua e QUANTO afunda (empuxo = rho*V*g) no pump" }
+end
+
+function CMD.water_waterfall(p)
+	assert(ArkherWaterX, "AWX off")
+	local b = _G.ArkherSea
+	if not b then return { msg = "crie um corpo d'agua primeiro" } end
+	p = p or {}
+	local wf = ArkherWaterX.waterfall(b, {
+		sourceX = p.x or 0, sourceY = b.level + (p.h or 22), sourceZ = p.z or 30,
+		flow = p.flow or 8, width = p.width or 3, speed = p.speed or 1.4,
+	})
+	b.falls = b.falls or {}
+	b.falls[#b.falls + 1] = wf
+	return { msg = ("CACHOEIRA fisica: jato em %.0f studs de altura, %d gotas/s de materia real + respingo/som no pump"):format(p.h or 22, p.flow or 8) }
+end
+
+function CMD.water_composition(p)
+	assert(ArkherWaterX, "AWX off")
+	local b = _G.ArkherSea
+	if not b then return { msg = "sem corpo d'agua ativo" } end
+	local pr = b.props
+	return { msg = ("COMPOSICAO %s: densidade %.1f kg/m3 (agua pura 1000) | salinidade %.1f g/kg | temp %.1f C | viscosidade rel %.2f | absorcao luz %.2f"):format(
+		pr.nm, pr.dens, pr.sal, pr.temp, pr.visc, pr.absorb) }
+end
+
 function CMD.atmos_weather(p)
 	assert(ArkherAtmosX, "AEX off")
 	ArkherAtmosX.setup({})
@@ -725,6 +866,15 @@ end
 local acc = 0
 RunService.Heartbeat:Connect(function(dt)
 	if ArkherAtmosX then pcall(function() ArkherAtmosX.pump(dt) end) end
+	if ArkherWaterX then pcall(function()
+		local t = os.clock()
+		for _, b in ipairs(ArkherWaterX.bodies or {}) do
+			pcall(ArkherWaterX.animate, b, t)
+			pcall(ArkherWaterX.step, b, dt, t)
+		end
+		if ArkherWaterX.stepFalls then pcall(ArkherWaterX.stepFalls, dt, t) end
+		if ArkherWaterX.stepBoats then pcall(ArkherWaterX.stepBoats, dt, t) end
+	end) end
 	if ArkherAnimX then pcall(function() ArkherAnimX.pump(dt) end) end -- inclui RPX (mesmo pulso)
 	if ArkherAudioX then pcall(function() ArkherAudioX.pump(dt) end) end
 	if ArkherRigX then pcall(function() ArkherRigX.pump(dt) end) end

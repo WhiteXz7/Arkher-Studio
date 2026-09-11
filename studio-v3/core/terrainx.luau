@@ -17,9 +17,9 @@
 --  * materializacao adaptativa: chunks de parts, LOD por distancia/orcamento
 --  * persistencia: export/import JSON compacto (run-length), undo-friendly
 --  * consultas: heightAt/normalAt/materialAt/biomeAt/waterDepthAt + raycast plano
-ArkherTerrainX = ArkherTerrainX or {}
-local ATX = ArkherTerrainX
-local DM = ArkherDM
+_G.ArkherTerrainX = _G.ArkherTerrainX or {}
+local ATX = _G.ArkherTerrainX
+local DM = rawget(_G, "ArkherDM")
 local floor, ceil, abs = math.floor, math.ceil, math.abs
 local sqrt, clamp = math.sqrt, DM.clamp
 local lerp = DM.lerp
@@ -647,7 +647,7 @@ local function newPart(className, name, size, pos, color, parent)
 end
 
 function ATX._lodStep(defaultStep)
-	local ok, lv = pcall(function() return ArkherDO15.state.level end)
+	local ok, lv = pcall(function() return (rawget(_G, "ArkherDO15") or {}).state.level end)
 	if not ok then return defaultStep or 2 end
 	return ({ 1, 2, 3, 4 })[lv or 2] or (defaultStep or 2)
 end
@@ -892,3 +892,4 @@ function World:exportFile(path)
 end
 
 ATX._version = "1.0.0"
+return ATX

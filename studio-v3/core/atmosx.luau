@@ -7,7 +7,7 @@
 -- Do zero, determinístico, deterministic-pump. ⚡🌤️
 -- =============================================================
 
-local DM = ArkherDM or error("ArkherDM init")
+local DM = rawget(_G, "ArkherDM") or error("ArkherDM init")
 local mclamp = math.clamp or function(v, a, b)
 	if v ~= v then return a end
 	if v < a then return a end
@@ -150,8 +150,8 @@ end
 
 -- ---------- vitimas do clima (links AWX/AUX) ----------
 function AEX.pushLinks(w)
-	if S.links.waves and ArkherWaterX then
-		for _, b in ipairs(ArkherWaterX.bodies) do
+	if S.links.waves and rawget(_G, "ArkherWaterX") then
+		for _, b in ipairs(rawget(_G, "ArkherWaterX").bodies) do
 			for _, wv in ipairs(b.waves) do
 				wv._isWave = true
 			end
@@ -166,8 +166,8 @@ function AEX.pushLinks(w)
 			end
 		end
 	end
-	if S.links.audio and ArkherAudioX then
-		for _, ev in ipairs(ArkherAudioX._ambients) do
+	if S.links.audio and rawget(_G, "ArkherAudioX") then
+		for _, ev in ipairs(rawget(_G, "ArkherAudioX")._ambients) do
 			if ev.dayNight == "rain" then ev.likelihood = math.min(0.3 + w.rain * 0.7, 1) end
 		end
 		local grp = ArkherAudioX._groups and ArkherAudioX._groups.weather
@@ -229,4 +229,4 @@ AEX._setup = ensureReal
 AEX.VERSION = "5.0"
 
 _G.ArkherAtmosX = AEX
-
+return AEX

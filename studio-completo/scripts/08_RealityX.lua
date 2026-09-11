@@ -1182,12 +1182,202 @@ end
 local wFabricar = mkWin("fabricar", "FABRICAR X — criar qualquer coisa", 590, 290, THEME_FAB)
 buildFabricar(wFabricar)
 
+
+-- =============================================================
+-- WATER X — oceanografia REAL (fisica, nao shader de jogo)
+-- comp. fisica (densidade/salinidade/temperatura/viscosidade) +
+-- ondas Gerstner com dispersao REAL omega=sqrt(g*k) + mares +
+-- Arquimedes (empuxo = rho*V*g) + cachoeira de materia real.
+-- =============================================================
+local THEME_WATER = {
+	bg = Color3.fromRGB(6, 24, 32), bg2 = Color3.fromRGB(9, 32, 42), bg3 = Color3.fromRGB(12, 42, 54),
+	cap = Color3.fromRGB(5, 20, 28), edge = Color3.fromRGB(28, 92, 112),
+	text = Color3.fromRGB(214, 244, 252), muted = Color3.fromRGB(118, 178, 192),
+	acc = Color3.fromRGB(53, 200, 232), act = Color3.fromRGB(14, 64, 80),
+	tag = "óceano real",
+}
+
+local function buildWater(win)
+	local th = THEME_WATER
+	local body = win.body
+	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
+
+	-- faixa viva de stats (pomp do servidor, 2.5s)
+	local statsBar = B("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 18), Position = UDim2.fromOffset(10, 6),
+		BackgroundColor3 = th.cap, Text = "  AWX conectando…",
+		Font = Enum.Font.Code, TextSize = 10, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, BorderSizePixel = 0, ZIndex = 43,
+		ClipsDescendants = true,
+	}, body)
+	H(statsBar, 6)
+	task.spawn(function()
+		while win.root.Parent do
+			task.wait(2.5)
+			if win.root.Visible then
+				local res = cmd("water_stats")
+				if res.msg then statsBar.Text = "  " .. res.msg end
+			end
+		end
+	end)
+
+	-- ============ COL 1: COMPOSICAO REAL (8 aguas) ============
+	B("TextLabel", {
+		Size = UDim2.fromOffset(200, 14), Position = UDim2.fromOffset(10, 30),
+		BackgroundTransparency = 1, Text = "COMPOSIÇÃO (física real)", Font = Enum.Font.GothamBold,
+		TextSize = 9, TextColor3 = th.acc, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 43,
+	}, body)
+	local kindList = listCtl(body, UDim2.fromOffset(10, 48), UDim2.fromOffset(200, 246), th)
+
+	-- ============ COL 2: PARAMETROS + ESTADO DO MAR ============
+	local mid = B("Frame", {
+		Size = UDim2.fromOffset(210, 246), Position = UDim2.fromOffset(218, 48),
+		BackgroundColor3 = th.bg2, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(mid, 7) ST(mid, 1, th.edge)
+	B("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 14), Position = UDim2.fromOffset(8, 6),
+		BackgroundTransparency = 1, Text = "PARÂMETROS FÍSICOS", Font = Enum.Font.GothamBold,
+		TextSize = 9, TextColor3 = th.acc, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+	}, mid)
+	local chosenKind = { id = "oceano" }
+	local kindLbl = B("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 16), Position = UDim2.fromOffset(8, 22),
+		BackgroundTransparency = 1, Text = "oceano — 1025 kg/m³ · sal 35 g/kg",
+		Font = Enum.Font.GothamBold, TextSize = 11, TextColor3 = th.text,
+		TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+	}, mid)
+	local seaId = { id = "porto" }
+	B("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 12), Position = UDim2.fromOffset(8, 44),
+		BackgroundTransparency = 1, Text = "estado do mar (Gerstner ω=√(g·k))", Font = Enum.Font.GothamBold,
+		TextSize = 8, TextColor3 = th.muted, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+	}, mid)
+	local seaRow = B("Frame", {
+		Size = UDim2.new(1, -16, 0, 50), Position = UDim2.fromOffset(8, 58),
+		BackgroundTransparency = 1, ZIndex = 44,
+	}, mid)
+	local seaBtns = {}
+	local seaNames = { "calmaria", "porto", "ressaca", "tempestade" }
+	for i, sn in ipairs(seaNames) do
+		local tb = B("TextButton", {
+			Size = UDim2.fromOffset(94, 22), Position = UDim2.fromOffset(((i - 1) % 2) * 100, math.floor((i - 1) / 2) * 26),
+			BackgroundColor3 = sn == "porto" and th.acc or th.bg3,
+			Text = sn, Font = Enum.Font.GothamBold, TextSize = 9,
+			TextColor3 = sn == "porto" and Color3.new(1, 1, 1) or th.muted,
+			BorderSizePixel = 0, ZIndex = 45,
+		}, seaRow)
+		H(tb, 5)
+		seaBtns[sn] = tb
+		tb.MouseButton1Click:Connect(function()
+			seaId.id = sn
+			for s2, b2 in pairs(seaBtns) do
+				b2.BackgroundColor3 = (s2 == sn) and th.acc or th.bg3
+				b2.TextColor3 = (s2 == sn) and Color3.new(1, 1, 1) or th.muted
+			end
+		end)
+	end
+	-- espelho/corredeira numa segunda linha (menos usados)
+	local altRow = B("Frame", {
+		Size = UDim2.new(1, -16, 0, 24), Position = UDim2.fromOffset(8, 110),
+		BackgroundTransparency = 1, ZIndex = 44,
+	}, mid)
+	for i, sn in ipairs({ "corredeira", "espelho" }) do
+		local tb = B("TextButton", {
+			Size = UDim2.fromOffset(94, 22), Position = UDim2.fromOffset((i - 1) * 100, 0),
+			BackgroundColor3 = th.bg3, Text = sn, Font = Enum.Font.GothamBold,
+			TextSize = 9, TextColor3 = th.muted, BorderSizePixel = 0, ZIndex = 45,
+		}, altRow)
+		H(tb, 5)
+		seaBtns[sn] = tb
+		tb.MouseButton1Click:Connect(function()
+			seaId.id = sn
+			for s2, b2 in pairs(seaBtns) do
+				b2.BackgroundColor3 = (s2 == sn) and th.acc or th.bg3
+				b2.TextColor3 = (s2 == sn) and Color3.new(1, 1, 1) or th.muted
+			end
+		end)
+	end
+	local lvlS = sliderCtl(mid, UDim2.fromOffset(8, 140), 0, "Nível do mar (studs)", -20, 60, 8, th, function() end)
+	local sizeS = sliderCtl(mid, UDim2.fromOffset(8, 178), 0, "Extensão (studs)", 128, 2048, 512, th, function() end)
+	actBtn(mid, UDim2.fromOffset(8, 214), UDim2.new(1, -16, 0, 26), "CRIAR ÁGUA DE VERDADE", th, function()
+		local res = cmd("water_create", {
+			kind = chosenKind.id, preset = seaId.id,
+			level = math.floor(lvlS.get()), size = math.floor(sizeS.get()),
+		})
+		log(msgOf(res))
+	end)
+
+	-- ============ COL 3: FISICA VIVA (demonstracoes reais) ============
+	local rig = B("Frame", {
+		Size = UDim2.fromOffset(210, 246), Position = UDim2.fromOffset(436, 48),
+		BackgroundColor3 = th.bg2, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(rig, 7) ST(rig, 1, th.edge)
+	B("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 26), Position = UDim2.fromOffset(8, 6),
+		BackgroundTransparency = 1, Text = "FÍSICA VIVA — demonstrações de materia real",
+		Font = Enum.Font.GothamBold, TextSize = 9, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, ZIndex = 44,
+	}, rig)
+	actBtn(rig, UDim2.fromOffset(8, 36), UDim2.new(1, -16, 0, 24), "Teste de Arquimedes (6 densidades)", th, function()
+		log(msgOf(cmd("water_float_test", {})))
+	end)
+	local fallH = stepCtl(rig, UDim2.fromOffset(8, 66), "queda (studs)", 22, 4, 6, 80, th, "%d", 0.46)
+	local fallF = stepCtl(rig, UDim2.new(0.5, 4, 0, 66), "gotas/s", 8, 2, 2, 40, th, "%d", 0.46)
+	actBtn(rig, UDim2.fromOffset(8, 100), UDim2.new(1, -16, 0, 24), "Cachoeira de verdade", th, function()
+		log(msgOf(cmd("water_waterfall", { h = fallH.get(), flow = fallF.get() })))
+	end)
+	actBtn(rig, UDim2.fromOffset(8, 130), UDim2.new(1, -16, 0, 24), "Barco físico (4 boias)", th, function()
+		log(msgOf(cmd("water_boat", {})))
+	end)
+	actBtn(rig, UDim2.fromOffset(8, 160), UDim2.new(1, -16, 0, 24), "Ler composição atual", th, function()
+		log(msgOf(cmd("water_composition", {})))
+	end)
+	B("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 40), Position = UDim2.fromOffset(8, 190),
+		BackgroundTransparency = 1,
+		Text = "Real aqui = oceano de verdade: densidade/sal/temperatura mudam empuxo; ondas obedecem dispersão gravitacional; maré tem período lunar. Não é skin visual.",
+		Font = Enum.Font.Gotham, TextSize = 9, TextColor3 = th.muted,
+		TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+		TextWrapped = true, ZIndex = 44,
+	}, rig)
+
+	-- preencher a lista de composicoes com dados REAIS do servidor
+	task.spawn(function()
+		local res = cmd("water_presets")
+		if not res.kinds then return end
+		for _, k in ipairs(res.kinds) do
+			local kb = B("TextButton", {
+				Size = UDim2.new(1, -8, 0, 28), BackgroundColor3 = th.bg3,
+				Text = ("  %s   %.0f kg/m³"):format(k.id, k.dens),
+				Font = Enum.Font.GothamBold, TextSize = 9,
+				TextColor3 = th.text, BorderSizePixel = 0,
+				TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+			}, kindList)
+			H(kb, 5)
+			kb.MouseButton1Click:Connect(function()
+				chosenKind.id = k.id
+				kindLbl.Text = ("%s — %.0f kg/m³ · sal %.1f g/kg · %.0f°C"):format(k.id, k.dens, k.sal, k.temp)
+				for _, ch in ipairs(kindList:GetChildren()) do
+					if ch:IsA("TextButton") then ch.BackgroundColor3 = th.bg3 end
+				end
+				kb.BackgroundColor3 = th.act
+			end)
+		end
+	end)
+	return win
+end
+
+local wWater = mkWin("water", "WATER X — oceanografia real (densidade · Gerstner · Arquimedes)", 656, 330, THEME_WATER)
+buildWater(wWater)
+
 -- =============================================================
 -- registro DECK (cada menu da topbar abre SUA janela única)
 -- =============================================================
 local windows = {
 	terrain = wTerrain, modeler = wModeler, animator = wAnimator,
-	espaco = wEspaco, fabricar = wFabricar,
+	espaco = wEspaco, fabricar = wFabricar, water = wWater,
 }
 _G.ArkherDeck = {
 	open = function(id, view)
@@ -1200,4 +1390,4 @@ _G.ArkherDeck = {
 	end,
 	cmd = cmd,
 }
-print("[ArkherX] 08_Deck: 5 editores únicos prontos (TERRAIN/MODELER/ANIMATOR/ESPAÇO/FABRICAR) — abrem pela topbar original")
+print("[ArkherX] 08_Deck: 6 editores únicos prontos (TERRAIN/WATER/MODELER/ANIMATOR/ESPAÇO/FABRICAR) — abrem pela topbar original")

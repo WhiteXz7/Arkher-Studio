@@ -7,7 +7,7 @@
 -- de cor/vida derivadas de temperatura/processo real. Do zero. ✨
 -- =============================================================
 
-local DM = ArkherDM or error("ArkherDM init")
+local DM = rawget(_G, "ArkherDM") or error("ArkherDM init")
 local mclamp = math.clamp or function(v, a, b)
 	if v ~= v then return a end
 	if v < a then return a end
@@ -141,4 +141,4 @@ end
 APX.VERSION = "5.0"
 
 _G.ArkherParticlesX = APX
-
+return APX

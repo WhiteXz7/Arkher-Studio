@@ -151,7 +151,18 @@ abre **um editor único com ferramentas reais** (`_G.ArkherDeck.open(id)`):
 | MODELAGEM | **MODELER X estilo Blender** — modos GERAR/EDITAR/TOPOLOGIA/FINALIZAR/PIPELINE, toolbox N-panel, outliner com verts/faces/operações reais da banca (99 mesh tools) | Blender genuíno |
 | ANIMAÇÃO | **ANIMATOR X estilo Cascadeur** — régua 48f@24fps com playhead do tempo real do rig, transporte PLAY/STOP, AutoPhysics (Secundária+Auto-Balanço+Balística somados no backend), palco/rigs | Cascadeur genuíno |
 | ESPAÇO | **ESPAÇO X** — criador orbital próprio: escada superfície→galáxia (escala real+LOG), Képler real (T∝r^1.5 no pump), mapa orbital 2D lendo estado VIVO do servidor, 2 presets prontos | único ARKHER (feito do zero) |
+| ÁGUA | **WATER X** — oceanografia REAL: 8 composições físicas (densidade kg/m³, salinidade g/kg, °C, viscos.), ondas Gerstner com dispersão ω=√(g·k), maré lunar, Arquimedes (empuxo ρ·V·g) com 6 densidades reais, cachoeira de matéria real | único ARKHER — física de oceano de verdade, não skin |
 | FABRICAR | **FABRICAR X** — gramática procedural (6 famílias, 50 classes), seed determinística/auto-seed, tingir real, "entra sozinho no mundo" (RRW) | único ARKHER |
+
+**FIX (2026-09, boot limpo):** os motores clássicos usavam globals bare
+(`ArkherDM = ...`), que NO ROBLOX ficam no environment privado de cada
+ModuleScript — por isso DM "sumia" e a cadeia `DM.clamp` quebrava em
+terrainx/waterx/scenex/animx/audiomix/atmosx/particlesx/ropex. Tudo agora
+exporta em `_G` (padrão dos novos) e **todos os 25 módulos têm `return`**;
+o EngineServer espelha os 25 símbolos após o boot. Services do editor
+antigo rodavam escrevendo `Source` (capability ausente em servidor comum)
+e spammavam erro — agora são **função inline** (mesmo código) com aviso
+único. Heartbeat ganhou o pump da água (ondas/caustics/falls/barcos).
 
 Nada é enfeite: todo clique muda o mundo de verdade (e todo efeito mostra a
 resposta do servidor no rodapé). RRW/Tese-D/D-O15 = backend invisível,

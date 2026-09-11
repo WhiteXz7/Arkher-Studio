@@ -379,7 +379,12 @@ do
 		-- escrever Source em runtime num servidor normal) — so escreve se vazio
 		local hasSrc = false
 		pcall(function() hasSrc = (#ms.Source or 0) > 10 end)
-		if not hasSrc then pcall(function() ms.Source = [[
+		-- CUSTOM OFFLINE (definitivo): escrever Source em runtime exige a capability
+		-- PluginOrOpenCloud, que um servidor de jogo NAO tem — por isso dava o
+		-- erro repetitivo 'cannot write Source'. Os servicos agora vivem COMO FUNCAO
+		-- inline dentro DESTE server (mesmo codigo); se uma placa ja trouxer o
+		-- ModuleScript com Source, usa require dele. Fim do warn infinito.
+		local function inlineServices()
 -- ARKHER Services (ModuleScript) — camada CUSTOM de persistência + dados.
 -- Roda no server (ServerStorage/ArkherCloudVault/ArkherServices). Não usa require externo;
 -- só services globais. Todo dado aninhado vai em atributo STRING (JSON) p/ persistir no place.
@@ -883,15 +888,19 @@ end
 
 return M
 
-]] end)
 		end
 		ms.Parent = vault
-		return require(ms)
+		if hasSrc then return require(ms) end
+		return inlineServices()
 	end)
 	if okMod and type(mod) == "table" then services = mod else servicesError = tostring(mod) end
 end
+if not services then
+	-- aviso UNICO no boot (nunca mais spam de Output)
+	warn("[Arkher] Services em modo degradado: " .. tostring(servicesError))
+end
 local function needSvc()
-	assert(services, "Arkher Services indisponiveis: " .. servicesError)
+	assert(services, "Arkher Services em modo degradado (veja aviso unico do boot).")
 	return services
 end
 
