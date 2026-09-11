@@ -13,7 +13,7 @@ local RunService = game:GetService("RunService")
 local engines = ServerStorage:WaitForChild("ArkherEngines", 30)
 assert(engines, "ArkherEngines ausente no ServerStorage (rode o injetor)")
 
-local ORDER = { "DM", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX" }
+local ORDER = { "DM", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX", "RIGX", "MSHX" }
 for _, nm in ipairs(ORDER) do
 	local ok, err = pcall(function() require(engines[nm]) end)
 	if not ok then warn("[ArkherX] motor " .. nm .. " falhou: " .. tostring(err)) end
@@ -31,6 +31,9 @@ function CMD.stats()
 		atx = ArkherTerrainX ~= nil, awx = ArkherWaterX ~= nil, asxn = ArkherSceneX ~= nil,
 		aax = ArkherAnimX ~= nil, aux = ArkherAudioX ~= nil, aex = ArkherAtmosX ~= nil,
 		apx = ArkherParticlesX ~= nil, rpx = ArkherRopeX ~= nil,
+		rigx = ArkherRigX ~= nil, meshx = ArkherMeshX ~= nil,
+		chains = ArkherRigX and (function() local n = 0 for _ in pairs(ArkherRigX.S.chains) do n = n + 1 end return n end)() or 0,
+		meshops = ArkherMeshX and ArkherMeshX.S.stats.ops or 0,
 		bodies = ArkherWaterX and #ArkherWaterX.bodies or 0,
 		ropes = ArkherRopeX and (#ArkherRopeX._ropes + #ArkherRopeX._cloths) or 0,
 		weather = ArkherAtmosX and ArkherAtmosX.S.state or "—",
@@ -154,6 +157,87 @@ function CMD.aax_demo(p)
 	return { msg = "AAX: cubo pulsando com spring+bounce reais (loop pingpong)" }
 end
 
+function CMD.rig_demo(p)
+	assert(ArkherRigX, "RIGX off")
+	ArkherRigX.stopAll()
+	local c = ArkherRigX.demo()
+	local parts = {}
+	for i = 1, #c.bones do
+		local prt = Instance.new("Part")
+		prt.Name = "RigX_bone" .. i
+		prt.Color = Color3.fromRGB(90, 190, 255)
+		prt.Material = Enum.Material.Neon
+		prt.Parent = workspace
+		table.insert(parts, prt)
+	end
+	_G.ArkherX_RigPlay = ArkherRigX.playTarget(c, {
+		center = Vector3.new(0, 5, -8), radius = 3.2, speed = 1.2,
+		parts = parts, thickness = 0.34, color = Color3.fromRGB(90, 190, 255),
+	})
+	return { msg = "RigX: cadeia 4 ossos FABRIK + pole, ghost ring e alvo orbital" }
+end
+
+function CMD.rig_stop(p)
+	if ArkherRigX then ArkherRigX.stopAll() end
+	return { msg = "RigX parado" }
+end
+
+function CMD.rig_balance(p)
+	assert(ArkherRigX, "RIGX off")
+	local c = next(ArkherRigX.S.chains) and ArkherRigX.S.chains[next(ArkherRigX.S.chains)]
+	if not c then return { msg = "crie a cadeia primeiro (RigX demo)" } end
+	local res = ArkherRigX.balance(c, { { x = -0.6, z = -8.4 }, { x = 0.6, z = -8.4 }, { x = 0.6, z = -7.2 }, { x = -0.6, z = -7.2 } })
+	return { msg = ("COM=%.1f,%.1f | margem=%.2f %s (Cascadeur-style)"):format(
+		res.com.X, res.com.Z, res.margin, res.inside and "DENTRO" or "FORA") }
+end
+
+function CMD.mesh_house(p)
+	assert(ArkherMeshX, "MSHX off")
+	CMD.mesh_clean()
+	local m = ArkherMeshX.house({ w = 16, h = 7, d = 12, windows = 3 })
+	_G.ArkherX_MeshModel = ArkherMeshX.bake(m, { name = "ArkherX_House", mode = (p and p.mode) or "auto",
+		color = Color3.fromRGB(212, 172, 120), th = 0.08 })
+	return { msg = ("MSHX casa: %d verts/%d faces (boolean janelas+porta REAL)"):format(#m.v, #m.f) }
+end
+
+function CMD.mesh_gear(p)
+	assert(ArkherMeshX, "MSHX off")
+	CMD.mesh_clean()
+	local m = ArkherMeshX.gear(3, 10, 0.8)
+	ArkherMeshX.translate(m, Vector3.new(22, 4, 0))
+	_G.ArkherX_MeshModel = ArkherMeshX.bake(m, { name = "ArkherX_Gear", mode = "edges",
+		color = Color3.fromRGB(43, 203, 243), th = 0.12 })
+	return { msg = ("MSHX engrenagem: %d verts/%d faces, 10 dentes extrudados"):format(#m.v, #m.f) }
+end
+
+function CMD.mesh_crystal(p)
+	assert(ArkherMeshX, "MSHX off")
+	CMD.mesh_clean()
+	local m = ArkherMeshX.crystal(2.4, 1.9)
+	ArkherMeshX.translate(m, Vector3.new(0, 5, 14))
+	_G.ArkherX_MeshModel = ArkherMeshX.bake(m, { name = "ArkherX_Crystal", mode = "edges",
+		color = Color3.fromRGB(166, 117, 240), th = 0.1 })
+	return { msg = ("MSHX cristal: %d verts/%d faces (icosa+subdiv tri)"):format(#m.v, #m.f) }
+end
+
+function CMD.mesh_mesa(p)
+	assert(ArkherMeshX, "MSHX off")
+	CMD.mesh_clean()
+	local m = ArkherMeshX.mesa((p and p.seed) or 7, 44, 8)
+	ArkherMeshX.translate(m, Vector3.new(0, 3, 40))
+	_G.ArkherX_MeshModel = ArkherMeshX.bake(m, { name = "ArkherX_Mesa", mode = "edges",
+		color = Color3.fromRGB(120, 220, 160), th = 0.09 })
+	return { msg = ("MSHX mesa: %d verts/%d faces (plane+displace+subdivide suave)"):format(#m.v, #m.f) }
+end
+
+function CMD.mesh_clean()
+	local old = workspace:FindFirstChild("ArkherX_House") or workspace:FindFirstChild("ArkherX_Gear")
+		or workspace:FindFirstChild("ArkherX_Crystal") or workspace:FindFirstChild("ArkherX_Mesa")
+		or workspace:FindFirstChild("ArkherX_Mesh")
+	if old then old:Destroy() end
+	return { msg = "mesh anterior limpa" }
+end
+
 -- ---------- remotes ----------
 cmdE.OnServerEvent:Connect(function(player, op, params)
 	local fn = CMD[tostring(op or "")]
@@ -181,6 +265,7 @@ RunService.Heartbeat:Connect(function(dt)
 	if ArkherAtmosX then pcall(function() ArkherAtmosX.pump(dt) end) end
 	if ArkherAnimX then pcall(function() ArkherAnimX.pump(dt) end) end -- inclui RPX (mesmo pulso)
 	if ArkherAudioX then pcall(function() ArkherAudioX.pump(dt) end) end
+	if ArkherRigX then pcall(function() ArkherRigX.pump(dt) end) end
 	acc = acc + dt
 	if acc > 0.25 then
 		acc = 0

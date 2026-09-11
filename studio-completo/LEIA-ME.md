@@ -120,4 +120,23 @@ Nós injetados (modelo nativo Roblox, anti-exploiter):
 | `ReplicatedStorage/ArkherNet/` | **só a ponte**: `ArkherXCmd` (RemoteEvent) + `ArkherXQ` (RemoteFunction) |
 | `StarterGui/ArkherStudioUI/Arkher_05_StudioX` | LocalScript NOVO — dock X com 8 editores (TERRAIN/WATER/SCENE/ATMOS/ROPE/PX/ANIM/STATS) no tema original, **ícones desenhados em Frames** (linhas/maisons, zero imagens) |
 
+**FIX (2026-09):** placa X dava `PROP.LocalScript.Disabled bool 4/5 → read offset out of bounds`
+no Studio — o injetor agora estende **todo** PROP de qualquer tipo que ganhou
+instância (bool=0, string/int/float=0 …) e VALIDA que `#valores == #instâncias`
+em cada um dos 121 chunks PROP (#StudioSafe). Baixe novamente a placa atual.
+
+**RIG X + MESH X (novos, nível Cascadeur++/Blender++):**
+- `studio-v3/core/rigx.luau` — FABRIK multi-iteração com pole target, CCD,
+  física de equilíbrio por COM projetado em polígono de suporte (estilo
+  Cascadeur), locomotion procedural por intenção, keyframes Catmull-Rom,
+  ghost/onion ring e spring secundário por osso — **ao vivo no Heartbeat**.
+- `studio-v3/core/meshx.luau` — soup vértice/face, geradores (box/plane/
+  cilindro/prisma/icosaedro+subdiv), extrude/inset/bevel/subdivide(Catmull-Clark
+  simplificado)/knife(Sutherland-Hodgman)/espelho/weld/ponte, **boolean convexo
+  REAL por recorte de semi-espaços (sem CSG service)**, bake auto em
+  EditableMesh→wedges→wireframe-neon. Demos: casa com janelas porta booleanas,
+  engrenagem dentada, cristal, mesa com displacement.
+- `Arkher_06_RigX` + `Arkher_07_MeshX`: painéis que se ACOPLAM ao dock do
+  05 (sem alterá-lo), mesmo tema, ícones desenhados (palito-rig, cubo-wire).
+
 Regerar: `python3 tools/inject_arkherx.py ../ArkherStudio_Completo_Pro.rbxl ../ArkherStudio_Completo_X.rbxl` → valida 1733 inst, 32 tipos, PRNT/END corretos. Testes: `python3 tools/run_tests.py` (109+ asserts, 27 painéis).

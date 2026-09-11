@@ -36,7 +36,7 @@ V3_CORE = os.path.join(ROOT, "..", "studio-v3", "core")
 
 MAGIC = b"<roblox!\x89\xff\r\n\x1a\n"
 
-ENGINE_MODULES = ["DM", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX"]
+ENGINE_MODULES = ["DM", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX", "RIGX", "MSHX"]
 
 
 def inst_chunk_payload(tid, class_name, is_s, refs):
@@ -85,6 +85,8 @@ def main():
         ("RemoteEvent", "ArkherXCmd", 0, None),      # parent patched depois
         ("RemoteFunction", "ArkherXQ", 0, None),     # parent patched depois
         ("LocalScript", "Arkher_05_StudioX", ref_screengui, os.path.join(ROOT, "scripts", "05_StudioX.lua")),
+        ("LocalScript", "Arkher_06_RigX", ref_screengui, os.path.join(ROOT, "scripts", "06_RigX.lua")),
+        ("LocalScript", "Arkher_07_MeshX", ref_screengui, os.path.join(ROOT, "scripts", "07_MeshX.lua")),
     ]
     # pais dos filhos de folder (Folder referencia ai nao conhecida ainda — resolvemos na 1a passada)
     ref_map = {}
@@ -164,7 +166,7 @@ def main():
                 f = os.path.join(V3_CORE, {
                     "DM": "dmath", "ATX": "terrainx", "AWX": "waterx", "ASXN": "scenex",
                     "AAX": "animx", "AUX": "audiomix", "AEX": "atmosx", "APX": "particlesx",
-                    "RPX": "ropex",
+                    "RPX": "ropex", "RIGX": "rigx", "MSHX": "meshx",
                 }[src] + ".luau")
             else:
                 f = src
@@ -191,6 +193,42 @@ def main():
                     break
             if not found:
                 new_chunks.append((b"PROP", prop_string_payload(tid, "Source", srcs)))
+
+    # ---------- PROP genericos de tipos ESTENDIDOS (Disabled etc.) ----------
+    # REGRA CRITICA: qualquer chunk PROP cujo type_id teve instancias anexadas
+    # precisa receber 1 valor default por instancia nova — senao o Studio le
+    # valores alem do fim do chunk (erro "offset out of bounds" / bool 4/5).
+    SCALAR_SIZE = {  # bytes por valor (zeros sao default seguro p/ interleave)
+        0x01: 4,    # string vazia (u32 len=0)
+        0x02: 1,    # bool false
+        0x03: 4,    # int32 0
+        0x04: 4,    # float 0.0
+        0x05: 8,    # double 0.0
+        0x06: 8,    # UDim 0,0
+        0x07: 16,   # UDim2
+        0x0C: 12,   # Color3 preto
+        0x0E: 8,    # Vector2
+        0x0F: 12,   # Vector3
+        0x13: 4,    # enum/int categ.
+        0x1E: 8,    # UDim (alt)
+    }
+    for cls, items in new_by_class.items():
+        if cls not in ("Script", "LocalScript"):
+            continue  # so essas classes PRE-existiam com outros PROPs
+        tid = type_ids[cls]
+        for idx, (cname, payload) in enumerate(chunks):
+            if cname != b"PROP" or idx in updated_chunks:
+                continue
+            cr = pyrbxl2.R(payload)
+            ptid = cr.u32(); pname = cr.string(); tc = cr.u8()
+            if ptid != tid:
+                continue
+            if pname in ("Name", "Source"):
+                continue  # ja estendidos acima com valores REAIS
+            sz = SCALAR_SIZE.get(tc)
+            if sz is None:
+                sys.exit(f"tipo de PROP desconhecido p/ extensao: {cls}.{pname} tc=0x{tc:02x}")
+            updated_chunks[idx] = payload + (b"\x00" * sz) * len(items)
 
     # ---------- PRNT: anexa pares (subject=novo, parent=dest) ----------
     for idx, (cname, payload) in enumerate(chunks):
@@ -253,7 +291,31 @@ def main():
             assert pref == want_par[sref], f"PRNT pai errado p/ ref {sref}: {pref} != {want_par[sref]}"
             del want_par[sref]
     assert not want_par, f"faltaram pares PRNT: {want_par}"
-    print(f"validacao OK: {m2.num_types} tipos, {m2.num_instances} instancias, {len(NODES)} novas + PRNT checkado")
+
+    # REGRA Studio: #valores por PROP == #instancias do tipo (senao OOB read)
+    n_by_tid = {tid: len(refs) for tid, refs in r2_b.items()}
+    SZ = {0x02: 1, 0x03: 4, 0x04: 4, 0x05: 8, 0x06: 8, 0x07: 16, 0x0C: 12,
+          0x0E: 8, 0x0F: 12, 0x13: 4, 0x1E: 8, 0x09: 4, 0x1B: 4}
+    nprops = 0
+    for cname, payload in [(c[0], c[1]) for c in m2.chunks]:
+        if cname != b"PROP":
+            continue
+        cr = pyrbxl2.R(payload)
+        tid = cr.u32(); pname = cr.string(); tc = cr.u8()
+        wantn = n_by_tid.get(tid, 0)
+        if tc == 0x01:  # strings: decodifica e conta
+            vals = 0
+            while cr.i < len(payload):
+                n = cr.u32(); cr.take(n); vals += 1
+            assert vals == wantn, f"PROP {t2_b.get(tid,'?')}.{pname}: {vals} valores p/ {wantn} inst"
+        elif tc in SZ:
+            rest = len(payload) - cr.i
+            assert rest == SZ[tc] * wantn, (
+                f"PROP {t2_b.get(tid,'?')}.{pname} tc=0x{tc:02x}: {rest}B p/ {wantn} inst "
+                f"(esperado {SZ[tc]*wantn}B)")
+        nprops += 1
+    print(f"validacao OK: {m2.num_types} tipos, {m2.num_instances} instancias, "
+          f"{len(NODES)} novas + PRNT + {nprops} PROP chunks checks #StudioSafe")
     return 0
 
 
