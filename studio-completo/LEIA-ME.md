@@ -102,3 +102,22 @@ python3 studio-completo/tools/patch_rbxl.py ArkherStudio_Completo.rbxl ArkherStu
   "LocalScript:Arkher_03_Menus=studio-completo/scripts/03_Menus.lua" \
   "LocalScript:Arkher_04_Gizmos=studio-completo/scripts/04_Gizmos.orig.lua"
 ```
+
+---
+
+## 🆕 ARKHER X embutido (build `ArkherStudio_Completo_X.rbxl`)
+
+Gerado por `tools/inject_arkherx.py` a partir da placa Pro, de forma **100% aditiva**:
+a GUI original fica **byte-a-byte idêntica** (138/146 chunks preservados exatos;
+os 8 restantes são os mesmos chunks com *appends* — prova automática no injetor).
+
+Nós injetados (modelo nativo Roblox, anti-exploiter):
+
+| Onde | O quê |
+|---|---|
+| `ServerStorage/ArkherEngines/` | `ArkherX_DM/ATX/AWX/ASXN/AAX/AUX/AEX/APX/RPX` (9 ModuleScripts — motores v3 inteiros) |
+| `ServerScriptService/ArkherEngineServer` | Script ponte: comandos, pumps Heartbeat (AEX/AAX+AUX/LOD), remotes |
+| `ReplicatedStorage/ArkherNet/` | **só a ponte**: `ArkherXCmd` (RemoteEvent) + `ArkherXQ` (RemoteFunction) |
+| `StarterGui/ArkherStudioUI/Arkher_05_StudioX` | LocalScript NOVO — dock X com 8 editores (TERRAIN/WATER/SCENE/ATMOS/ROPE/PX/ANIM/STATS) no tema original, **ícones desenhados em Frames** (linhas/maisons, zero imagens) |
+
+Regerar: `python3 tools/inject_arkherx.py ../ArkherStudio_Completo_Pro.rbxl ../ArkherStudio_Completo_X.rbxl` → valida 1733 inst, 32 tipos, PRNT/END corretos. Testes: `python3 tools/run_tests.py` (109+ asserts, 27 painéis).
