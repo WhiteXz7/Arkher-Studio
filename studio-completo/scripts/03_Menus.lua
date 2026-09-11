@@ -709,7 +709,7 @@ openPublishDialog = function()
     tt.AnchorPoint = Vector2.new(0.5, 0.5)
     tt.TextXAlignment = Enum.TextXAlignment.Center
     tt.TextWrapped = true
-    local play = button("PlayBtn", gc, UDim2.fromOffset(20, 182), UDim2.fromOffset(300, 44), "▶  JOGAR", m.blue)
+    local play = button("PlayBtn", gc, UDim2.fromOffset(20, 182), UDim2.fromOffset(300, 44), "JOGAR", m.blue)
     play.TextSize = 20
     play.ZIndex = 43
     corner(play, 8)
@@ -769,7 +769,7 @@ openCloudPanel = function()
   label("Acc", body, "Conta @" .. (sr.owner or "dev") .. "  ·  " .. (sr.plan or "Creator") .. "  ·  região " .. (sr.region or "—") .. "\nRegistros persistem no seu place (caminho custom, sem Cloud API real).", 0, 8, 620, 40, 14, m.cyan, true)
   rowLabel(body, "Salvar cópia do projeto na cloud", 0, 54, 300, 15)
   local cname = input(body, "CName", 0, 76, 420, "Nome da cópia")
-  local saveBtn = actionBtn(body, 430, 76, 190, 34, "Salvar na Cloud  ☁", m.blue)
+  local saveBtn = actionBtn(body, 430, 76, 190, 34, "Salvar na Cloud", m.blue)
   saveBtn.Activated:Connect(function() doCloudSave(cname.Text) openCloudPanel() end)
   local list = scrollList(body, 0, 126, 620, 356)
   if #projects == 0 then
@@ -861,7 +861,7 @@ openToolboxPanel = function()
       corner(icon, 6)
       label("N", c, it.name, 56, 8, 260, 22, 16, m.text)
       label("D", c, it.description, 56, 32, 320, 18, 12, m.muted)
-      local ins = actionBtn(c, 420, 12, 120, 32, "Inserir  +", m.blue)
+      local ins = actionBtn(c, 420, 12, 120, 32, "Inserir", m.blue)
       ins.Activated:Connect(function()
         local st = state()
         local rr, ee = api("ToolboxInsert", { id = it.id, parentId = st.selectedId or st.workspaceId })

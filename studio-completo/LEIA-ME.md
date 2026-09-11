@@ -12,7 +12,7 @@ byte-idênticos); o que mudou é **apenas a fonte de 3 scripts** + um **ModuleSc
 
 | Arquivo | O que é |
 |---|---|
-| `ArkherStudio_Completo_Pro.rbxl` | **ENTREGA** — placa original + todos os sistemas (67.386 B) |
+| `ArkherStudio_Completo_Pro.rbxl` | **ENTREGA** — placa original + todos os sistemas (67.371 B) |
 | `ArkherStudio_Completo.rbxl` | placa original (referência, intacta) |
 | `scripts/server.lua` | servidor estendido (edição + **ARKHER SERVICES**) |
 | `scripts/01_Nucleo.lua` | núcleo (menus, Command Bar, F5, lock, **roteia os sistemas p/ painéis**) |
