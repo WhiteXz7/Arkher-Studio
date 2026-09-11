@@ -1130,6 +1130,21 @@ bj.OnInvoke = function(action, payload)
   elseif action == "OpenPublish" then
     openPublishDialog()
     return true
+  elseif action == "MUNDO" then
+    buildMenu("MUNDO", payload and payload.button)
+    return true
+  elseif action == "MODELAGEM" then
+    buildMenu("MODELAGEM", payload and payload.button)
+    return true
+  elseif action == "ANIMACAO" then
+    buildMenu("ANIMACAO", payload and payload.button)
+    return true
+  elseif action == "ESPACO" then
+    buildMenu("ESPACO", payload and payload.button)
+    return true
+  elseif action == "FABRICAR" then
+    buildMenu("FABRICAR", payload and payload.button)
+    return true
   elseif action == "Destroy" then
     closeMenu()
     n.alive = false
@@ -1144,3 +1159,99 @@ script.Destroying:Connect(function()
   if n.alive then pcall(function() bj:Invoke("Destroy", {}) end) end
 end)
 print("Arkher 03_Menus (estendido) pronto: File/Edit/View/Insert/Run/Game + topos.")
+
+
+-- =============================================================
+-- MENUS X (ADITIVO) — os editores unicos do ARKHER na topbar
+-- original. Cada menu abre uma UI DEDICADA (TERRAIN / MODELER
+-- Blender / ANIMATOR Cascadeur / ESPAÇO / FABRICAR). RRW/D-O15/
+-- Tese dos D ficam no backend invisível; aqui é 100% DEV.
+-- =============================================================
+
+MENUS.MUNDO = {
+  { icon = "Part", label = "Editor TERRAIN X (abrir)", act = "XOpenTerrain" },
+  { sep = true },
+  { icon = "plus", label = "Gerar planeta (sócio tectônico)…", act = "XOpenTerrainGen" },
+  { icon = "Data", label = "Sonda do mundo (bioma/clima/matéria)", act = "XOpenTerrainProbe" },
+}
+MENUS.MODELAGEM = {
+  { icon = "Model", label = "Modeler X (abrir, estilo Blender)", act = "XOpenModeler" },
+  { sep = true },
+  { icon = "plus", label = "Nova primitiva na banca…", act = "XOpenModelerPrim" },
+}
+MENUS.ANIMACAO = {
+  { icon = "Play", label = "Animator X (abrir, estilo Cascadeur)", act = "XOpenAnimator" },
+  { sep = true },
+  { icon = "Players", label = "AutoRig (esqueletos)…", act = "XOpenAnimatorRig" },
+  { icon = "Settings", label = "AutoPhysics 0→1…", act = "XOpenAnimatorPhys" },
+}
+MENUS.ESPACO = {
+  { icon = "expand", label = "Editor de ESPAÇO (abrir)", act = "XOpenEspaco" },
+  { sep = true },
+  { icon = "plus", label = "Preset: Sistema Solar (log)", act = "XEspacoSolar" },
+  { icon = "plus", label = "Preset: Terra + Lua + Sol", act = "XEspacoTerraLua" },
+}
+MENUS.FABRICAR = {
+  { icon = "plus", label = "Fabricator X (abrir catálogo)", act = "XOpenFabricar" },
+  { sep = true },
+  { icon = "Folder", label = "Listar classes da gramática", act = "XFabricarList" },
+}
+
+local function deckOpen(id, view)
+  local d = rawget(_G, "ArkherDeck")
+  if d and d.open then return d.open(id, view) end
+  say("Deck X ainda carregando… tente de novo em 2s.", true)
+end
+local function deckCmd(op, params)
+  local d = rawget(_G, "ArkherDeck")
+  if d and d.cmd then return d.cmd(op, params) end
+  say("Deck X indisponível p/ backend.", true)
+end
+
+actions.XOpenTerrain      = function() deckOpen("terrain", "ferramentas") end
+actions.XOpenTerrainGen   = function() deckOpen("terrain", "gerar") end
+actions.XOpenTerrainProbe = function() deckOpen("terrain", "sonda") end
+actions.XOpenModeler      = function() deckOpen("modeler", "gerar") end
+actions.XOpenModelerPrim  = function() deckOpen("modeler", "gerar") end
+actions.XOpenAnimator     = function() deckOpen("animator", "palco") end
+actions.XOpenAnimatorRig  = function() deckOpen("animator", "rigs") end
+actions.XOpenAnimatorPhys = function() deckOpen("animator", "physics") end
+actions.XOpenEspaco       = function() deckOpen("espaco", "sistema") end
+actions.XOpenFabricar     = function() deckOpen("fabricar", "catalogo") end
+actions.XEspacoSolar      = function() deckCmd("space_preset", { id = "solar" }) deckOpen("espaco", "sistema") end
+actions.XEspacoTerraLua   = function() deckCmd("space_preset", { id = "terra_lua" }) deckOpen("espaco", "sistema") end
+actions.XFabricarList     = function() deckOpen("fabricar", "catalogo") end
+
+-- ---- botoes na MenuRow da topbar ORIGINAL (clona estilo do irmao) ----
+do
+  local weekdayALvo = { "MUNDO", "MODELAGEM", "ANIMACAO", "ESPACO", "FABRICAR" }
+  local function findBtn(nm)
+    for _, c in ipairs(g:GetDescendants()) do
+      if c:IsA("GuiButton") and c.Name == nm then return c end
+    end
+    return nil
+  end
+  local ref = findBtn("View") or findBtn("Game") or findBtn("Insert")
+  if ref and ref.Parent then
+    local row = ref.Parent
+    local byName = {}
+    for _, c in ipairs(row:GetChildren()) do
+      if c:IsA("GuiButton") then byName[c.Name] = true end
+    end
+    for i, nm in ipairs(weekdayALvo) do
+      if not byName[nm] then
+        local b0 = ref:Clone()
+        b0.Name = nm
+        b0.Text = (nm == "ANIMACAO") and "ANIMAÇÃO" or (nm == "FABRICAR" and "FABRICAR" or nm)
+        b0.Parent = row
+        pcall(function() b0.LayoutOrder = 100 + i end) -- DEPOIS do GAME
+        b0.Activated:Connect(function()
+          W(nm, { button = b0 })
+        end)
+      end
+    end
+    print("[ArkherX] Menus X na topbar original: MUNDO / MODELAGEM / ANIMAÇÃO / ESPAÇO / FABRICAR")
+  else
+    warn("[ArkherX] MenuRow não achada — menus X vivem só via MenusBus")
+  end
+end

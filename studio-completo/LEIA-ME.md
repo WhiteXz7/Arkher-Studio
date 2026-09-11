@@ -118,7 +118,7 @@ Nós injetados (modelo nativo Roblox, anti-exploiter):
 | `ServerStorage/ArkherEngines/` | `ArkherX_DM/ATX/AWX/ASXN/AAX/AUX/AEX/APX/RPX` (9 ModuleScripts — motores v3 inteiros) |
 | `ServerScriptService/ArkherEngineServer` | Script ponte: comandos, pumps Heartbeat (AEX/AAX+AUX/LOD), remotes |
 | `ReplicatedStorage/ArkherNet/` | **só a ponte**: `ArkherXCmd` (RemoteEvent) + `ArkherXQ` (RemoteFunction) |
-| `StarterGui/ArkherStudioUI/Arkher_05_StudioX` | LocalScript NOVO — dock X com 8 editores (TERRAIN/WATER/SCENE/ATMOS/ROPE/PX/ANIM/STATS) no tema original, **ícones desenhados em Frames** (linhas/maisons, zero imagens) |
+| `StarterGui/ArkherStudioUI/Arkher_01/03/08` | LocalScripts X — `03_Menus` (menus X na **topbar ORIGINAL** do Mezzanine, clonando seus botões) + `08_RealityX` (o DECK: 5 editores únicos) |
 
 **FIX (2026-09):** placa X dava `PROP.LocalScript.Disabled bool 4/5 → read offset out of bounds`
 no Studio — o injetor agora estende **todo** PROP de qualquer tipo que ganhou
@@ -136,10 +136,27 @@ em cada um dos 121 chunks PROP (#StudioSafe). Baixe novamente a placa atual.
   REAL por recorte de semi-espaços (sem CSG service)**, bake auto em
   EditableMesh→wedges→wireframe-neon. Demos: casa com janelas porta booleanas,
   engrenagem dentada, cristal, mesa com displacement.
-- `Arkher_06_RigX` + `Arkher_07_MeshX`: painéis que se ACOPLAM ao dock do
-  05 (sem alterá-lo), mesmo tema, ícones desenhados (palito-rig, cubo-wire).
+- **RIG X + MESH X no DECK** (os docks 05/06/07 foram removidos: eram
+  "enfeite" de retângulos e a diretriz é ZERO painel sem efeito real).
 
-Regerar: `python3 tools/inject_arkherx.py ../ArkherStudio_Completo_Pro.rbxl ../ArkherStudio_Completo_X.rbxl` → valida **1.753 inst, 32 tipos (184.584 B)**, PRNT/END corretos.
+Regerar: `python3 tools/inject_arkherx.py ../ArkherStudio_Completo_Pro.rbxl ../ArkherStudio_Completo_X.rbxl` → valida **1.751 inst, 32 tipos (185.317 B)**, PRNT/END corretos.
+
+**UI SOBERANA (round 4 — super-diretriz do estúdio):** a topbar é a ORIGINAL
+da UI (botões do Mezzanine dentro dela, criados por clone). Cada menu novo
+abre **um editor único com ferramentas reais** (`_G.ArkherDeck.open(id)`):
+
+| Menu topbar | Editor único (08_Deck) | Não é cópia de... |
+|---|---|---|
+| MUNDO | **TERRAIN X** — categorias>>52 tools reais do WORLDX, r/amp/X/Z, sonda viva, geração planetária | ferramenta territorial própria ARKHER |
+| MODELAGEM | **MODELER X estilo Blender** — modos GERAR/EDITAR/TOPOLOGIA/FINALIZAR/PIPELINE, toolbox N-panel, outliner com verts/faces/operações reais da banca (99 mesh tools) | Blender genuíno |
+| ANIMAÇÃO | **ANIMATOR X estilo Cascadeur** — régua 48f@24fps com playhead do tempo real do rig, transporte PLAY/STOP, AutoPhysics (Secundária+Auto-Balanço+Balística somados no backend), palco/rigs | Cascadeur genuíno |
+| ESPAÇO | **ESPAÇO X** — criador orbital próprio: escada superfície→galáxia (escala real+LOG), Képler real (T∝r^1.5 no pump), mapa orbital 2D lendo estado VIVO do servidor, 2 presets prontos | único ARKHER (feito do zero) |
+| FABRICAR | **FABRICAR X** — gramática procedural (6 famílias, 50 classes), seed determinística/auto-seed, tingir real, "entra sozinho no mundo" (RRW) | único ARKHER |
+
+Nada é enfeite: todo clique muda o mundo de verdade (e todo efeito mostra a
+resposta do servidor no rodapé). RRW/Tese-D/D-O15 = backend invisível,
+automático. Sem automação falsa na UI — é tudo o DEV operando; a Singularity
+AI (bloco futuro) é quem automatiza.
 
 **TECH Z + K (2026-09, round 4 — 3 blocos em qualidade máxima):**
 - `rlayer.luau` (RLX, tech Z OBRIGATÓRIA — **Reality Layer**): a realidade em

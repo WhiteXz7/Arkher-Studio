@@ -24,7 +24,7 @@ if not engines then
 	error("ArkherEngines ausente no ServerStorage (ver probes acima)")
 end
 
-local ORDER = { "DM", "THX", "WLDX", "RRX", "FABX", "DAYX", "ECOX", "WEAX", "CIVIX", "SECX", "PHYSX", "RLX", "DPX", "MINDX", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX", "RIGX", "MSHX" }
+local ORDER = { "DM", "THX", "WLDX", "RRX", "FABX", "DAYX", "ECOX", "WEAX", "CIVIX", "SECX", "PHYSX", "RLX", "DPX", "MINDX", "SPX", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX", "RIGX", "MSHX" }
 for _, nm in ipairs(ORDER) do
 	local ok, err = pcall(function() require(engines["ArkherX_" .. nm]) end)
 	if not ok then warn("[ArkherX] motor " .. nm .. " falhou: " .. tostring(err)) end
@@ -177,7 +177,22 @@ function CMD.fabricate(p)
 	p = p or {}
 	local res, err = ArkherFabricX.fabricate(p, { pos = Vector3.new(p.x or 0, p.y or 0, p.z or -14) })
 	if not res then return { msg = "✗ " .. tostring(err) } end
-	return { msg = ("FABRICADO: %s (seed %s) — %d parts de materia real, JA registrado no RRW automatico"):format(res.kind, tostring(res.seed), res.parts) }
+	local tintMsg = ""
+	if p.cr and res.model then
+		local c = Color3.fromRGB(
+			math.clamp(math.floor(tonumber(p.cr) or 255), 0, 255),
+			math.clamp(math.floor(tonumber(p.cg) or 255), 0, 255),
+			math.clamp(math.floor(tonumber(p.cb) or 255), 0, 255))
+		local t = 0
+		for _, d in ipairs(res.model:GetDescendants()) do
+			if d:IsA("BasePart") and d.Material ~= Enum.Material.Glass and d.Material ~= Enum.Material.Neon then
+				d.Color = c
+				t = t + 1
+			end
+		end
+		if t > 0 then tintMsg = (" (TINGIDO em %d parts)"):format(t) end
+	end
+	return { msg = ("FABRICADO: %s (seed %s)%s — %d parts de materia real, JA registrado no RRW automatico"):format(res.kind, tostring(res.seed), tintMsg, res.parts) }
 end
 
 function CMD.fabricate_list()
@@ -336,6 +351,78 @@ function CMD.mind_food(p)
 	p = p or {}
 	local n = ArkherMindX.addFoodSpot(p.x or 0, p.z or 0)
 	return { msg = ("Comida registrada (%d total) — mentes famintas vão buscar sozinhas (causalidade auditável)"):format(n) }
+end
+
+
+function CMD.space_preset(p)
+	assert(ArkherSpaceX, "SPX off")
+	local n = ArkherSpaceX.preset((p and p.id) or "solar")
+	return { msg = ("ESPAÇO: preset '%s' com %d corpos celestes (órbitas keplerianas p ∝ r^1.5)"):format((p and p.id) or "solar", n) }
+end
+
+function CMD.space_add(p)
+	assert(ArkherSpaceX, "SPX off")
+	p = p or {}
+	local b = ArkherSpaceX.add(p)
+	return { msg = ("corpo '%s' adicionado: r=%skm, órbita=%skm — exibido em escala %s"):format(
+		b.name, tostring(b.radiusKm), tostring(b.orbitKm), ArkherSpaceX.S.mode) }
+end
+
+function CMD.space_orbits(p)
+	assert(ArkherSpaceX, "SPX off")
+	ArkherSpaceX.S.orbits = (p and p.on ~= false)
+	return { msg = "ÓRBITAS " .. (ArkherSpaceX.S.orbits and "ON (keplerianas reais no pump RRX)" or "PAUSADAS") }
+end
+
+function CMD.space_mode(p)
+	assert(ArkherSpaceX, "SPX off")
+	local m2 = ArkherSpaceX.setMode((p and p.id) or "sistema")
+	return { msg = "ESPAÇO modo '" .. m2 .. "': " .. ArkherSpaceX.MODES[m2].note }
+end
+
+function CMD.space_state()
+	assert(ArkherSpaceX, "SPX off")
+	return { bodies = ArkherSpaceX.state(), mode = ArkherSpaceX.S.mode }
+end
+
+function CMD.bench_stats()
+	assert(ArkherMeshX, "MSHX off")
+	local buf = _G.ArkherX_MeshBuf or {}
+	local m = buf.mesh
+	return {
+		verts = m and #m.v or 0,
+		faces = m and #m.f or 0,
+		ops = ArkherMeshX.S.stats.ops,
+		msg = m and ("banca: " .. #m.v .. " verts / " .. #m.f .. " faces / " .. ArkherMeshX.S.stats.ops .. " ops") or "banca vazia — gere uma primitiva",
+	}
+end
+
+function CMD.bones_visibility(p)
+	local on = p and p.on ~= false
+	local n = 0
+	for _, d in ipairs(workspace:GetDescendants()) do
+		if d:IsA("BasePart") and (d.Name:match("^RigX") or d.Name:match("^NPC_b") or d.Name:match("^RigX_bone")) then
+			d.Transparency = on and 0 or 1
+			n = n + 1
+		end
+	end
+	return { msg = ("Ossos/palco: %s em %d partes"):format(on and "VISÍVEIS" or "ocultos", n) }
+end
+
+function CMD.world_probe(p)
+	assert(ArkherWorldX, "WLDX off")
+	local w = ArkherRealityX and (ArkherRealityX.S.earth or ArkherRealityX.S.world)
+	if not w then return { msg = "gere um mundo primeiro" } end
+	p = p or {}
+	local x, z = p.x or 0, p.z or 0
+	local h = ArkherWorldX.height(w, x, z)
+	local bi, cl = ArkherWorldX.biomeAt(w, x, z)
+	local mat = ArkherWorldX.materialAt(w, x, z, cl, bi)
+	local bname = type(bi) == "table" and (bi.name or bi.id) or tostring(bi)
+	return {
+		h = h, biome = tostring(bname), mat = mat,
+		msg = ("@(%.0f,%.0f): h=%.1f | bioma %s | matéria %s"):format(x, z, h, tostring(bname), mat),
+	}
 end
 
 function CMD.stats()
@@ -652,4 +739,4 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
-print("[ArkherX] EngineServer pronto — 24 motores (RRW+RL+Predictive+Mentes) + ponte ArkherNet")
+print("[ArkherX] EngineServer pronto — 25 motores (RRW backend + ESPAÇO) + ponte ArkherNet blindada")
