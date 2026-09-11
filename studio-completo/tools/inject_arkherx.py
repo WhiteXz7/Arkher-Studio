@@ -263,11 +263,20 @@ def main():
     for idx, (cname, payload) in enumerate(chunks):
         if cname.startswith(b"END"):
             continue  # re-emite por ultimo (spec: END termina o arquivo)
+        if cname == b"PRNT":
+            # CRITICO: os INST/PROP novos TEM que vir ANTES do PRNT — o loader
+            # do Studio so aplica parentesco de instancias JA declaradas.
+            # Se PRNT chega antes, os filhos novos caem no limbo (sumiam!).
+            for nc, npay in new_chunks:
+                out += chunk_out(nc, npay)
+            new_chunks = []
+            out += chunk_out(cname, updated_chunks.get(idx, payload))
+            continue
         if idx in updated_chunks:
             out += chunk_out(cname, updated_chunks[idx])
         else:
             out += chunk_out(cname, payload)
-    for cname, payload in new_chunks:
+    for cname, payload in new_chunks:  # fallback (sem PRNT no arquivo)
         out += chunk_out(cname, payload)
     end_payload = next((p for n, p in chunks if n.startswith(b"END")), b"\x00</roblox>")
     out += chunk_out(b"END\x00", end_payload)
@@ -303,6 +312,13 @@ def main():
     n_by_tid = {tid: len(refs) for tid, refs in r2_b.items()}
     SZ = {0x02: 1, 0x03: 4, 0x04: 4, 0x05: 8, 0x06: 8, 0x07: 16, 0x0C: 12,
           0x0E: 8, 0x0F: 12, 0x13: 4, 0x1E: 8, 0x09: 4, 0x1B: 4}
+    # ORDEM: todo INST vem antes do PRNT (senao Studio descarta parentescos)
+    seq = [c[0] for c in m2.chunks]
+    prnt_pos = seq.index(b"PRNT")
+    assert all(pos < prnt_pos for pos, cn in enumerate(seq) if cn != b"PRNT" and not cn.startswith(b"END") and cn == b"INST"), \
+        "INST depois do PRNT — parentescos novos seriam descartados"
+    assert seq[-1].startswith(b"END") and seq[-2] == b"PRNT", "layout final deve ser ...PRNT, END"
+
     nprops = 0
     for cname, payload in [(c[0], c[1]) for c in m2.chunks]:
         if cname != b"PROP":
