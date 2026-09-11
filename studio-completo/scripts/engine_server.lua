@@ -26,7 +26,7 @@ end
 
 local ORDER = { "DM", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX", "RIGX", "MSHX" }
 for _, nm in ipairs(ORDER) do
-	local ok, err = pcall(function() require(engines[nm]) end)
+	local ok, err = pcall(function() require(engines["ArkherX_" .. nm]) end)
 	if not ok then warn("[ArkherX] motor " .. nm .. " falhou: " .. tostring(err)) end
 end
 
@@ -287,4 +287,4 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
-print("[ArkherX] EngineServer pronto — 9 motores no vault + ponte ArkherNet ativa")
+print("[ArkherX] EngineServer pronto — 11 motores no vault + ponte ArkherNet ativa")

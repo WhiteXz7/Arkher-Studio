@@ -687,7 +687,8 @@ local function scrollList(parent, x, y, w, h)
   s.BorderSizePixel = 0
   s.ScrollBarThickness = 8
   s.ScrollBarImageColor3 = m.blue
-  s.AutomaticCanvasSize = true
+  s.AutomaticCanvasSize = Enum.AutomaticSize.Y
+  s.CanvasSize = UDim2.new(0, 0, 0, 0)
   s.ZIndex = 42
   s.Parent = parent
   local ll = Instance.new("UIListLayout")
