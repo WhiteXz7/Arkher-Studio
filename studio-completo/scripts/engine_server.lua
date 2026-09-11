@@ -864,6 +864,194 @@ end
 
 -- ---------- pumps (servidor, pelo RunService puro) ----------
 local acc = 0
+
+-- =============================================================
+-- COMANDOS DOS NOVOS EDITORES X (ATMOS / CLIMA / VIDA / CIDADE /
+-- AUDIO / FX / CORDAS) — toda a UI nova vem por esses canais reais
+-- =============================================================
+
+function CMD.atmos_list()
+	assert(ArkherAtmosX, "AEX off")
+	local skies = {}
+	for id, pr in pairs(ArkherAtmosX.SKY_PRESETS) do
+		skies[#skies + 1] = { id = id, kelvin = pr.kelvin, clock = pr.clock, fogEnd = pr.fogEnd }
+	end
+	table.sort(skies, function(a, b) return a.clock < b.clock end)
+	local weathers = {}
+	for id in pairs(ArkherAtmosX.WEATHER) do weathers[#weathers + 1] = id end
+	table.sort(weathers)
+	local S = ArkherAtmosX.S
+	return { skies = skies, weathers = weathers, preset = S.preset, state = S.state, clock = S.clock }
+end
+
+function CMD.atmos_clock(p)
+	assert(ArkherAtmosX, "AEX off")
+	local h = math.clamp(tonumber(p and p.h) or 12, 0, 24)
+	ArkherAtmosX.setClock(h)
+	return { msg = ("RELÓGIO SOLAR -> %.1fh (o céu cruza os Kelvin SOZINHO no pump — sem truque de cor)"):format(h) }
+end
+
+function CMD.atmos_stats()
+	if not ArkherAtmosX then return { msg = "AEX off" } end
+	local S = ArkherAtmosX.S
+	return { state = S.state, preset = S.preset, clock = S.clock,
+		msg = ("AEX: tempo='%s' (transicao %.0f%%) | ceu='%s' %.1fh | fog adapta no pump"):format(S.state, (S.blend or 1) * 100, S.preset, S.clock) }
+end
+
+function CMD.wea_stats()
+	assert(ArkherWeaX, "WEAX off")
+	local S = ArkherWeaX.S
+	local systems = {}
+	for i, sy in ipairs(S.systems) do
+		if i > 6 then break end
+		systems[#systems + 1] = { kind = sy.kind, x = sy.x, z = sy.z, r = sy.r, int = sy.int }
+	end
+	return { running = S.running, n = #S.systems, systems = systems,
+		wind = S.wind,
+		msg = ("WEA: %s | %d frentes vivas (H/L viajando) | vento (%.1f, %.1f)"):format(
+			S.running and "RODANDO" or "parado", #S.systems, S.wind.X, S.wind.Y) }
+end
+
+function CMD.wea_off()
+	assert(ArkherWeaX, "WEAX off")
+	ArkherWeaX.S.running = false
+	return { msg = "WEA: frentes PARADAS — ceu volta a ficar manual (ATMOS)" }
+end
+
+function CMD.day_stats()
+	assert(ArkherDayX, "DAYX off")
+	local st = ArkherDayX.stats()
+	return { humans = st.humans, msg = ("DAYX: %d humanos digitais vivos (respiracao/piscar/olhar procedural no pump)"):format(st.humans) }
+end
+
+function CMD.mind_stats()
+	assert(ArkherMindX, "MINDX off")
+	local st = ArkherMindX.stats()
+	return { st.minds and st.minds or 0,
+		msg = ("MENTES: %d ativas | objetivos: %s | pontos de comida: %d"):format(st.minds, st.goals ~= "" and st.goals or "—", st.food) }
+end
+
+function CMD.eco_stop()
+	assert(ArkherEcoX, "ECOX off")
+	if ArkherEcoX.stop then return { msg = ArkherEcoX.stop() } end
+	return { msg = "ECO sem stop (o modulo define so start) — gere isso no erro, ao menos o aviso e honesto" }
+end
+
+function CMD.civ_stats()
+	assert(ArkherCiviX, "CIVIX off")
+	local st = ArkherCiviX.stats()
+	return { settlements = st.settlements,
+		msg = ("CIVIX: %d assentamentos erguidos — cada um grava na TERRA via RLayer.urbanize"):format(st.settlements) }
+end
+
+function CMD.audio_setup()
+	assert(ArkherAudioX, "AUX off")
+	ArkherAudioX.setup()
+	local buses = {}
+	for _, b in ipairs(ArkherAudioX.BUSES) do
+		buses[#buses + 1] = { name = b, vol = ArkherAudioX.busVolume(b) or 1 }
+	end
+	return { buses = buses, msg = "MIXER AUX: 7 buses vivos (master/music/sfx/ui/ambient/weather/voice)" }
+end
+
+function CMD.audio_bus(p)
+	assert(ArkherAudioX, "AUX off")
+	p = p or {}
+	local bus = tostring(p.bus or "sfx")
+	local vol = math.clamp(tonumber(p.vol) or 1, 0, 2)
+	local okv = ArkherAudioX.setBusVolume(bus, vol)
+	if okv == false then return { msg = "bus desconhecido: " .. bus } end
+	return { msg = ("MIXER: bus '%s' -> %.2f (lido de volta: %.2f)"):format(bus, vol, ArkherAudioX.busVolume(bus) or 0) }
+end
+
+function CMD.audio_intensity(p)
+	assert(ArkherAudioX, "AUX off")
+	local v = math.clamp(tonumber(p and p.v) or 1, 0, 2)
+	ArkherAudioX.setIntensity(v)
+	return { msg = ("INTENSIDADE MUSICAL -> %.2f (%s)"):format(v, v < 0.5 and "PAZ" or (v < 1.4 and "TENSÃO" or "COMBATE")) }
+end
+
+function CMD.audio_stats()
+	if not ArkherAudioX then return { msg = "AUX off" } end
+	local st = ArkherAudioX.stats()
+	return st
+end
+
+function CMD.fx_presets()
+	assert(ArkherParticlesX, "APX off")
+	local out = {}
+	for id, pr in pairs(ArkherParticlesX.PRESETS) do
+		out[#out + 1] = { id = id, mode = pr.mode, rate = pr.rate or 0, speed = pr.speed or 0, gravity = pr.gravity or 0, life = pr.life or 0 }
+	end
+	table.sort(out, function(a, b) return a.id < b.id end)
+	return { presets = out, count = #out }
+end
+
+function CMD.fx_emit(p)
+	assert(ArkherParticlesX, "APX off")
+	p = p or {}
+	local anchor = Instance.new("Part")
+	anchor.Name = "APX_" .. tostring(p.kind or "fogo")
+	anchor.Size = Vector3.new(0.2, 0.2, 0.2)
+	anchor.Transparency = 1
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.Position = Vector3.new(p.x or 0, p.y or 6, p.z or -16)
+	anchor.Parent = workspace
+	ArkherParticlesX.emit(anchor, tostring(p.kind or "fogo"))
+	return { msg = ("FX emissor '%s' ancorado em (%.0f, %.0f, %.0f) — budget D-O15 restringe sozinho"):format(p.kind or "fogo", p.x or 0, p.y or 6, p.z or -16) }
+end
+
+function CMD.fx_clear()
+	assert(ArkherParticlesX, "APX off")
+	ArkherParticlesX.clear()
+	return { msg = "FX: emissores LIMPOS do mundo" }
+end
+
+function CMD.fx_stats()
+	if not ArkherParticlesX then return { msg = "APX off" } end
+	local n = 0
+	for _ in pairs(ArkherParticlesX._emitters) do n = n + 1 end
+	return { emitters = n, msg = ("FX: %d emissores ativos | budget D-O15 [1]=%.2f [3]=%.2f"):format(n, ArkherParticlesX.BUDGET[1], ArkherParticlesX.BUDGET[3]) }
+end
+
+function CMD.rope_flag(p)
+	assert(ArkherRopeX, "RPX off")
+	p = p or {}
+	ArkherRopeX.flagAt(tonumber(p.x) or 6, tonumber(p.y) or 16, tonumber(p.z) or 4)
+	return { msg = "BANDEIRA de Verlet no mundo — o vento AEX a carrega de verdade" }
+end
+
+function CMD.rope_bridge(p)
+	assert(ArkherRopeX, "RPX off")
+	p = p or {}
+	local len = math.clamp(tonumber(p.len) or 30, 12, 120)
+	local y = tonumber(p.y) or 18
+	local z = tonumber(p.z) or 10
+	for _, px in ipairs({ -len / 2, len / 2 }) do
+		local post = Instance.new("Part")
+		post.Name = "RPX_Post"
+		post.Size = Vector3.new(0.8, y, 0.8)
+		post.CFrame = CFrame.new(px, y / 2, z)
+		post.Anchored = true
+		post.Color = Color3.fromRGB(90, 70, 50)
+		post.Material = Enum.Material.Wood
+		post.Parent = workspace
+	end
+	local r = ArkherRopeX.rope({ from = { x = -len / 2, y = y, z = z }, to = { x = len / 2, y = y, z = z }, points = 14 })
+	ArkherRopeX.materializeRope(r, { w = 0.18, color = { 190, 130, 70 } })
+	ArkherRopeX.addSphere(0, y - 1, z, 1.4)
+	return { msg = ("PONTE PÊNSIL Verlet: %d studs vão, 14 pontos de corda real + bola oscilando"):format(len) }
+end
+
+function CMD.rope_stats()
+	if not ArkherRopeX then return { msg = "RPX off" } end
+	local nr = #ArkherRopeX._ropes
+	local nc = #ArkherRopeX._cloths
+	return { ropes = nr, cloths = nc,
+		msg = ("RPX: %d cordas + %d tecidos Vivos (integracao Verlet no pump)"):format(nr, nc) }
+end
+
 RunService.Heartbeat:Connect(function(dt)
 	if ArkherAtmosX then pcall(function() ArkherAtmosX.pump(dt) end) end
 	if ArkherWaterX then pcall(function()

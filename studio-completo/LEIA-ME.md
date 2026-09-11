@@ -118,7 +118,7 @@ Nós injetados (modelo nativo Roblox, anti-exploiter):
 | `ServerStorage/ArkherEngines/` | `ArkherX_DM/ATX/AWX/ASXN/AAX/AUX/AEX/APX/RPX` (9 ModuleScripts — motores v3 inteiros) |
 | `ServerScriptService/ArkherEngineServer` | Script ponte: comandos, pumps Heartbeat (AEX/AAX+AUX/LOD), remotes |
 | `ReplicatedStorage/ArkherNet/` | **só a ponte**: `ArkherXCmd` (RemoteEvent) + `ArkherXQ` (RemoteFunction) |
-| `StarterGui/ArkherStudioUI/Arkher_01/03/08` | LocalScripts X — `03_Menus` (menus X na **topbar ORIGINAL** do Mezzanine, clonando seus botões) + `08_RealityX` (o DECK: 5 editores únicos) |
+| `StarterGui/ArkherStudioUI/Arkher_01/03/08` | LocalScripts X — `03_Menus` (menus X na **topbar ORIGINAL** do Mezzanine, clonando seus botões **+ X-TIER: barra de ATIVAÇÃO com 13 botões, clique esquerdo abre o editor, direito abre o dropdown**) + `08_RealityX` (o DECK: **13 editores únicos**: TERRAIN/WATER/MODELER/ANIMATOR/ESPAÇO/FABRICAR/**ATMOS/CLIMA/VIDA/CIDADE/ÁUDIO/FX/CORDAS**) |
 
 **FIX (2026-09):** placa X dava `PROP.LocalScript.Disabled bool 4/5 → read offset out of bounds`
 no Studio — o injetor agora estende **todo** PROP de qualquer tipo que ganhou
@@ -138,6 +138,23 @@ em cada um dos 121 chunks PROP (#StudioSafe). Baixe novamente a placa atual.
   engrenagem dentada, cristal, mesa com displacement.
 - **RIG X + MESH X no DECK** (os docks 05/06/07 foram removidos: eram
   "enfeite" de retângulos e a diretriz é ZERO painel sem efeito real).
+
+**ROUND 6 (2026-09-11) — ativação total na topbar:** o **X-TIER** (faixa colada na
+topbar original) ativa cada editor com **um clique esquerdo** (clique direito = dropdown
+de cada um). 7 editores NOVOS com backend real: **ATMOS X** (relógio solar cruza os
+Kelvin no pump — cor do sol é física, não tint manual; 7 estados de tempo com blend;
+ceu presets de 1900K a 5600K), **CLIMA X** (mapa meteorológico vivo: frentes H/L nascem,
+viajam e mudam o tempo sozinhas — WEAX já é hooked no RX), **VIDA X** (DAYX humana;
+NPCs FABRIK; ECOX start/**stop** novo; MINDX mentes/objetivos no status),
+**CIDADE X** (vila/cidade/metrópole por seed, grava na terra via RLayer.urbanize),
+**ÁUDIO X** (mixer dos 7 buses reais AUX com leitura do motor + intensidade musical
+paz/tensão/combate), **FX X** (13 presets APX com gravidade/vórtice REAL, budget D-O15,
+emitir em (x,y,z) + limpar) e **CORDAS X** (Verlet íntegro: demo, bandeira ao vento AEX,
+ponte pênsil + bola oscilante). Backend: **20 comandos novos** no `engine_server.lua`
+(95 no total) — `atmos_list/clock/stats`, `wea_stats/off`, `day_stats`, `mind_stats`,
+`eco_stop`, `civ_stats`, `audio_setup/bus/intensity/stats`, `fx_presets/emit/clear/stats`,
+`rope_flag/bridge/stats`. `ecox.luau` ganhou `ECOX.stop()`. Todos pump no Heartbeat via
+`RX.hook` (nada de fake: o Deck só chama comandos, o mundo muda no servidor).
 
 Regerar: `python3 tools/inject_arkherx.py ../ArkherStudio_Completo_Pro.rbxl ../ArkherStudio_Completo_X.rbxl` → valida **1.751 inst, 32 tipos (185.317 B)**, PRNT/END corretos.
 

@@ -1148,6 +1148,27 @@ bj.OnInvoke = function(action, payload)
   elseif action == "AGUA" then
     buildMenu("AGUA", payload and payload.button)
     return true
+  elseif action == "ATMOS" then
+    buildMenu("ATMOS", payload and payload.button)
+    return true
+  elseif action == "CLIMA" then
+    buildMenu("CLIMA", payload and payload.button)
+    return true
+  elseif action == "VIDA" then
+    buildMenu("VIDA", payload and payload.button)
+    return true
+  elseif action == "CIDADE" then
+    buildMenu("CIDADE", payload and payload.button)
+    return true
+  elseif action == "AUDIO" then
+    buildMenu("AUDIO", payload and payload.button)
+    return true
+  elseif action == "FX" then
+    buildMenu("FX", payload and payload.button)
+    return true
+  elseif action == "CORDAS" then
+    buildMenu("CORDAS", payload and payload.button)
+    return true
   elseif action == "Destroy" then
     closeMenu()
     n.alive = false
@@ -1207,6 +1228,50 @@ MENUS.AGUA = {
   { icon = "Players", label = "Teste de Arquimedes (6 densidades reais)", act = "XAguaFlutua" },
 }
 
+MENUS.ATMOS = {
+  { icon = "plus", label = "ATMOS X (abrir céu/clima)", act = "XOpenAtmos" },
+  { sep = true },
+  { icon = "Settings", label = "Horário do sol (Kelvin real)…", act = "XAtmosCeu" },
+  { icon = "Data", label = "Estado do tempo…", act = "XAtmosTempo" },
+}
+MENUS.CLIMA = {
+  { icon = "plus", label = "CLIMA X — frentes (abrir)", act = "XOpenClima" },
+  { sep = true },
+  { icon = "Play", label = "Ligar frentes H/L (vivas)", act = "XClimaOn" },
+  { icon = "Flag", label = "Parar frentes", act = "XClimaOff" },
+}
+MENUS.VIDA = {
+  { icon = "plus", label = "VIDA X (abrir)", act = "XOpenVida" },
+  { sep = true },
+  { icon = "Players", label = "Humano digital (DAYX)…", act = "XVidaHumano" },
+  { icon = "Players", label = "NPC bípede (FABRIK+mente)", act = "XVidaNpc" },
+  { icon = "Data", label = "Ligar ecossistema…", act = "XVidaEco" },
+}
+MENUS.CIDADE = {
+  { icon = "plus", label = "CIDADE X (abrir)", act = "XOpenCidade" },
+  { sep = true },
+  { icon = "Folder", label = "Construir VILA (seed)", act = "XCidadeVila" },
+  { icon = "Model", label = "Construir METRÓPOLE (seed)", act = "XCidadeMetro" },
+}
+MENUS.AUDIO = {
+  { icon = "plus", label = "ÁUDIO X — mixer (abrir)", act = "XOpenAudio" },
+  { sep = true },
+  { icon = "Settings", label = "Buses do mundo (7)…", act = "XAudioMixer" },
+  { icon = "Data", label = "Intensidade musical…", act = "XAudioInt" },
+}
+MENUS.FX = {
+  { icon = "plus", label = "FX X — partículas (abrir)", act = "XOpenFx" },
+  { sep = true },
+  { icon = "plus", label = "Fogo (emitir)", act = "XFxFogo" },
+  { icon = "plus", label = "Chuva (emitir)", act = "XFxChuva" },
+}
+MENUS.CORDAS = {
+  { icon = "plus", label = "CORDAS X — Verlet (abrir)", act = "XOpenCordas" },
+  { sep = true },
+  { icon = "plus", label = "Ponte de corda (demo físico)", act = "XCordaDemo" },
+  { icon = "Flag", label = "Ponte pênsil…", act = "XCordaPonte" },
+}
+
 local function deckOpen(id, view)
   local d = rawget(_G, "ArkherDeck")
   if d and d.open then return d.open(id, view) end
@@ -1234,6 +1299,28 @@ actions.XFabricarList     = function() deckOpen("fabricar", "catalogo") end
 actions.XOpenWater        = function() deckOpen("water", "corpos") end
 actions.XAguaOceano       = function() deckCmd("water_create", { kind = "oceano", preset = "porto", level = 8, size = 512 }) deckOpen("water", "corpos") end
 actions.XAguaFlutua       = function() deckCmd("water_float_test", {}) deckOpen("water", "fisica") end
+actions.XOpenAtmos        = function() deckOpen("atmos", "ceu") end
+actions.XAtmosCeu         = function() deckOpen("atmos", "ceu") end
+actions.XAtmosTempo       = function() deckOpen("atmos", "tempo") end
+actions.XOpenClima        = function() deckOpen("clima", "frentes") end
+actions.XClimaOn          = function() deckCmd("fronts_on", {}) deckOpen("clima", "mapa") end
+actions.XClimaOff         = function() deckCmd("wea_off", {}) end
+actions.XOpenVida         = function() deckOpen("vida", "seres") end
+actions.XVidaHumano       = function() deckCmd("life_human", { seed = 7 }) deckOpen("vida", "humano") end
+actions.XVidaNpc          = function() deckCmd("npc_spawn", { preset = "bipede" }) deckOpen("vida", "npc") end
+actions.XVidaEco          = function() deckCmd("eco_start", {}) deckOpen("vida", "eco") end
+actions.XOpenCidade       = function() deckOpen("cidade", "construir") end
+actions.XCidadeVila       = function() deckCmd("civ_fabricate", { kind = "vila", seed = 7 }) deckOpen("cidade", "log") end
+actions.XCidadeMetro      = function() deckCmd("civ_fabricate", { kind = "metropole", seed = 11 }) deckOpen("cidade", "log") end
+actions.XOpenAudio        = function() deckOpen("audio", "mixer") end
+actions.XAudioMixer       = function() deckOpen("audio", "mixer") end
+actions.XAudioInt         = function() deckOpen("audio", "intensidade") end
+actions.XOpenFx           = function() deckOpen("fx", "presets") end
+actions.XFxFogo           = function() deckCmd("fx_emit", { kind = "fogo" }) deckOpen("fx", "log") end
+actions.XFxChuva          = function() deckCmd("fx_emit", { kind = "chuva" }) deckOpen("fx", "log") end
+actions.XOpenCordas       = function() deckOpen("cordas", "demos") end
+actions.XCordaDemo        = function() deckCmd("rope_demo", {}) deckOpen("cordas", "demos") end
+actions.XCordaPonte       = function() deckOpen("cordas", "ponte") end
 
 -- ---- botoes na MenuRow da topbar ORIGINAL (clona estilo do irmao) ----
 do
@@ -1267,4 +1354,103 @@ do
   else
     warn("[ArkherX] MenuRow não achada — menus X vivem só via MenusBus")
   end
+end
+
+
+-- =============================================================
+-- X-TIER — a BARRA DE ATIVACAO dos editores X, colada na topbar
+-- original. Clique ESQUERDO = abre o editor (ATIVA); clique com
+-- botao DIREITO = dropdown com acoes extras. Tudo visível, sem
+-- esconder nada debaixo de menu: o que existe, tem botao na barra.
+-- =============================================================
+do
+  local XT = {
+    { "MUNDO",      "terrain"  },
+    { "ÁGUA",       "water"    },
+    { "MODELAGEM",  "modeler"  },
+    { "ANIMAÇÃO",   "animator" },
+    { "ESPAÇO",     "espaco"   },
+    { "FABRICAR",   "fabricar" },
+    { "ATMOS",      "atmos"    },
+    { "CLIMA",      "clima"    },
+    { "VIDA",       "vida"     },
+    { "CIDADE",     "cidade"   },
+    { "ÁUDIO",      "audio"    },
+    { "FX",         "fx"       },
+    { "CORDAS",     "cordas"   },
+  }
+  local function findBtn(nm)
+    for _, c in ipairs(g:GetDescendants()) do
+      if c:IsA("GuiButton") and c.Name == nm then return c end
+    end
+    return nil
+  end
+  local ref = findBtn("View") or findBtn("Game") or findBtn("Insert")
+  local menuRow = ref and ref.Parent
+  -- se a topbar original nao aparecer, ainda crio a faixa (posicao segura)
+  local tier = Instance.new("Frame")
+  tier.Name = "ArkherXTier"
+  tier.BackgroundColor3 = m.panel
+  tier.BackgroundTransparency = 0.18
+  tier.BorderSizePixel = 0
+  tier.ZIndex = 28
+  local tcor = Instance.new("UICorner")
+  tcor.CornerRadius = UDim.new(0, 6)
+  tcor.Parent = tier
+  local lay = Instance.new("UIListLayout")
+  lay.FillDirection = Enum.FillDirection.Horizontal
+  lay.Padding = UDim.new(0, 4)
+  lay.VerticalAlignment = Enum.VerticalAlignment.Center
+  lay.SortOrder = Enum.SortOrder.LayoutOrder
+  lay.Parent = tier
+  local function placeTier()
+    if menuRow and menuRow:IsA("GuiObject") then
+      local ok, ap, asz, cap = pcall(function()
+        return menuRow.AbsolutePosition, menuRow.AbsoluteSize, tier.Parent.AbsolutePosition
+      end)
+      if ok and asz then
+        -- X-tier colado ABAIXO da faixa do Mezzanine (mesma area da topbar)
+        tier.Position = UDim2.new(0, ap.X - cap.X, 0, ap.Y - cap.Y + asz.Y + 3)
+        tier.Size = UDim2.new(0, math.min(#XT * 74 + (#XT) * 4 + 10, 1070), 0, 24)
+        return
+      end
+    end
+    -- fallback: o canto esquerdo logo abaixo da faixa-menu
+    tier.Position = UDim2.new(0, 220, 0, 34)
+    tier.Size = UDim2.new(0, math.min(#XT * 74 + (#XT) * 4 + 10, 1070), 0, 24)
+  end
+  tier.Parent = (menuRow and menuRow.Parent) or g
+  placeTier()
+  if menuRow then
+    menuRow:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeTier)
+    tier.Parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeTier)
+  end
+
+  for i, spec in ipairs(XT) do
+    local label2, viewId = spec[1], spec[2]
+    local b0
+    if ref then
+      b0 = ref:Clone()
+    else
+      b0 = Instance.new("TextButton")
+    end
+    b0.Name = "XT_" .. viewId
+    b0.Text = label2
+    b0.Size = UDim2.new(0, 74, 0, 18)
+    pcall(function() b0.LayoutOrder = i end)
+    pcall(function() b0.AutoButtonColor = true end)
+    -- ativa com clique esquerdo; dropdown com direito
+    b0.Activated:Connect(function()
+      deckOpen(viewId, nil)
+    end)
+    b0.MouseButton2Click:Connect(function()
+      local nm = label2
+      if nm == "ANIMACAO" or nm == "ANIMAÇÃO" then nm = "ANIMACAO" end
+      if nm == "AUDIO" or nm == "ÁUDIO" then nm = "AUDIO" end
+      if nm == "AGUA" or nm == "ÁGUA" then nm = "AGUA" end
+      W(nm, { button = b0 })
+    end)
+    b0.Parent = tier
+  end
+  print("[ArkherX] X-TIER ativador na topbar: 13 editores (clique esquerdo abre · botao direito = dropdown)")
 end

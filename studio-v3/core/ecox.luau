@@ -102,6 +102,11 @@ function ECOX.step(dt)
 	end
 end
 
+function ECOX.stop()
+	S.running = false
+	return "ECO: ecossistema PAUSADO (populacoes congelam onde estao)"
+end
+
 function ECOX.stats()
 	local out = { running = S.running, spawned = S.spawned, births = S.births, species = {} }
 	for id, pop in pairs(S.pops) do

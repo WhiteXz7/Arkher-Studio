@@ -1371,12 +1371,708 @@ end
 local wWater = mkWin("water", "WATER X — oceanografia real (densidade · Gerstner · Arquimedes)", 656, 330, THEME_WATER)
 buildWater(wWater)
 
+
+-- =============================================================
+-- ATMOS X — céu/clima físico (Kelvin real, 7 estados, ciclo solar)
+-- =============================================================
+local THEME_ATMOS = {
+	bg = Color3.fromRGB(10, 14, 32), bg2 = Color3.fromRGB(14, 20, 42), bg3 = Color3.fromRGB(18, 26, 54),
+	cap = Color3.fromRGB(8, 11, 26), edge = Color3.fromRGB(60, 78, 150),
+	text = Color3.fromRGB(232, 238, 255), muted = Color3.fromRGB(148, 160, 210),
+	acc = Color3.fromRGB(255, 208, 116), act = Color3.fromRGB(70, 58, 24),
+}
+
+local function buildAtmos(win)
+	local th = THEME_ATMOS
+	local body = win.body
+	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
+	local statsBar = B("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 18), Position = UDim2.fromOffset(10, 6),
+		BackgroundColor3 = th.cap, Text = "  AEX conectando…",
+		Font = Enum.Font.Code, TextSize = 10, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(statsBar, 6)
+	task.spawn(function()
+		while win.root.Parent do
+			task.wait(2.4)
+			if win.root.Visible then
+				local res = cmd("atmos_stats")
+				if res.msg then statsBar.Text = "  " .. res.msg end
+			end
+		end
+	end)
+
+	-- COL 1: horário do sol (6 presets Kelvin reais)
+	B("TextLabel", {
+		Size = UDim2.fromOffset(210, 14), Position = UDim2.fromOffset(10, 30),
+		BackgroundTransparency = 1, Text = "HORÁRIO DO SOL — cor real por Kelvin", Font = Enum.Font.GothamBold,
+		TextSize = 9, TextColor3 = th.acc, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 43,
+	}, body)
+	local skyList = listCtl(body, UDim2.fromOffset(10, 48), UDim2.fromOffset(210, 200), th)
+
+	-- COL 2: estado do tempo (7 estados de transição)
+	B("TextLabel", {
+		Size = UDim2.fromOffset(104, 14), Position = UDim2.fromOffset(228, 30),
+		BackgroundTransparency = 1, Text = "TEMPO", Font = Enum.Font.GothamBold,
+		TextSize = 9, TextColor3 = th.acc, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 43,
+	}, body)
+	local wList = listCtl(body, UDim2.fromOffset(228, 48), UDim2.fromOffset(104, 200), th)
+
+	-- COL 3: relógio solar (controla o céu de verdade)
+	local rig = B("Frame", {
+		Size = UDim2.fromOffset(324, 200), Position = UDim2.fromOffset(340, 48),
+		BackgroundColor3 = th.bg2, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(rig, 7) ST(rig, 1, th.edge)
+	B("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 14), Position = UDim2.fromOffset(8, 8),
+		BackgroundTransparency = 1, Text = "RELÓGIO SOLAR (0–24h, o céu cruza sozinho)", Font = Enum.Font.GothamBold,
+		TextSize = 9, TextColor3 = th.acc, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+	}, rig)
+	local clockBig = B("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 40), Position = UDim2.fromOffset(8, 26),
+		BackgroundTransparency = 1, Text = "12.0 h", Font = Enum.Font.Code,
+		TextSize = 30, TextColor3 = th.text, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+	}, rig)
+	local clockS = sliderCtl(rig, UDim2.fromOffset(8, 70), 0, "hora do dia", 0, 24, 12, th, function(v)
+		clockBig.Text = string.format("%.1f h", v)
+	end)
+	task.spawn(function()
+		while win.root.Parent do
+			task.wait(3.2)
+			if win.root.Visible then
+				local res = cmd("atmos_stats")
+				if res.clock then
+					clockBig.Text = string.format("%.1f h", res.clock)
+				end
+			end
+		end
+	end)
+	-- gira o relógio quando o usuário solta o slider (hook custom no InputEnded do track? o kit ja manda final)
+	do
+		-- onChange do sliderCtl chama com debounce; aqui conecto "valor final" ao servidor
+		local lastSent = 0
+		task.spawn(function()
+			while win.root.Parent do
+				task.wait(0.6)
+				local v = clockS.get()
+				if math.abs(v - lastSent) > 0.05 and win.root.Visible then
+					lastSent = v
+					local res = cmd("atmos_clock", { h = v })
+					log(msgOf(res))
+				end
+			end
+		end)
+	end
+	B("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 84), Position = UDim2.fromOffset(8, 108),
+		BackgroundTransparency = 1,
+		Text = "Física de verdade: sol de 1900K (noite) a 5600K (meio-dia) converge por Planck/CIE no Lighting — não é tint manual. Nuvens orgânicas, relâmpagos agendados, transições de 7 estados com blend de verdade no pump.",
+		Font = Enum.Font.Gotham, TextSize = 9, TextColor3 = th.muted,
+		TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+		TextWrapped = true, ZIndex = 44,
+	}, rig)
+
+	-- preencher listas com dados reais do motor
+	task.spawn(function()
+		local res = cmd("atmos_list")
+		if not res.skies then return end
+		for _, sk in ipairs(res.skies) do
+			local kb = B("TextButton", {
+				Size = UDim2.new(1, -8, 0, 26), BackgroundColor3 = th.bg3,
+				Text = ("  %s   %dK"):format(sk.id, sk.kelvin),
+				Font = Enum.Font.GothamBold, TextSize = 10,
+				TextColor3 = th.text, BorderSizePixel = 0,
+				TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+			}, skyList)
+			H(kb, 5)
+			kb.MouseButton1Click:Connect(function()
+				task.spawn(function() log(msgOf(cmd("atmos_preset", { preset = sk.id }))) end)
+				for _, ch in ipairs(skyList:GetChildren()) do
+					if ch:IsA("TextButton") then ch.BackgroundColor3 = th.bg3 end
+				end
+				kb.BackgroundColor3 = th.act
+			end)
+		end
+		for _, w2 in ipairs(res.weathers or {}) do
+			local wb = B("TextButton", {
+				Size = UDim2.new(1, -8, 0, 24), BackgroundColor3 = th.bg3,
+				Text = "  " .. w2, Font = Enum.Font.GothamBold, TextSize = 9,
+				TextColor3 = th.muted, BorderSizePixel = 0,
+				TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+			}, wList)
+			H(wb, 5)
+			wb.MouseButton1Click:Connect(function()
+				task.spawn(function() log(msgOf(cmd("atmos_weather", { state = w2 }))) end)
+				for _, ch in ipairs(wList:GetChildren()) do
+					if ch:IsA("TextButton") then ch.BackgroundColor3 = th.bg3 end
+				end
+				wb.BackgroundColor3 = th.act
+			end)
+		end
+	end)
+	return win
+end
+
+local wAtmos = mkWin("atmos", "ATMOS X — céu e clima físicos (Kelvin real)", 674, 300, THEME_ATMOS)
+buildAtmos(wAtmos)
+
+-- =============================================================
+-- CLIMA X — frentes H/L que VIAJAM e mudam o tempo de verdade
+-- =============================================================
+local THEME_CLIMA = {
+	bg = Color3.fromRGB(22, 24, 28), bg2 = Color3.fromRGB(28, 31, 38), bg3 = Color3.fromRGB(34, 38, 48),
+	cap = Color3.fromRGB(18, 20, 25), edge = Color3.fromRGB(78, 92, 122),
+	text = Color3.fromRGB(238, 242, 252), muted = Color3.fromRGB(150, 160, 182),
+	acc = Color3.fromRGB(122, 168, 255), act = Color3.fromRGB(46, 68, 118),
+}
+
+local function buildClima(win)
+	local th = THEME_CLIMA
+	local body = win.body
+	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
+	local statsBar = B("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 18), Position = UDim2.fromOffset(10, 6),
+		BackgroundColor3 = th.cap, Text = "  WEA conectando…",
+		Font = Enum.Font.Code, TextSize = 10, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(statsBar, 6)
+	actBtn(body, UDim2.fromOffset(10, 32), UDim2.fromOffset(150, 26), "LIGAR FRENTE H/L", th, function()
+		log(msgOf(cmd("fronts_on", {})))
+	end, 43)
+	actBtn(body, UDim2.fromOffset(10, 64), UDim2.fromOffset(150, 26), "Parar frentes", th, function()
+		log(msgOf(cmd("wea_off", {})))
+	end, 43)
+	B("TextLabel", {
+		Size = UDim2.fromOffset(150, 120), Position = UDim2.fromOffset(10, 98),
+		BackgroundTransparency = 1,
+		Text = "Sistemas de ALTA/BAIXA pressão nascem, viajam com a circulação e MORREM — quando uma frente cruza pra cá, o tempo (ATMOS) muda SOZINHO.",
+		Font = Enum.Font.Gotham, TextSize = 9, TextColor3 = th.muted,
+		TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+		TextWrapped = true, ZIndex = 43,
+	}, body)
+	-- mapa de frentes (estado real do servidor)
+	local map = B("Frame", {
+		Size = UDim2.fromOffset(490, 246), Position = UDim2.fromOffset(170, 48),
+		BackgroundColor3 = Color3.fromRGB(14, 16, 22), BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(map, 7) ST(map, 1, th.edge)
+	map.ClipsDescendants = true
+	B("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 12), Position = UDim2.fromOffset(8, 4),
+		BackgroundTransparency = 1, Text = "MAPA METEOROLÓGICO (vivo, do servidor)",
+		Font = Enum.Font.GothamBold, TextSize = 8, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+	}, map)
+	local dots = {}
+	local function draw(res)
+		for _, d in ipairs(dots) do pcall(function() d:Destroy() end) end
+		dots = {}
+		if not res.systems then return end
+		local cx2, cy2 = 245, 129
+		for _, sy in ipairs(res.systems) do
+			local rr = math.clamp((sy.r or 200) / 1200 * 224, 10, 110)
+			local col = (sy.kind == "H") and Color3.fromRGB(96, 160, 255) or Color3.fromRGB(255, 110, 100)
+			local ring = B("Frame", {
+				Size = UDim2.fromOffset(rr * 2, rr * 2),
+				Position = UDim2.fromOffset(cx2 + (sy.x / 1200) * 224 - rr, cy2 + (sy.z / 1200) * 112 - rr),
+				BackgroundTransparency = 1, ZIndex = 45,
+			}, map)
+			local rc = Instance.new("UICorner") rc.CornerRadius = UDim.new(1, 0) rc.Parent = ring
+			local rst = Instance.new("UIStroke") rst.Thickness = 1.6 rst.Color = col rst.Transparency = 0.35 rst.Parent = ring
+			local core = B("TextLabel", {
+				Size = UDim2.fromOffset(18, 18),
+				Position = UDim2.fromOffset(cx2 + (sy.x / 1200) * 224 - 9, cy2 + (sy.z / 1200) * 112 - 9),
+				BackgroundColor3 = col, Text = sy.kind, Font = Enum.Font.GothamBold,
+				TextSize = 11, TextColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, ZIndex = 46,
+			}, map)
+			H(core, 9)
+			dots[#dots + 1] = ring
+			dots[#dots + 1] = core
+		end
+	end
+	task.spawn(function()
+		while win.root.Parent do
+			task.wait(3)
+			if win.root.Visible then
+				local res = cmd("wea_stats")
+				if res.msg then statsBar.Text = "  " .. res.msg end
+				draw(res)
+			end
+		end
+	end)
+	return win
+end
+
+local wClima = mkWin("clima", "CLIMA X — frentes meteorológicas vivas (H/L)", 670, 320, THEME_CLIMA)
+buildClima(wClima)
+
+-- =============================================================
+-- VIDA X — humanos digitais, NPCs, ecossistema, mentes
+-- =============================================================
+local THEME_VIDA = {
+	bg = Color3.fromRGB(14, 28, 18), bg2 = Color3.fromRGB(18, 36, 24), bg3 = Color3.fromRGB(22, 46, 32),
+	cap = Color3.fromRGB(12, 24, 16), edge = Color3.fromRGB(52, 122, 74),
+	text = Color3.fromRGB(228, 250, 234), muted = Color3.fromRGB(140, 190, 156),
+	acc = Color3.fromRGB(127, 226, 138), act = Color3.fromRGB(24, 74, 42),
+}
+
+local function buildVida(win)
+	local th = THEME_VIDA
+	local body = win.body
+	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
+	local statsBar = B("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 18), Position = UDim2.fromOffset(10, 6),
+		BackgroundColor3 = th.cap, Text = "  VIDA conectando…",
+		Font = Enum.Font.Code, TextSize = 10, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(statsBar, 6)
+	task.spawn(function()
+		while win.root.Parent do
+			task.wait(3)
+			if win.root.Visible then
+				local d = cmd("day_stats")
+				local e = cmd("eco_stats")
+				local m2 = cmd("mind_stats")
+				statsBar.Text = "  " .. (d.msg or "—") .. "  |  " .. (e.msg or "—") .. "  |  " .. (m2.msg or "—")
+			end
+		end
+	end)
+
+	-- COL 1 humano digital
+	B("TextLabel", {
+		Size = UDim2.fromOffset(200, 14), Position = UDim2.fromOffset(10, 30),
+		BackgroundTransparency = 1, Text = "HUMANO DIGITAL (DAYX)", Font = Enum.Font.GothamBold,
+		TextSize = 9, TextColor3 = th.acc, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 43,
+	}, body)
+	local hseed = stepCtl(body, UDim2.fromOffset(10, 50), "seed", 7, 1, 1, 9999, th, "%d", 0.96)
+	actBtn(body, UDim2.fromOffset(10, 86), UDim2.fromOffset(200, 26), "SPAWNAR HUMANO DIGITAL", th, function()
+		local res = cmd("life_human", { seed = hseed.get() })
+		log(msgOf(res))
+	end)
+	B("TextLabel", {
+		Size = UDim2.fromOffset(200, 74), Position = UDim2.fromOffset(10, 118),
+		BackgroundTransparency = 1,
+		Text = "Respiração 0.25 Hz, piscar fisiológico, olhar-atento à sua câmera, marcha procedural — importância 0.95 no RRW (não some).",
+		Font = Enum.Font.Gotham, TextSize = 9, TextColor3 = th.muted,
+		TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+		TextWrapped = true, ZIndex = 43,
+	}, body)
+
+	-- COL 2 NPCs
+	B("TextLabel", {
+		Size = UDim2.fromOffset(210, 14), Position = UDim2.fromOffset(218, 30),
+		BackgroundTransparency = 1, Text = "NPCs (FABRIK + mentes)", Font = Enum.Font.GothamBold,
+		TextSize = 9, TextColor3 = th.acc, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 43,
+	}, body)
+	for i, pr in ipairs({ "bipede", "quadrupede", "serpente", "monstro" }) do
+		actBtn(body, UDim2.fromOffset(218, 50 + (i - 1) * 32), UDim2.fromOffset(210, 26), "NPC " .. pr, th, function()
+			log(msgOf(cmd("npc_spawn", { preset = pr })))
+		end)
+	end
+
+	-- COL 3 eco + mentes
+	B("TextLabel", {
+		Size = UDim2.fromOffset(220, 14), Position = UDim2.fromOffset(436, 30),
+		BackgroundTransparency = 1, Text = "ECOSSISTEMA + MENTES", Font = Enum.Font.GothamBold,
+		TextSize = 9, TextColor3 = th.acc, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 43,
+	}, body)
+	actBtn(body, UDim2.fromOffset(436, 50), UDim2.fromOffset(220, 26), "LIGAR ECOSSISTEMA", th, function()
+		log(msgOf(cmd("eco_start", {})))
+	end)
+	actBtn(body, UDim2.fromOffset(436, 82), UDim2.fromOffset(220, 26), "Pausar ecossistema", th, function()
+		log(msgOf(cmd("eco_stop", {})))
+	end)
+	B("TextLabel", {
+		Size = UDim2.fromOffset(220, 80), Position = UDim2.fromOffset(436, 114),
+		BackgroundTransparency = 1,
+		Text = "Presas/predadores logísticos no ECOX; cada NPC tem mente MINDX com percepção real (o painel mostra objetivos atuais no topo).",
+		Font = Enum.Font.Gotham, TextSize = 9, TextColor3 = th.muted,
+		TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+		TextWrapped = true, ZIndex = 43,
+	}, body)
+	return win
+end
+
+local wVida = mkWin("vida", "VIDA X — humanos digitais · NPCs · ecossistema", 666, 230, THEME_VIDA)
+buildVida(wVida)
+
+-- =============================================================
+-- CIDADE X — assentamentos (malha viaria + FABX) que GRAVAM na terra
+-- =============================================================
+local THEME_CIDADE = {
+	bg = Color3.fromRGB(30, 23, 16), bg2 = Color3.fromRGB(38, 30, 22), bg3 = Color3.fromRGB(46, 38, 29),
+	cap = Color3.fromRGB(26, 20, 14), edge = Color3.fromRGB(124, 88, 52),
+	text = Color3.fromRGB(250, 238, 222), muted = Color3.fromRGB(200, 168, 132),
+	acc = Color3.fromRGB(224, 164, 92), act = Color3.fromRGB(96, 62, 30),
+}
+
+local function buildCidade(win)
+	local th = THEME_CIDADE
+	local body = win.body
+	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
+	local statsBar = B("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 18), Position = UDim2.fromOffset(10, 6),
+		BackgroundColor3 = th.cap, Text = "  CIVIX conectando…",
+		Font = Enum.Font.Code, TextSize = 10, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(statsBar, 6)
+	task.spawn(function()
+		while win.root.Parent do
+			task.wait(3)
+			if win.root.Visible then
+				local res = cmd("civ_stats")
+				if res.msg then statsBar.Text = "  " .. res.msg end
+			end
+		end
+	end)
+
+	local kind = { id = "vila" }
+	local kindBtns = {}
+	for i, k in ipairs({ "vila", "cidade", "metropole" }) do
+		local tb = B("TextButton", {
+			Size = UDim2.fromOffset(160, 36), Position = UDim2.fromOffset(10 + (i - 1) * 172, 32),
+			BackgroundColor3 = i == 1 and th.acc or th.bg3,
+			Text = (k == "metropole") and "METRÓPOLE" or (k == "cidade") and "CIDADE" or "VILA",
+			Font = Enum.Font.GothamBold, TextSize = 12,
+			TextColor3 = i == 1 and Color3.fromRGB(24, 16, 8) or th.muted,
+			BorderSizePixel = 0, ZIndex = 44,
+		}, body)
+		H(tb, 7) ST(tb, 1, th.edge)
+		kindBtns[k] = tb
+		tb.MouseButton1Click:Connect(function()
+			kind.id = k
+			for k2, b2 in pairs(kindBtns) do
+				b2.BackgroundColor3 = (k2 == k) and th.acc or th.bg3
+				b2.TextColor3 = (k2 == k) and Color3.fromRGB(24, 16, 8) or th.muted
+			end
+		end)
+	end
+	local cseed = stepCtl(body, UDim2.fromOffset(10, 78), "seed", 7, 1, 1, 9999, th)
+	local autoSeed = { v = false }
+	local chip = B("TextButton", {
+		Size = UDim2.new(0.3, -4, 0, 30), Position = UDim2.new(0.51, 4, 0, 78),
+		BackgroundColor3 = th.act, Text = "auto-seed: off", Font = Enum.Font.GothamBold,
+		TextSize = 9, TextColor3 = th.muted, BorderSizePixel = 0, ZIndex = 44,
+	}, body)
+	H(chip, 6)
+	chip.MouseButton1Click:Connect(function()
+		autoSeed.v = not autoSeed.v
+		chip.Text = autoSeed.v and "auto-seed: ON" or "auto-seed: off"
+	end)
+	local cx = stepCtl(body, UDim2.fromOffset(10, 116), "x", 0, 20, -9999, 9999, th)
+	local cz = stepCtl(body, UDim2.new(0.51, 4, 0, 116), "z", -90, 20, -9999, 9999, th)
+	actBtn(body, UDim2.fromOffset(10, 156), UDim2.new(1, -20, 0, 30), "CONSTRUIR NO MUNDO (grava na terra)", th, function()
+		local sd = autoSeed.v and math.random(1, 9999) or cseed.get()
+		local res = cmd("civ_fabricate", { kind = kind.id, seed = sd, x = cx.get(), z = cz.get() })
+		log(msgOf(res))
+	end)
+	B("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 40), Position = UDim2.fromOffset(10, 192),
+		BackgroundTransparency = 1,
+		Text = "A malha viária sai do CIVIX + peças do FABX, e o assentamento também grava na TERRA via RLayer.urbanize (ó qual queridade urbana da cell).",
+		Font = Enum.Font.Gotham, TextSize = 9, TextColor3 = th.muted,
+		TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+		TextWrapped = true, ZIndex = 43,
+	}, body)
+	return win
+end
+
+local wCidade = mkWin("cidade", "CIDADE X — vila, cidade, metrópole reais", 660, 250, THEME_CIDADE)
+buildCidade(wCidade)
+
+-- =============================================================
+-- ÁUDIO X — o mixer dos 7 buses reais do mundo (AUX)
+-- =============================================================
+local THEME_AUDIO = {
+	bg = Color3.fromRGB(20, 14, 30), bg2 = Color3.fromRGB(26, 19, 40), bg3 = Color3.fromRGB(32, 24, 50),
+	cap = Color3.fromRGB(16, 12, 24), edge = Color3.fromRGB(88, 66, 140),
+	text = Color3.fromRGB(244, 238, 254), muted = Color3.fromRGB(176, 156, 210),
+	acc = Color3.fromRGB(192, 140, 255), act = Color3.fromRGB(56, 38, 96),
+}
+
+local BUS_ORDER = { "master", "music", "sfx", "ui", "ambient", "weather", "voice" }
+
+local function buildAudio(win)
+	local th = THEME_AUDIO
+	local body = win.body
+	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
+	local statsBar = B("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 18), Position = UDim2.fromOffset(10, 6),
+		BackgroundColor3 = th.cap, Text = "  AUX conectando…",
+		Font = Enum.Font.Code, TextSize = 10, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(statsBar, 6)
+	task.spawn(function()
+		while win.root.Parent do
+			task.wait(2.5)
+			if win.root.Visible then
+				local res = cmd("audio_stats")
+				if type(res) == "table" and res.buses then
+					statsBar.Text = ("  AUX: %d sons | %d tocando | %d buses | %d ducks | %d ambientes"):format(res.sounds or 0, res.playing or 0, res.buses or 0, res.ducks or 0, res.ambients or 0)
+				end
+			end
+		end
+	end)
+
+	-- mixer vertical (7 buses, com leitura do servidor)
+	local mixer = B("Frame", {
+		Size = UDim2.fromOffset(360, 244), Position = UDim2.fromOffset(10, 30),
+		BackgroundColor3 = th.bg2, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(mixer, 7) ST(mixer, 1, th.edge)
+	B("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 14), Position = UDim2.fromOffset(8, 6),
+		BackgroundTransparency = 1, Text = "MIXER — 7 BUSES (arrasta, grava no motor)", Font = Enum.Font.GothamBold,
+		TextSize = 9, TextColor3 = th.acc, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+	}, mixer)
+	for i, bname in ipairs(BUS_ORDER) do
+		local row = B("Frame", {
+			Size = UDim2.new(1, -16, 0, 30), Position = UDim2.fromOffset(8, 24 + (i - 1) * 32),
+			BackgroundTransparency = 1, ZIndex = 44,
+		}, mixer)
+		B("TextLabel", {
+			Size = UDim2.fromOffset(70, 30), BackgroundTransparency = 1, Text = bname,
+			Font = Enum.Font.GothamBold, TextSize = 10, TextColor3 = th.text,
+			TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+		}, row)
+		local volLbl = B("TextLabel", {
+			Size = UDim2.fromOffset(36, 30), Position = UDim2.new(1, -36, 0, 0),
+			BackgroundTransparency = 1, Text = "1.00", Font = Enum.Font.Code,
+			TextSize = 11, TextColor3 = th.acc, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 44,
+		}, row)
+		local sld = sliderCtl(row, UDim2.fromOffset(74, -1), 0, "", 0, 2, 1, th, function(v)
+			volLbl.Text = string.format("%.2f", v)
+			task.spawn(function()
+				local res = cmd("audio_bus", { bus = bname, vol = v })
+				log(msgOf(res))
+			end)
+		end)
+	end
+
+	-- intensidade musical
+	local rightc = B("Frame", {
+		Size = UDim2.fromOffset(266, 244), Position = UDim2.fromOffset(380, 30),
+		BackgroundColor3 = th.bg2, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(rightc, 7) ST(rightc, 1, th.edge)
+	B("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 14), Position = UDim2.fromOffset(8, 6),
+		BackgroundTransparency = 1, Text = "INTENSIDADE MUSICAL", Font = Enum.Font.GothamBold,
+		TextSize = 9, TextColor3 = th.acc, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+	}, rightc)
+	local intLbl = B("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 30), Position = UDim2.fromOffset(8, 26),
+		BackgroundTransparency = 1, Text = "1.00 — tensão", Font = Enum.Font.GothamBold,
+		TextSize = 14, TextColor3 = th.text, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+	}, rightc)
+	sliderCtl(rightc, UDim2.fromOffset(8, 62), 0, "0 paz · 1 tensão · 2 combate", 0, 2, 1, th, function(v)
+		intLbl.Text = string.format("%.2f — %s", v, v < 0.5 and "paz" or (v < 1.4 and "tensão" or "combate"))
+		task.spawn(function() log(msgOf(cmd("audio_intensity", { v = v }))) end)
+	end)
+	B("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 112), Position = UDim2.fromOffset(8, 102),
+		BackgroundTransparency = 1,
+		Text = "O motor AUX é real: buses de ganho, rolloff inverso-quadrático, doppler aproximado, ducks, layers e ligação com ATMOS/AWX. Sem clipes custom ainda (Roblox id) — os buses controlam o som do mundo (vento, mar, relâmpagos) que os outros motores tocam.",
+		Font = Enum.Font.Gotham, TextSize = 9, TextColor3 = th.muted,
+		TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+		TextWrapped = true, ZIndex = 44,
+	}, rightc)
+	actBtn(rightc, UDim2.fromOffset(8, 216), UDim2.new(1, -16, 0, 24), "Setup buses (idempotente)", th, function()
+		log(msgOf(cmd("audio_setup", {})))
+	end)
+	return win
+end
+
+local wAudio = mkWin("audio", "ÁUDIO X — mixer real dos 7 buses do mundo", 656, 300, THEME_AUDIO)
+buildAudio(wAudio)
+
+-- =============================================================
+-- FX X — 13 presets de partículas FÍSICAS (gravidade real, budget D-O15)
+-- =============================================================
+local THEME_FX = {
+	bg = Color3.fromRGB(28, 12, 8), bg2 = Color3.fromRGB(36, 17, 12), bg3 = Color3.fromRGB(46, 23, 16),
+	cap = Color3.fromRGB(24, 11, 8), edge = Color3.fromRGB(128, 60, 30),
+	text = Color3.fromRGB(252, 238, 226), muted = Color3.fromRGB(204, 160, 128),
+	acc = Color3.fromRGB(255, 154, 61), act = Color3.fromRGB(108, 48, 18),
+}
+
+local function buildFx(win)
+	local th = THEME_FX
+	local body = win.body
+	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
+	local statsBar = B("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 18), Position = UDim2.fromOffset(10, 6),
+		BackgroundColor3 = th.cap, Text = "  APX conectando…",
+		Font = Enum.Font.Code, TextSize = 10, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(statsBar, 6)
+	task.spawn(function()
+		while win.root.Parent do
+			task.wait(2.5)
+			if win.root.Visible then
+				local res = cmd("fx_stats")
+				if res.msg then statsBar.Text = "  " .. res.msg end
+			end
+		end
+	end)
+
+	B("TextLabel", {
+		Size = UDim2.fromOffset(210, 14), Position = UDim2.fromOffset(10, 30),
+		BackgroundTransparency = 1, Text = "13 PRESETS (física de verdade)", Font = Enum.Font.GothamBold,
+		TextSize = 9, TextColor3 = th.acc, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 43,
+	}, body)
+	local fxList = listCtl(body, UDim2.fromOffset(10, 48), UDim2.fromOffset(210, 230), th)
+
+	local mid = B("Frame", {
+		Size = UDim2.fromOffset(250, 230), Position = UDim2.fromOffset(228, 48),
+		BackgroundColor3 = th.bg2, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(mid, 7) ST(mid, 1, th.edge)
+	local fxName = B("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 16), Position = UDim2.fromOffset(8, 8),
+		BackgroundTransparency = 1, Text = "selecione um preset", Font = Enum.Font.GothamBold,
+		TextSize = 12, TextColor3 = th.text, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+	}, mid)
+	local fxInfo = B("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 30), Position = UDim2.fromOffset(8, 26),
+		BackgroundTransparency = 1, Text = "—", Font = Enum.Font.Gotham, TextSize = 9,
+		TextColor3 = th.muted, TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, ZIndex = 44,
+	}, mid)
+	local chosen = { id = "fogo" }
+	local fx = stepCtl(mid, UDim2.fromOffset(8, 62), "x", 0, 10, -999, 999, th)
+	local fz = stepCtl(mid, UDim2.new(0.51, 4, 0, 62), "z", -16, 10, -999, 999, th)
+	local fy = stepCtl(mid, UDim2.fromOffset(8, 100), "y (altura)", 6, 2, 0, 200, th)
+	actBtn(mid, UDim2.fromOffset(8, 140), UDim2.new(1, -16, 0, 28), "EMITIR NO MUNDO", th, function()
+		local res = cmd("fx_emit", { kind = chosen.id, x = fx.get(), y = fy.get(), z = fz.get() })
+		log(msgOf(res))
+	end)
+	actBtn(mid, UDim2.fromOffset(8, 174), UDim2.new(1, -16, 0, 24), "Limpar TODOS os emissores", th, function()
+		log(msgOf(cmd("fx_clear", {})))
+	end)
+
+	local rightInfo = B("Frame", {
+		Size = UDim2.fromOffset(200, 230), Position = UDim2.fromOffset(486, 48),
+		BackgroundColor3 = th.bg2, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(rightInfo, 7) ST(rightInfo, 1, th.edge)
+	B("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 200), Position = UDim2.fromOffset(8, 8),
+		BackgroundTransparency = 1,
+		Text = "Cada preset tem gravidade, velocidade, espalhamento, vida e cores FÍSICAS próprias — fogo sobe (gravidade -12), chuva cai a 40/s com cone fino, neve balança com sway, magia gira em vórtice (vR/vOmega). O budget D-O15 corta emissão sozinho se a GPU apertar — sem overdraw fake.",
+		Font = Enum.Font.Gotham, TextSize = 10, TextColor3 = th.muted,
+		TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+		TextWrapped = true, ZIndex = 44,
+	}, rightInfo)
+	-- preencher presets
+	task.spawn(function()
+		local res = cmd("fx_presets")
+		if not res.presets then return end
+		for _, pr in ipairs(res.presets) do
+			local kb = B("TextButton", {
+				Size = UDim2.new(1, -8, 0, 26), BackgroundColor3 = th.bg3,
+				Text = ("  %s  ·  %s · %d/s"):format(pr.id, pr.mode, pr.rate or 0),
+				Font = Enum.Font.GothamBold, TextSize = 10,
+				TextColor3 = th.text, BorderSizePixel = 0,
+				TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+			}, fxList)
+			H(kb, 5)
+			kb.MouseButton1Click:Connect(function()
+				chosen.id = pr.id
+				fxName.Text = pr.id
+				fxInfo.Text = ("modo %s · vel %.0f · grav %.0f · vida %.1fs"):format(pr.mode, pr.speed or 0, pr.gravity or 0, pr.life or 0)
+				for _, ch in ipairs(fxList:GetChildren()) do
+					if ch:IsA("TextButton") then ch.BackgroundColor3 = th.bg3 end
+				end
+				kb.BackgroundColor3 = th.act
+			end)
+		end
+	end)
+	return win
+end
+
+local wFx = mkWin("fx", "FX X — partículas físicas (gravidade real, budget real)", 696, 310, THEME_FX)
+buildFx(wFx)
+
+-- =============================================================
+-- CORDAS X — integração Verlet íntegra (corda, bandeira, ponte)
+-- =============================================================
+local THEME_CORDAS = {
+	bg = Color3.fromRGB(24, 18, 12), bg2 = Color3.fromRGB(30, 24, 17), bg3 = Color3.fromRGB(38, 30, 22),
+	cap = Color3.fromRGB(20, 16, 11), edge = Color3.fromRGB(112, 84, 48),
+	text = Color3.fromRGB(250, 240, 228), muted = Color3.fromRGB(196, 168, 130),
+	acc = Color3.fromRGB(216, 162, 90), act = Color3.fromRGB(84, 54, 26),
+}
+
+local function buildCordas(win)
+	local th = THEME_CORDAS
+	local body = win.body
+	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
+	local statsBar = B("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 18), Position = UDim2.fromOffset(10, 6),
+		BackgroundColor3 = th.cap, Text = "  RPX conectando…",
+		Font = Enum.Font.Code, TextSize = 10, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(statsBar, 6)
+	task.spawn(function()
+		while win.root.Parent do
+			task.wait(2.5)
+			if win.root.Visible then
+				local res = cmd("rope_stats")
+				if res.msg then statsBar.Text = "  " .. res.msg end
+			end
+		end
+	end)
+
+	actBtn(body, UDim2.fromOffset(10, 34), UDim2.fromOffset(300, 30), "PONTE DE CORDA (demo físico)", th, function()
+		log(msgOf(cmd("rope_demo", {})))
+	end)
+	local fx = stepCtl(body, UDim2.fromOffset(10, 74), "x", 6, 2, -60, 60, th)
+	local fy = stepCtl(body, UDim2.new(0.51, 16, 0, 74), "y", 16, 2, 4, 40, th)
+	local fz2 = stepCtl(body, UDim2.fromOffset(10, 110), "z", 4, 2, -60, 60, th)
+	actBtn(body, UDim2.fromOffset(10, 146), UDim2.fromOffset(300, 28), "BANDEIRA (tecido Verlet ao vento)", th, function()
+		log(msgOf(cmd("rope_flag", { x = fx.get(), y = fy.get(), z = fz2.get() })))
+	end)
+	local bLen = stepCtl(body, UDim2.fromOffset(10, 184), "vão (studs)", 30, 6, 12, 96, th)
+	actBtn(body, UDim2.fromOffset(10, 220), UDim2.fromOffset(300, 28), "PONTE PÊNSIL + bola oscilante", th, function()
+		log(msgOf(cmd("rope_bridge", { len = bLen.get() })))
+	end)
+
+	local rig = B("Frame", {
+		Size = UDim2.fromOffset(330, 214), Position = UDim2.fromOffset(320, 34),
+		BackgroundColor3 = th.bg2, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(rig, 7) ST(rig, 1, th.edge)
+	B("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 200), Position = UDim2.fromOffset(8, 8),
+		BackgroundTransparency = 1,
+		Text = "Verlet íntegro: cada corda/tecidinho é pontos e restrições integrados ponto a ponto no pump (gravidade, mola, colisão com esferas e chão) — e o VENTO do ATMOS entra como força real. Não é uma imagem de corda: é física de partículas escrita no workspace (cada segmento vira Part).",
+		Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = th.muted,
+		TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+		TextWrapped = true, ZIndex = 44,
+	}, rig)
+	return win
+end
+
+local wCordas = mkWin("cordas", "CORDAS X — Verlet íntegro (corda/bandeira/ponte)", 666, 270, THEME_CORDAS)
+buildCordas(wCordas)
+
 -- =============================================================
 -- registro DECK (cada menu da topbar abre SUA janela única)
 -- =============================================================
 local windows = {
 	terrain = wTerrain, modeler = wModeler, animator = wAnimator,
 	espaco = wEspaco, fabricar = wFabricar, water = wWater,
+	atmos = wAtmos, clima = wClima, vida = wVida, cidade = wCidade,
+	audio = wAudio, fx = wFx, cordas = wCordas,
 }
 _G.ArkherDeck = {
 	open = function(id, view)
@@ -1389,4 +2085,4 @@ _G.ArkherDeck = {
 	end,
 	cmd = cmd,
 }
-print("[ArkherX] 08_Deck: 6 editores únicos prontos (TERRAIN/WATER/MODELER/ANIMATOR/ESPAÇO/FABRICAR) — abrem pela topbar original")
+print("[ArkherX] 08_Deck: 13 editores únicos prontos (TERRAIN/WATER/MODELER/ANIMATOR/ESPAÇO/FABRICAR/ATMOS/CLIMA/VIDA/CIDADE/ÁUDIO/FX/CORDAS) — X-TIER ativador na topbar original")
