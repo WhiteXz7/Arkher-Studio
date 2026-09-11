@@ -66,19 +66,48 @@ local function frame(name, parent, pos, size, color, transp)
   return f
 end
 
-local function label(name, parent, text, pos, size, fontSize, color, wrap)
+local function label(name, parent, text, pos, size, fontSize, color, wrap, ...)
   local t = Instance.new("TextLabel")
   t.Name = name
-  t.Position = pos
-  t.Size = size
+  -- aceita DUAS formas legadas sem quebrar chamadores:
+  --   A) pos/size = UDim2, fontSize, color, wrap
+  --   B) numerica: x, y, w, h[, fontSize], color[, wrap] -> fromOffset
+  if typeof(pos) == "UDim2" then
+    t.Position = pos
+    t.Size = (typeof(size) == "UDim2") and size or UDim2.new()
+    t.TextColor3 = color or m.text
+    t.TextSize = fontSize or 17
+    if wrap then t.TextWrapped = true t.TextYAlignment = Enum.TextYAlignment.Top end
+    if not wrap then t.TextYAlignment = Enum.TextYAlignment.Center end
+  else
+    local x = type(pos) == "number" and pos or 0
+    local y = type(size) == "number" and size or 0
+    local w = type(fontSize) == "number" and fontSize or 0
+    local h = type(color) == "number" and color or 18
+    local fs, col, wp = 17, m.text, false
+    if typeof(wrap) == "Color3" then
+      col = wrap
+      if (...) == true then wp = true end
+    elseif type(wrap) == "number" then
+      fs = wrap
+      local v1, v2 = ...
+      if typeof(v1) == "Color3" then col = v1 end
+      if v2 == true then wp = true end
+    elseif typeof(color) == "Color3" and wrap == nil then
+      col = color
+      h = 20
+    end
+    t.Position = UDim2.fromOffset(x, y)
+    t.Size = UDim2.fromOffset(w, h)
+    t.TextColor3 = col
+    t.TextSize = fs
+    if wp then t.TextWrapped = true t.TextYAlignment = Enum.TextYAlignment.Top end
+    if not wp then t.TextYAlignment = Enum.TextYAlignment.Center end
+  end
   t.BackgroundTransparency = 1
   t.Text = text
-  t.TextColor3 = color or m.text
   t.Font = Enum.Font.SourceSans
-  t.TextSize = fontSize or 17
   t.TextXAlignment = Enum.TextXAlignment.Left
-  t.TextYAlignment = Enum.TextYAlignment.Center
-  if wrap then t.TextWrapped = true t.TextYAlignment = Enum.TextYAlignment.Top end
   t.ZIndex = (parent and parent:IsA("GuiObject") and parent.ZIndex or 1) + 1
   t.Parent = parent
   return t

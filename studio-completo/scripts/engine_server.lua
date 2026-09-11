@@ -11,7 +11,18 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local engines = ServerStorage:WaitForChild("ArkherEngines", 30)
-assert(engines, "ArkherEngines ausente no ServerStorage (rode o injetor)")
+if not engines then
+	-- PROBE anti-drop: revela o que o Studio realmente carregou
+	local dump = {}
+	for _, c in ipairs(ServerStorage:GetChildren()) do
+		dump[#dump + 1] = c.ClassName .. ":" .. c.Name .. "(" .. #c:GetChildren() .. " filhos)"
+	end
+	warn("[ArkherX] ServerStorage conteudo: " .. (#dump > 0 and table.concat(dump, ", ") or "(vazio)"))
+	local dump2 = {}
+	for _, c in ipairs(ReplicatedStorage:GetChildren()) do dump2[#dump2 + 1] = c.ClassName .. ":" .. c.Name end
+	warn("[ArkherX] ReplicatedStorage conteudo: " .. (#dump2 > 0 and table.concat(dump2, ", ") or "(vazio)"))
+	error("ArkherEngines ausente no ServerStorage (ver probes acima)")
+end
 
 local ORDER = { "DM", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX", "RIGX", "MSHX" }
 for _, nm in ipairs(ORDER) do

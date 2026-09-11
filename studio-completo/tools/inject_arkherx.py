@@ -79,7 +79,9 @@ def main():
     # ---------- novas instancias (ordem -> referentes) ----------
     NODES = [
         ("Folder", "ArkherEngines", ref_srvstorage, None),
+        ("Folder", "ArkherCloudVault", ref_srvstorage, None),
         *[( "ModuleScript", "ArkherX_" + m, 0, m) for m in ENGINE_MODULES],  # parent patched depois
+        ("ModuleScript", "ArkherServices", 0, "__services__"),
         ("Script", "ArkherEngineServer", ref_sss, os.path.join(ROOT, "scripts", "engine_server.lua")),
         ("Folder", "ArkherNet", ref_replicated, None),
         ("RemoteEvent", "ArkherXCmd", 0, None),      # parent patched depois
@@ -96,7 +98,9 @@ def main():
         next_ref += 1
     NODES = list(NODES)
     for i, (cls, nm, parent, src) in enumerate(NODES):
-        if cls in ("ModuleScript",):
+        if cls == "ModuleScript" and src == "__services__":
+            NODES[i] = (cls, nm, ref_map["ArkherCloudVault"], src)
+        elif cls in ("ModuleScript",):
             NODES[i] = (cls, nm, ref_map["ArkherEngines"], src)
         elif cls in ("RemoteEvent", "RemoteFunction"):
             NODES[i] = (cls, nm, ref_map["ArkherNet"], src)
@@ -163,11 +167,14 @@ def main():
             if src is None:
                 continue
             if cls == "ModuleScript":
-                f = os.path.join(V3_CORE, {
-                    "DM": "dmath", "ATX": "terrainx", "AWX": "waterx", "ASXN": "scenex",
-                    "AAX": "animx", "AUX": "audiomix", "AEX": "atmosx", "APX": "particlesx",
-                    "RPX": "ropex", "RIGX": "rigx", "MSHX": "meshx",
-                }[src] + ".luau")
+                if src == "__services__":
+                    f = os.path.join(ROOT, "scripts", "modules", "arkher_services.lua")
+                else:
+                    f = os.path.join(V3_CORE, {
+                        "DM": "dmath", "ATX": "terrainx", "AWX": "waterx", "ASXN": "scenex",
+                        "AAX": "animx", "AUX": "audiomix", "AEX": "atmosx", "APX": "particlesx",
+                        "RPX": "ropex", "RIGX": "rigx", "MSHX": "meshx",
+                    }[src] + ".luau")
             else:
                 f = src
             srcs.append(open(f, encoding="utf-8").read())

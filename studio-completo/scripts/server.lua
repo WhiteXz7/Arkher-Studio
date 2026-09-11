@@ -375,7 +375,11 @@ do
 		vault:SetAttribute("ArkherInternal", true)
 		local ms = vault:FindFirstChild("ArkherServices") or Instance.new("ModuleScript")
 		ms.Name = "ArkherServices"
-		ms.Source = [[
+		-- modulo injetado pelo build X ja chega com Source (capability nao permite
+		-- escrever Source em runtime num servidor normal) — so escreve se vazio
+		local hasSrc = false
+		pcall(function() hasSrc = (#ms.Source or 0) > 10 end)
+		if not hasSrc then pcall(function() ms.Source = [[
 -- ARKHER Services (ModuleScript) — camada CUSTOM de persistência + dados.
 -- Roda no server (ServerStorage/ArkherCloudVault/ArkherServices). Não usa require externo;
 -- só services globais. Todo dado aninhado vai em atributo STRING (JSON) p/ persistir no place.
@@ -879,7 +883,8 @@ end
 
 return M
 
-]]
+]] end)
+		end
 		ms.Parent = vault
 		return require(ms)
 	end)

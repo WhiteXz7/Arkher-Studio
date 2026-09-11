@@ -140,3 +140,17 @@ em cada um dos 121 chunks PROP (#StudioSafe). Baixe novamente a placa atual.
   05 (sem alterá-lo), mesmo tema, ícones desenhados (palito-rig, cubo-wire).
 
 Regerar: `python3 tools/inject_arkherx.py ../ArkherStudio_Completo_Pro.rbxl ../ArkherStudio_Completo_X.rbxl` → valida 1733 inst, 32 tipos, PRNT/END corretos. Testes: `python3 tools/run_tests.py` (109+ asserts, 27 painéis).
+
+
+**FIX round 2 (2026-09, log de Play do usuário):**
+- `03_Menus label()` aceitava só UDim2 mas ~26 chamadores passam números
+  (x,y,w,h[,fs],color) → crash "UDim2 expected, got number". Helper agora é
+  bi-modal (detecta typeof) — visual idêntico, modais/menus voltam a abrir.
+- `ArkherEditorServer` escrevia `Source` em runtime (proibido fora de plugin)
+  → serviços nunca subiam e o assert vazava pro console. Loader patchado:
+  pula a escrita quando o módulo já tem Source (o injetor agora EMBARCA
+  `ArkherServices` dentro de `ServerStorage/ArkherCloudVault` — capability
+  free) e o write cai num pcall à prova de spam.
+- `ArkherEngineServer` ganhou PROBE anti-drop: se `ArkherEngines` sumir de
+  novo, loga o inventário real de ServerStorage/ReplicatedStorage. Placa X:
+  1739 inst (+21) — inclui Folder ArkherCloudVault + ModuleScript ArkherServices.
