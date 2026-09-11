@@ -138,6 +138,10 @@ function RX.pump(dt)
 		local rain = WX.hydroStep(S.world, dt)
 		if rain then S.stats.rains = (S.stats.rains or 0) + 1 end
 	end
+	-- hooks dos motores vivos (humanos digitais, ecossistemas, clima, fisica…)
+	if S.hooks then
+		for nm, fn in pairs(S.hooks) do pcall(fn, dt) end
+	end
 	-- luz ambiental a cada ciclo curto (simulacao fisica do ceu)
 	if WX and lightAcc > 1.5 and S.world then
 		lightAcc = 0
@@ -260,6 +264,7 @@ function RX.statsReport()
 		streamChunks = S.stats.streamChunks or 0,
 		rains = S.stats.rains or 0,
 		earth = S.earth ~= nil,
+		hooks = (function() local n = 0 for _ in pairs(S.hooks or {}) do n = n + 1 end return n end)(),
 	}
 end
 
@@ -267,6 +272,15 @@ end
 -- ========================================================================
 -- CAMADA DE APLICACAO AUTOMATICA (o RRW em TUDO, sem ninguem chamar nada)
 -- ========================================================================
+
+-- HOOKS UNIVERSAIS: qualquer motor (DAYX/ECOX/WEAX/PHYSX/CUSTOM do usuario)
+-- assina o pulso do RRW — adaptacao da realidade acontece para TODOS juntos.
+S.hooks = {}
+function RX.hook(name, fn)
+	S.hooks[name] = fn
+	return fn
+end
+function RX.unhook(name) S.hooks[name] = nil end
 
 -- heuristica de MATERIA por cor/nome/material do objeto (matéria, nao textura)
 local MAT_KEYS = { "rock", "sand", "grass", "soil", "snow", "ice", "mud", "lava", "scree", "coral" }

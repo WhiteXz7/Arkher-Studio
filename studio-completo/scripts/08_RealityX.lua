@@ -95,19 +95,17 @@ B("TextLabel", {
 	TextXAlignment = Enum.TextXAlignment.Left,
 }, strip)
 
-local status = B("TextLabel", {
-	Name = "Status",
-	Size = UDim2.new(1, -838, 1, 0),
-	Position = UDim2.new(0, 830, 0, 0),
-	BackgroundTransparency = 1,
-	Text = "RRW automático: pronto. Passe o mouse numa tool p/ ver o que ela faz.",
-	Font = t.fontm, TextSize = 11, TextColor3 = t.muted,
-	TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
-}, strip)
+-- status no rodape da board (abaixo), trocado quando a board eh criada
+local status
 
-local tabHolder = B("Frame", {
-	Size = UDim2.fromOffset(760, 30), Position = UDim2.fromOffset(62, 0),
-	BackgroundTransparency = 1,
+local tabHolder = B("ScrollingFrame", {
+	Size = UDim2.new(1, -70, 0, 30), Position = UDim2.fromOffset(62, 0),
+	BackgroundTransparency = 1, BorderSizePixel = 0,
+	ScrollingDirection = Enum.ScrollingDirection.X,
+	ScrollBarThickness = 2,
+	ScrollBarImageColor3 = t.border,
+	CanvasSize = UDim2.new(0, 0, 0, 0),
+	AutomaticCanvasSize = Enum.AutomaticSize.X,
 }, strip)
 local tabLay = Instance.new("UIListLayout")
 tabLay.FillDirection = Enum.FillDirection.Horizontal
@@ -129,7 +127,7 @@ H(board, 10)
 stroke(board, 1)
 
 local grid = B("ScrollingFrame", {
-	Size = UDim2.new(1, -16, 1, -12),
+	Size = UDim2.new(1, -16, 1, -30),
 	Position = UDim2.fromOffset(8, 6),
 	BackgroundTransparency = 1,
 	BorderSizePixel = 0,
@@ -145,6 +143,18 @@ glay.CellPadding = UDim2.fromOffset(6, 6)
 glay.FillDirection = Enum.FillDirection.Horizontal
 glay.SortOrder = Enum.SortOrder.LayoutOrder
 glay.Parent = grid
+
+status = B("TextLabel", {
+	Name = "Status",
+	Size = UDim2.new(1, -16, 0, 18),
+	Position = UDim2.fromOffset(8, 96),
+	BackgroundColor3 = t.sect,
+	Text = "  RRW automático: pronto. Passe o mouse numa tool p/ ver o que ela faz.",
+	Font = t.fontm, TextSize = 11, TextColor3 = t.muted,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextTruncate = Enum.TextTruncate.AtEnd,
+}, board)
+H(status, 6)
 
 -- ============ fabrica de botoes de tool ============
 local orderN = 0
@@ -323,6 +333,16 @@ function BUILD.clima()
 			return remoteMsg("atmos_preset", { preset = p2 })
 		end)
 	end
+	section("DINÂMICA ATMOSFÉRICA (viva)", t.cyan)
+	toolBtn("🌀 Frentes Meteorológicas", "Pressão ALTA/BAIXA viajando — muda o weather AEX quando passa por cima de você", function()
+		return remoteMsg("fronts_on", {})
+	end)
+	toolBtn("💨 Vento Global", "Campo de vento com rajadas (ruído 1D): empurra corpos soltos do mundo", function()
+		return remoteMsg("wind_on", { on = true, deg = 25, speed = 8 })
+	end)
+	toolBtn("Vento Forte 60°", "Rajadas fortes nordeste", function()
+		return remoteMsg("wind_on", { on = true, deg = 60, speed = 16 })
+	end)
 	section("WEATHER MACHINE", t.cyan)
 	for _, w in ipairs({ "limpo", "nuvem", "chuva", "tempestade", "neblina", "neve", "aurora" }) do
 		local w2 = w
@@ -453,11 +473,58 @@ function BUILD.fabricar()
 	end
 end
 
+-- ---- VIDA · ECO (humano digital + ecossistemas + frentes) ----
+function BUILD.vida()
+	section("HUMANO DIGITAL (cat. J)", Color3.fromRGB(255, 190, 90))
+	toolBtn("Humano Digital", "DAYX: respiração fisiológica, piscar, olhar-atento pra você, marcha e balanço pendular — importância 0.95 no RRW", function()
+		return remoteMsg("life_human", { seed = 7 })
+	end)
+	toolBtn("Aldeia Humana ×3", "Três humanos digitais convivendo (seeds 3/5/9)", function()
+		remoteMsg("life_human", { seed = 3, x = -4 })
+		remoteMsg("life_human", { seed = 5, x = 2 })
+		return remoteMsg("life_human", { seed = 9, x = 8 })
+	end)
+	section("ECOSSISTEMAS (cat. L)", Color3.fromRGB(120, 220, 130))
+	toolBtn("🌿 Ecossistemas ON", "Populações reais por bioma com crescimento logístico (dN=rN(1-N/K)); fauna nasce pelo FABX no nicho certo", function()
+		return remoteMsg("eco_start", {})
+	end)
+	toolBtn("Stats ECO", "Animais vivos, nascimentos, populações por espécie", function()
+		return remoteMsg("eco_stats", {})
+	end)
+	section("FRENTES METEOROLÓGICAS (cat. L/M)", t.cyan)
+	toolBtn("🌀 Frentes ON", "Sistemas de pressão ALTA/BAIXA nascem, viajam com o vento e mudam o clima REAL quando passam por você", function()
+		return remoteMsg("fronts_on", {})
+	end)
+	toolBtn("Stats Frentes", "Sistemas ativos, vento global, tempo atual na câmera", function()
+		return remoteMsg("fronts_stats", {})
+	end)
+end
+
+-- ---- CIDADES (assentamentos procedurais, cat. M) ----
+function BUILD.civ()
+	section("ASSENTAMENTOS PROCEDURAIS (determinísticos por seed)", Color3.fromRGB(120, 190, 255))
+	toolBtn("🏘 Vila", "Praça com fonte, casas ao redor, lampiões, árvores e estrada — malha completa", function()
+		return remoteMsg("civ_fabricate", { kind = "vila", seed = 7 })
+	end)
+	toolBtn("🏙 Cidade", "Rua principal + travessa com comércio, praça com estátua e fonte", function()
+		return remoteMsg("civ_fabricate", { kind = "cidade", seed = 11 })
+	end)
+	toolBtn("🌆 Metrópole", "Quadras 5×5, avenidas, prédios de alturas variadas, praça central", function()
+		return remoteMsg("civ_fabricate", { kind = "metropole", seed = 13 })
+	end)
+	toolBtn("Outro DNA (seed 42)", "Mesma regra, cidade diferente: determinístico", function()
+		return remoteMsg("civ_fabricate", { kind = "cidade", seed = 42, z = -260 })
+	end)
+end
+
 -- ---- CENA · FX ----
 function BUILD.cena()
 	section("FX DE CENA", t.cyan)
 	toolBtn("Corda + Bandeira", "RPX Verlet: corda, bandeira e esfera com vento do AEX", function()
 		return remoteMsg("rope_demo", {})
+	end)
+	toolBtn("💥 Shockwave", "Onda de choque física no centro do mundo: decaimento esférico empurra tudo solto", function()
+		return remoteMsg("shockwave", { x = 0, z = 0, r = 50, f = 80 })
 	end)
 	toolBtn("Fogo", "APX emissor fogo (budget D-O15)", function()
 		return remoteMsg("px_emit", { kind = "fogo" })
@@ -491,6 +558,13 @@ function BUILD.stats()
 	toolBtn("Grafo Semântico", "Quantos nós, por matéria — o mundo como conhecimento vivo", function()
 		return remoteMsg("graph_stats", {})
 	end)
+	section("SEGURANÇA ANTI-EXPLOIT (cat. X)", t.err)
+	toolBtn("🛡 SECX Status", "Rate-limit por jogador + higiene de payload + auditoria da ponte", function()
+		return remoteMsg("sec_stats", {})
+	end)
+	toolBtn("Armar SECX", "Blinda a ponte ArkherXQ (fail-closed se a segurança falhar)", function()
+		return remoteMsg("sec_arm", { on = true })
+	end)
 end
 
 -- ============ abas ============
@@ -502,6 +576,8 @@ local TABS = {
 	{ id = "veget",    title = "VEGET",         col = Color3.fromRGB(120, 220, 130) },
 	{ id = "modeler",  title = "MODELER ·100",  col = t.purple },
 	{ id = "fabricar", title = "FABRICAR ·TUDO", col = Color3.fromRGB(255, 130, 90) },
+	{ id = "vida",     title = "VIDA · ECO",    col = Color3.fromRGB(255, 190, 90) },
+	{ id = "civ",      title = "CIDADES",       col = Color3.fromRGB(120, 190, 255) },
 	{ id = "animator", title = "ANIMATOR",      col = t.purple },
 	{ id = "cena",     title = "CENA · FX",     col = t.cyan },
 	{ id = "stats",    title = "STATS",         col = t.green },

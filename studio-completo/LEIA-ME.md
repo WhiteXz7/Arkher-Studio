@@ -139,7 +139,27 @@ em cada um dos 121 chunks PROP (#StudioSafe). Baixe novamente a placa atual.
 - `Arkher_06_RigX` + `Arkher_07_MeshX`: painéis que se ACOPLAM ao dock do
   05 (sem alterá-lo), mesmo tema, ícones desenhados (palito-rig, cubo-wire).
 
-Regerar: `python3 tools/inject_arkherx.py ../ArkherStudio_Completo_Pro.rbxl ../ArkherStudio_Completo_X.rbxl` → valida **1.744 inst, 32 tipos (169.163 B)**, PRNT/END corretos. Testes: `python3 tools/run_tests.py` (109+ asserts, 27 painéis).
+Regerar: `python3 tools/inject_arkherx.py ../ArkherStudio_Completo_Pro.rbxl ../ArkherStudio_Completo_X.rbxl` → valida **1.750 inst, 32 tipos (178.319 B)**, PRNT/END corretos.
+
+**MUNDO VIVO (2026-09, round 3 — famílias J/H/L/M/X):**
+- `dayx.luau` (DAYX, cat. J) — **humano digital procedural**: respiração 0.25 Hz,
+  piscar fisiológico, olhar-atento para a câmera, marcha com balanço pendular,
+  importância 0.95 no RRW (D-O15 nunca o rebaixa).
+- `ecox.luau` (ECOX, cat. L) — **ecossistemas** com dinâmica logística real
+  (dN=rN(1−N/K)), fauna nascida pelo FABX no nicho do bioma (peixe só na água!).
+- `weax.luau` (WEAX, cat. L/M) — **frentes meteorológicas**: sistemas de pressão
+  ALTA/BAIXA que nascem/viajam/morrem, mudam o weather AEX ao passar por você e
+  regam o ciclo d'água no WLDX.
+- `civix.luau` (CIVIX, cat. M) — **assentamentos procedurais** vila/cidade/metrópole:
+  malha viária + lotes + FABX + praças, determinístico por seed.
+- `physx.luau` (PHYSX, cat. H) — **vento global** com rajadas (ruído 1D) aplicado a
+  corpos soltos + **shockwave** com decaimento esférico; budget D-O15 fatiado.
+- `secx.luau` (SECX, cat. X) — **anti-exploit da ponte**: rate-limit por jogador
+  (janela deslizante), higiene de payload, trilha de auditoria, fail-closed.
+- **RX.HOOKS**: qualquer motor assina o pulso universal do RRW (`RX.hook`) — a
+  adaptação da realidade acontece para TODOS juntos, no mesmo Heartbeat.
+- Servidor **54 comandos**; abas novas **VIDA · ECO** e **CIDADES** (12 abas; strip
+  rolável; status no rodapé da board); injetor: **21 ModuleScripts**. Testes: `python3 tools/run_tests.py` (109+ asserts, 27 painéis).
 
 **CAMADA AUTOMÁTICA + FABRICATOR (2026-09, round 2):**
 - **`fabx.luau` (FABX)** — o FABRICATOR universal: gramática procedural com ~48 classes

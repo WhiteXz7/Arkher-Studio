@@ -24,7 +24,7 @@ if not engines then
 	error("ArkherEngines ausente no ServerStorage (ver probes acima)")
 end
 
-local ORDER = { "DM", "THX", "WLDX", "RRX", "FABX", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX", "RIGX", "MSHX" }
+local ORDER = { "DM", "THX", "WLDX", "RRX", "FABX", "DAYX", "ECOX", "WEAX", "CIVIX", "SECX", "PHYSX", "ATX", "AWX", "ASXN", "AAX", "AUX", "AEX", "APX", "RPX", "RIGX", "MSHX" }
 for _, nm in ipairs(ORDER) do
 	local ok, err = pcall(function() require(engines["ArkherX_" .. nm]) end)
 	if not ok then warn("[ArkherX] motor " .. nm .. " falhou: " .. tostring(err)) end
@@ -215,6 +215,73 @@ function CMD.npc_spawn(p)
 		parts = parts, thickness = 0.42, color = Color3.fromRGB(240, 190, 90),
 	})
 	return { msg = ("NPC '%s' vivo: %d ossos FABRIK + balanco + importancia 0.9 no RRW (AutoPhysics conforme slider)"):format(preset, #c.bones) }
+end
+
+
+function CMD.life_human(p)
+	assert(ArkherDayX, "DAYX off")
+	p = p or {}
+	local h = ArkherDayX.spawn({ name = p.name, seed = p.seed or 7,
+		pos = Vector3.new(p.x or 0, p.y or 0, p.z or -20) })
+	return { msg = ("HUMANO DIGITAL '%s' vivo: respiracao 0.25Hz, piscar fisiologico, olhar-atento, marcha procedural — importancia 0.95 no RRW"):format(h.name) }
+end
+
+function CMD.eco_start(p)
+	assert(ArkherEcoX, "ECOX off")
+	return { msg = ArkherEcoX.start() }
+end
+
+function CMD.eco_stats()
+	assert(ArkherEcoX, "ECOX off")
+	local st = ArkherEcoX.stats()
+	return { msg = ("ECO: %d animais vivos, %d nascimentos — populacoes: %s"):format(
+		st.spawned, st.births, table.concat(st.species, " ")) }
+end
+
+function CMD.fronts_on(p)
+	assert(ArkherWeaX, "WEAX off")
+	return { msg = ArkherWeaX.start() }
+end
+
+function CMD.fronts_stats()
+	assert(ArkherWeaX, "WEAX off")
+	local st = ArkherWeaX.stats()
+	return { msg = ("FRENTES: %d sistemas (%d baixa/%d alta) | vento %s studs/s | tempo na camera: %s"):format(
+		st.systems, st.low, st.high, st.wind, tostring(st.current)) }
+end
+
+function CMD.civ_fabricate(p)
+	assert(ArkherCiviX, "CIVIX off")
+	p = p or {}
+	local res = ArkherCiviX.fabricate(p)
+	return { msg = ("ASSENTAMENTO '%s' (seed %d): %d pecas — malha viaria + FABX, tudo no RRW automatico"):format(res.kind, res.seed, res.pieces) }
+end
+
+function CMD.wind_on(p)
+	assert(ArkherPhysX, "PHYSX off")
+	local w = ArkherPhysX.setWind(p and p.on ~= false, p and p.deg, p and p.speed)
+	return { msg = ("VENTO GLOBAL: %s a %d° forca %d studs/s° (rajadas por ruido 1D, empurra corpos soltos)"):format(
+		w.on and "ON" or "OFF", w.deg, w.speed) }
+end
+
+function CMD.shockwave(p)
+	assert(ArkherPhysX, "PHYSX off")
+	p = p or {}
+	local n = ArkherPhysX.shockwave(p.x or 0, p.z or 0, p.r or 46, p.f or 70)
+	return { msg = ("SHOCKWAVE #%d em (%.0f,%.0f): decaimento esferico, empurra tudo solto no raio"):format(n, p.x or 0, p.z or 0) }
+end
+
+function CMD.sec_arm(p)
+	assert(ArkherSecX, "SECX off")
+	local on = ArkherSecX.arm(p and p.on ~= false)
+	return { msg = "SECX " .. (on and "ARMADO: ponte ArkherXQ com rate-limit + higiene + auditoria" or "destivado") }
+end
+
+function CMD.sec_stats()
+	assert(ArkherSecX, "SECX off")
+	local st = ArkherSecX.stats()
+	return { msg = ("SECX %s | %d violacoes | %d eventos auditados | recentes: %s"):format(
+		st.on and "ON" or "off", st.violations, st.audited, st.recent) }
 end
 
 function CMD.stats()
@@ -490,7 +557,17 @@ cmdE.OnServerEvent:Connect(function(player, op, params)
 	if not ok then warn("[ArkherX] cmd " .. tostring(op) .. ": " .. tostring(res)) end
 end)
 
-queryF.OnServerInvoke = function(payload)
+queryF.OnServerInvoke = function(player, payload)
+	-- SECX blinda a ponte: rate-limit por jogador + higiene + auditoria (fail-closed)
+	if ArkherSecX then
+		local okHook, allowed = pcall(function() return ArkherSecX.allow(player, payload) end)
+		if not okHook then
+			return { msg = "SECX indisponivel — comando negado (fail-closed)" }
+		end
+		if not allowed then
+			return { msg = "SECX: rate limit ou payload invalido — reduza o ritmo" }
+		end
+	end
 	if type(payload) == "table" and payload.op then
 		local fn = CMD[tostring(payload.op)]
 		if fn then
@@ -521,4 +598,4 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
-print("[ArkherX] EngineServer pronto — 15 motores no vault (RRW universal + FABX) + ponte ArkherNet")
+print("[ArkherX] EngineServer pronto — 21 motores (RRW universal: humana+eco+frentes+civ+fisica+SECX) + ponte ArkherNet")
