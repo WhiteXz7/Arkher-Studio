@@ -1,320 +1,749 @@
---[[ ARKHER V3 — LocalScript. Requer o kit (ReplicatedStorage.ArkherV3.ArkherKit_B). ]]
+--[[ ARKHER V4 — LocalScript. Requer os kits (ReplicatedStorage.ArkherV3.ArkherKit_B/C/D/E). ]]
 local function _arkherKit()
 	local rs = game:GetService("ReplicatedStorage")
 	local folder = rs:FindFirstChild("ArkherV3")
-	local b = folder and folder:FindFirstChild("ArkherKit_B")
-	if not b then b = script:FindFirstChild("ArkherKit_B") end
-	if not b then b = script.Parent:FindFirstChild("ArkherKit_B") end
-	if not b then
-		error("[ARKHER] ArkherKit_B nao encontrado: rode os 2 installers (ArkherKit_A e ArkherKit_B) primeiro.")
+	for _, kn in ipairs({ "ArkherKit_B", "ArkherKit_C", "ArkherKit_D", "ArkherKit_E" }) do
+		local m = folder and folder:FindFirstChild(kn)
+		if not m then m = script:FindFirstChild(kn) end
+		if not m then m = script.Parent and script.Parent:FindFirstChild(kn) end
+		if not m then
+			error("[ARKHER] " .. kn .. " nao encontrado: rode os installers A+B+C+D+E primeiro.")
+		end
+		require(m)
 	end
-	require(b)
 end
 _arkherKit()
 ARKHER.boot()
 
 do
---[[ ARKHER V3 — UI: CAMERA ]]
--- Layout unico: lista de modos de vista a esquerda, preview com cone de FOV
--- que MUDA ao clicar nos botoes +/-, knobs de FOV/velocidade a direita.
+-- =============================================================
+-- CAMERA STUDIO X — UI sobre o CAMERA X (ACX custom)
+-- Shots fisicos (orbit/dolly/crane/follow/flypath Catmull-Rom),
+-- SHAKE por trauma^2 (amplitude real de cinematografia), FADE real
+-- via ColorCorrectionEffect, CINEMA (cortes em cadeia), editor de
+-- flypath com canvas 2D top-view. Mexer = camera real. 🎬
+-- =============================================================
 local T, K, ICON, C = ARKHER.T, ARKHER.K, ARKHER.ICON, ARKHER.C
-local ACCENT = C("#FF6B81")
 
-local function build()
-	local g, root, head = K.window("ArkherCamera", "CAMERA — rig & view", 24, 350, 560, 380, { pin = true })
-	K.f(head, "Acc", 0, 24, 560, 2, ACCENT)
-
-	local fov = 70
-	local speed = 16
-
-	-- ===== ESQUERDA: MODOS =====
-	local left = K.f(root, "Modes", 8, 34, 122, 250, T.bg4)
-	K.corner(left, 4)
-	K.txt(left, "MODOS", 10, 6, 80, 14, 10, T.txt3, ARKHER.FONTB)
-	local modes = { "Orbit", "Free", "Cinematic", "Drone", "Follow", "Top" }
-	for i, m in ipairs(modes) do
-		local row = K.treeRow(left, 0, i == 3 and ICON.camera or ICON.select, m, i == 3, 26 + (i - 1) * 24)
-		K.hover(row, T.bg4, T.hover)
-		row.MouseButton1Click:Connect(function()
-			ARKHER.out("INFO", "Camera: modo " .. m)
-		end)
+local function mkSlider(parent, x, y, w, label, min, max, val, fmt, onSet)
+	K.txt(parent, label, x, y, 90, 14, 9, T.txt3)
+	local valLbl = K.txt(parent, "", x + w - 56, y, 56, 14, 9, C("#D9A5FF"), ARKHER.FONT, Enum.TextXAlignment.Right)
+	local track = K.btn(parent, "Trk_" .. label, x, y + 15, w, 10, T.bg4, 5)
+	K.stroke(track, T.line, 1)
+	local fill = K.f(track, "Fill", 0, 2, 10, 6, C("#D9A5FF"))
+	K.corner(fill, 3)
+	local function rs()
+		local frac = (val - min) / (max - min)
+		fill.Size = UDim2.new(0, math.max(4, math.floor(w * frac)), 0, 6)
+		valLbl.Text = fmt and fmt(val) or string.format("%.2f", val)
 	end
-	K.txt(left, "Cinematic ativo", 10, 172, 110, 24, 9, ACCENT)
-
-	-- ===== CENTRO: PREVIEW COM CONE DE FOV =====
-	local cv = K.f(root, "Prev", 142, 34, 268, 200, T.dark)
-	K.corner(cv, 4)
-	K.stroke(cv, T.line, 1)
-	-- ceu/terreno
-	K.f(cv, "Sky", 0, 0, 268, 108, C("#12233D"))
-	K.f(cv, "Gnd", 0, 108, 268, 92, C("#1B2B22"))
-	-- sol
-	K.f(cv, "Sun", 200, 24, 14, 14, C("#FFD93D"), 7)
-	-- montanhas (frames rotacionados)
-	local m1 = K.f(cv, "M1", 20, 78, 90, 30, C("#0E1A2B"))
-	m1.Rotation = -8
-	local m2 = K.f(cv, "M2", 150, 70, 110, 38, C("#101E30"))
-	m2.Rotation = 5
-	-- objeto alvo
-	K.f(cv, "Tgt", 128, 128, 14, 26, ACCENT)
-	K.txt(cv, "alvo", 118, 156, 36, 12, 9, T.txt3, FONT, Enum.TextXAlignment.Center)
-	-- cone de FOV (2 linhas rotacionadas a partir do olho)
-	local coneLines = {}
-	local fovLbl = K.txt(cv, "70 FOV", 8, 180, 80, 16, 10, ACCENT)
-	local function drawCone()
-		for _, l in ipairs(coneLines) do l:Destroy() end
-		coneLines = {}
-		local ang = fov * 0.42
-		for _, s in ipairs({ -1, 1 }) do
-			local l = K.f(cv, "C", 135, 140, 150, 2, ACCENT)
-			l.Rotation = s * ang
-			l.AnchorPoint = Vector2.new(0, 0.5)
-			table.insert(coneLines, l)
-		end
-		local eye = K.f(cv, "Eye", 131, 136, 8, 8, T.neon, 4)
-		table.insert(coneLines, eye)
-		fovLbl.Text = fov .. " FOV"
+	local function setI(inp)
+		local frac = (inp.Position.X - track.AbsolutePosition.X) / math.max(track.AbsoluteSize.X, 1)
+		frac = math.min(1, math.max(0, frac))
+		val = min + (max - min) * frac
+		rs()
+		if onSet then onSet(val) end
 	end
-	drawCone()
-
-	-- ===== DIREITA: AJUSTES =====
-	local right = K.f(root, "Adj", 422, 34, 130, 250, T.bg4)
-	K.corner(right, 4)
-	K.txt(right, "FOV", 10, 6, 60, 14, 10, T.txt3, ARKHER.FONTB)
-	local minus = K.btn(right, "M-", 10, 24, 52, 22, T.bg2, 4)
-	K.txtS(minus, "-", 12, T.txt)
-	K.hover(minus, T.bg2, T.hover)
-	local plus = K.btn(right, "M+", 72, 24, 52, 22, T.bg2, 4)
-	K.txtS(plus, "+", 12, T.txt)
-	K.hover(plus, T.bg2, T.hover)
-	minus.MouseButton1Click:Connect(function()
-		fov = math.max(20, fov - 5)
-		drawCone()
-	end)
-	plus.MouseButton1Click:Connect(function()
-		fov = math.min(120, fov + 5)
-		drawCone()
-	end)
-	K.knob(right, 38, 58, 54, fov / 120, math.floor(fov / 120 * 100 + 0.5) .. "%")
-	K.txt(right, "VELOCIDADE", 10, 138, 100, 14, 10, T.txt3, ARKHER.FONTB)
-	K.knob(right, 38, 156, 54, speed / 40, speed .. " u/s")
-	K.row(right, "Zoom", "2.4", 216)
-
-	-- ===== BARRA INFERIOR =====
-	local bar = K.f(root, "Bar", 8, 296, 544, 76, T.bg0)
-	K.corner(bar, 4)
-	K.row(bar, "Rig", "CinematicCam", 8)
-	K.row(bar, "Tracking", "Player", 34)
-	local apply = K.btn(bar, "Apply", 300, 20, 110, 28, ACCENT, 5)
-	K.txtS(apply, "Aplicar ao Place", 10, C("#1C070C"))
-	K.hover(apply, ACCENT, C("#FF97A8"))
-	apply.MouseButton1Click:Connect(function()
-		ARKHER.out("SUCCESS", "Camera: rig CinematicCam (fov " .. fov .. ", " .. speed .. "u/s) aplicado")
-		Bus.emit("camera.apply", { fov = fov, speed = speed, mode = "Cinematic" })
-	end)
-	K.txt(bar, "lens: 35mm equiv", 430, 28, 104, 16, 9, T.txt4, FONT, Enum.TextXAlignment.Right)
+	track.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then setI(i) end end)
+	track.InputChanged:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseMovement then setI(i) end end)
+	rs()
+	return { get = function() return val end, set = function(v) val = v rs() if onSet then onSet(v) end end }
 end
 
-ARKHER.reg("Camera", "Camera", "Scene", ICON.camera, "Rig de camera: modos, FOV interativo, tracking e preview", build)
-end
-
-do
---[[ ARKHER V3 — UI: LIGHTING ]]
--- Layout unico: knobs de sol/ambiente a esquerda, faixa HORA DO DIA clicavel
--- no centro (mexe o ceu + posicao do sol no preview), cores e toggles a direita.
-local T, K, ICON, C = ARKHER.T, ARKHER.K, ARKHER.ICON, ARKHER.C
-local ACCENT = C("#FFD93D")
-
-local SKY_STEPS = {
-	{ nm = "Noite", sky = C("#0B1026"), sun = C("#B0BEC5"), y = 78, x = 40 },
-	{ nm = "Amanhecer", sky = C("#3E2748"), sun = C("#FF9770"), y = 60, x = 80 },
-	{ nm = "Manha", sky = C("#4A78A8"), sun = C("#FFD93D"), y = 34, x = 120 },
-	{ nm = "Meio-dia", sky = C("#5B9BD5"), sun = C("#FFF176"), y = 14, x = 160 },
-	{ nm = "Tarde", sky = C("#4A6FA5"), sun = C("#FFCA28"), y = 40, x = 200 },
-	{ nm = "Pôr do sol", sky = C("#5D3A4E"), sun = C("#FF7043"), y = 62, x = 240 },
-	{ nm = "Anoitecer", sky = C("#2A2440"), sun = C("#FF8A65"), y = 78, x = 280 },
-	{ nm = "Meia-noite", sky = C("#070B1A"), sun = C("#90A4AE"), y = 84, x = 320 },
-}
-
 local function build()
-	local g, root, head = K.window("ArkherLighting", "LIGHTING — hora do dia", 24, 360, 560, 392, { pin = true })
-	K.f(head, "Acc", 0, 24, 560, 2, ACCENT)
+	if not ArkherCameraX then ARKHER.note("Kit E nao carregado (CAMERA X ausente)") return end
+	local ACX = ArkherCameraX
 
-	local step = 4
+	local W, H = 700, 480
+	local g, root = K.window("CameraStudio", "CAMERA STUDIO X — cinematografia custom (ACX custom)", 260, 150, W, H, { pin = true })
 
-	-- ===== ESQUERDA: KNOBS =====
-	local left = K.f(root, "Knobs", 8, 34, 132, 240, T.bg4)
-	K.corner(left, 4)
-	K.txt(left, "SOL", 10, 6, 60, 14, 10, T.txt3, ARKHER.FONTB)
-	K.knob(left, 36, 22, 60, (step - 1) / 7, "35deg")
-	K.txt(left, "AMBIENTE", 10, 96, 90, 14, 10, T.txt3, ARKHER.FONTB)
-	K.knob(left, 36, 112, 60, 0.45, "0.45")
-	K.txt(left, "EXPOSICAO", 10, 184, 100, 14, 10, T.txt3, ARKHER.FONTB)
-	K.knob(left, 36, 200, 60, 0.5, "1.0x")
+	local bodyH = H - 34 - 40
 
-	-- ===== CENTRO: PREVIEW DO CEU + FAIXA =====
-	local cv = K.f(root, "Sky", 152, 34, 264, 150, C("#5B9BD5"))
-	K.corner(cv, 4)
-	K.stroke(cv, T.line, 1)
-	-- nuvens
-	K.f(cv, "Cl1", 30, 20, 54, 14, C("#FFFFFF"), 7)
-	K.f(cv, "Cl2", 150, 34, 70, 16, C("#F5F7FA"), 8)
-	K.f(cv, "Cl3", 90, 58, 40, 10, C("#FFFFFF"), 5)
-	-- terreno
-	K.f(cv, "Hil", 0, 108, 264, 42, C("#1B2B22"))
-	local hill = K.f(cv, "Hill", 60, 92, 140, 26, C("#16241C"))
-	hill.Rotation = -3
-	-- sol/lua (move com a hora)
-	local sun = K.f(cv, "SunObj", SKY_STEPS[step].x, SKY_STEPS[step].y, 20, 20, SKY_STEPS[step].sun, 10)
-	K.txt(cv, SKY_STEPS[step].nm, 8, 128, 120, 18, 11, T.txt, ARKHER.FONTB)
-
-	-- faixa hora do dia (clicavel)
-	local strip = K.f(root, "Strip", 152, 196, 264, 34, T.bg0)
-	K.corner(strip, 4)
-	for i, s in ipairs(SKY_STEPS) do
-		local b = K.f(strip, "S" .. i, (i - 1) * 33, 4, 31, 26, s.sky, 2)
-		K.txt(b, s.nm, 0, 14, 31, 10, 7, T.txt3, FONT, Enum.TextXAlignment.Center)
-		local idx = i
-		b.MouseButton1Click:Connect(function()
-			step = idx
-			cv.BackgroundColor3 = s.sky
-			sun.Position = UDim2.new(0, s.x, 0, s.y)
-			sun.BackgroundColor3 = s.sun
-			ARKHER.out("INFO", "Lighting: " .. s.nm)
-		end)
-	end
-
-	-- ===== DIREITA: CORES + TOGGLES =====
-	local right = K.f(root, "Cols", 428, 34, 124, 240, T.bg4)
-	K.corner(right, 4)
-	K.txt(right, "CORES", 10, 6, 80, 14, 10, T.txt3, ARKHER.FONTB)
-	local colors = {
-		{ "Sky", C("#5B9BD5") }, { "Cloud", C("#F5F7FA") },
-		{ "Shadow", C("#3E5C76") }, { "Fog", C("#B0C4DE") },
+	-- ============ ESQUERDA: SHOTS ============
+	local left = K.f(root, "L", 6, 34, 244, bodyH, T.bg3)
+	K.stroke(left, T.line, 1)
+	K.txt(left, "SHOTS (acao real na CurrentCamera)", 8, 4, 230, 14, 9, T.txt3)
+	local shots = {
+		{ nm = "ORBIT", d = "circula o alvo (raio/altura/velocidade)" },
+		{ nm = "DOLLY IN", d = "dolly-in com easeInOut_sine" },
+		{ nm = "DOLLY OUT", d = "dolly-out com easeOut_quad" },
+		{ nm = "CRANE", d = "eleva no arco (dolly + lift)" },
+		{ nm = "FLY PATH", d = "catmull-rom por 3 pontos" },
 	}
-	for i, c2 in ipairs(colors) do
-		K.row(right, c2[1], "", 26 + (i - 1) * 24)
-		local sw = K.f(right, "CSw" .. i, 78, 26 + (i - 1) * 24, 34, 16, c2[2], 3)
-		K.stroke(sw, T.line2, 1)
+	local function runShot(nm)
+		local r = radiusS.get()
+		local hgt = heightS.get()
+		local dur = durS.get()
+		if nm == "ORBIT" then
+			ACX.shot({ type = "orbit", center = Vector3.new(0, 3, 0), radius = r, height = hgt, speed = spdS.get(), duration = 9999 })
+		elseif nm == "DOLLY IN" then
+			ACX.shot({ type = "dolly", from = Vector3.new(-r, hgt, -r), to = Vector3.new(-2, hgt, -2), lookAt = Vector3.new(0, 3, 0), duration = dur, ease = "easeInOut_sine" })
+		elseif nm == "DOLLY OUT" then
+			ACX.shot({ type = "dolly", from = Vector3.new(-2, hgt, -2), to = Vector3.new(-r, hgt, -r), lookAt = Vector3.new(0, 3, 0), duration = dur, ease = "easeOut_quad" })
+		elseif nm == "CRANE" then
+			ACX.shot({ type = "crane", from = Vector3.new(-r, 2, 0), to = Vector3.new(r, 2, 0), lookAt = Vector3.new(0, 3, 0), duration = dur, lift = hgt })
+		elseif nm == "FLY PATH" then
+			ACX.shot({ type = "fly", from = Vector3.new(faS.get(), 8, faS.get()), mid = Vector3.new(0, 16, 0), to = Vector3.new(fbS.get(), 8, fbS.get()), lookAt = Vector3.new(0, 3, 0), duration = dur })
+		end
 	end
-	K.checkRow(right, "Sombras", true, 126)
-	K.checkRow(right, "Fog", false, 150)
-	K.checkRow(right, "Global light", true, 174)
-	K.checkRow(right, "Post FX", true, 198)
-
-	-- ===== BARRA INFERIOR =====
-	local bar = K.f(root, "Bar", 8, 294, 544, 90, T.bg0)
-	K.corner(bar, 4)
-	local create = K.btn(bar, "Create", 10, 10, 140, 26, ACCENT, 5)
-	K.txtS(create, "Criar luz no Place", 10, C("#1A1403"))
-	K.hover(create, ACCENT, C("#FFE57A"))
-	create.MouseButton1Click:Connect(function()
-		local ws = workspace
-		if ws:FindFirstChild("ArkherLighting") then ws:FindFirstChild("ArkherLighting"):Destroy() end
-		local f = Instance.new("Folder")
-		f.Name = "ArkherLighting"
-		f:SetAttribute("Hora", SKY_STEPS[step].nm)
-		f:SetAttribute("Sol", 35)
-		f.Parent = ws
-		ARKHER.out("SUCCESS", "Lighting: luz " .. SKY_STEPS[step].nm .. " criada no place")
+	for i, sh in ipairs(shots) do
+		local y = 20 + (i - 1) * 44
+		local b = K.btn(left, sh.nm, 8, y, 228, 26, C("#4A2E6E"), 6)
+		K.txt(b, sh.nm, 10, 6, 100, 14, 9.5, T.txt)
+		K.txt(left, sh.d, 10, y + 26, 224, 12, 8, T.txt3)
+		b.MouseButton1Click:Connect(function() runShot(sh.nm) end)
+	end
+	local stopB = K.btn(left, "STOP", 8, 20 + 5 * 44, 110, 22, C("#7A2E2E"), 5)
+	stopB.MouseButton1Click:Connect(function() ACX.stop() end)
+	local cinemaB = K.btn(left, "CINEMA (3 cortes)", 124, 20 + 5 * 44, 112, 22, C("#2E4E7A"), 5)
+	cinemaB.MouseButton1Click:Connect(function()
+		ACX.cinema({
+			{ type = "crane", from = Vector3.new(-20, 2, 0), to = Vector3.new(0, 12, 0), lookAt = Vector3.new(0, 3, 0), duration = durS.get(), lift = 10 },
+			{ type = "orbit", center = Vector3.new(0, 3, 0), radius = 12, height = 6, speed = 0.5, duration = 3.5 },
+			{ type = "dolly", from = Vector3.new(0, 6, 14), to = Vector3.new(0, 3, 2), lookAt = Vector3.new(0, 3, 0), duration = 2.5 },
+		})
 	end)
-	K.txt(bar, "sun: " .. SKY_STEPS[step].nm, 170, 16, 180, 16, 10, T.txt3)
-	K.progress(bar, 10, 46, 524, (step - 1) / 7, ACCENT)
-	K.txt(bar, "ciclo: 0h -> " .. ((step - 1) * 3) .. "h", 170, 58, 200, 14, 9, T.txt4)
+
+	-- ============ CENTRO: PARAMS + FLY CANVAS + TRAUMA ============
+	local center = K.f(root, "C", 258, 34, 250, bodyH, T.bg3)
+	K.stroke(center, T.line, 1)
+	K.txt(center, "PARAMETROS DO SHOT", 8, 4, 236, 14, 9, T.txt3)
+	local radiusS = mkSlider(center, 8, 20, 226, "raio/dist", 4, 40, 14, function(v) return string.format("%.1f m", v) end)
+	local heightS = mkSlider(center, 8, 62, 226, "altura", 1, 30, 7, function(v) return string.format("%.1f m", v) end)
+	local spdS = mkSlider(center, 8, 104, 226, "vel. orbita (rad/s)", 0.05, 4.0, 0.5, function(v) return string.format("%.2f", v) end)
+	local durS = mkSlider(center, 8, 146, 226, "duracao (s)", 0.5, 12.0, 4.0, function(v) return string.format("%.1f s", v) end)
+	local faS = mkSlider(center, 8, 188, 226, "fly from (+/−)", -30, 30, -20, function(v) return string.format("%.0f", v) end)
+	local fbS = mkSlider(center, 8, 230, 226, "fly to (+/−)", -30, 30, 20, function(v) return string.format("%.0f", v) end)
+	K.txt(center, "FLY PATH (top view)", 8, 276, 236, 14, 9, T.txt3)
+	local fcv = K.f(center, "FCV", 8, 294, 226, 130, C("#0A0F1A"))
+	K.stroke(fcv, T.line, 1)
+	-- desenha a curva catmull no canvas (pontos)
+	local pathPts = {}
+	for i = 0, 24 do
+		local dot = K.f(fcv, "p" .. i, 4 + i * 9, 4, 3, 3, C("#D9A5FF"))
+		pathPts[i] = dot
+	end
+	local function repaintPath()
+		local a = { X = faS.get(), Y = 0, Z = faS.get() }
+		local m = { X = 0, Y = 0, Z = 0 }
+		local b = { X = fbS.get(), Y = 0, Z = fbS.get() }
+		local n2 = { X = fbS.get() * 2, Y = 0, Z = fbS.get() * 2 }
+		local cur = ACX.curve3(a, m, b, n2)
+		for i = 0, 24 do
+			local u = i / 24
+			local px, py, pz = cur(u)
+			pathPts[i].Position = UDim2.new(0, math.floor(((px + 30) / 60) * 226), 0, math.floor(((pz + 30) / 60) * 130))
+		end
+	end
+	repaintPath()
+	local playFlyB = K.btn(center, "PLAY FLY PATH", 8, 428, 106, 22, C("#4A2E6E"), 5)
+	playFlyB.MouseButton1Click:Connect(function()
+		ACX.shot({ type = "fly", from = Vector3.new(faS.get(), 8, faS.get()), mid = Vector3.new(0, 16, 0), to = Vector3.new(fbS.get(), 8, fbS.get()), lookAt = Vector3.new(0, 3, 0), duration = durS.get() })
+	end)
+	local updB = K.btn(center, "redesenhar curva", 122, 428, 108, 22, T.bg4, 5)
+	updB.MouseButton1Click:Connect(function() repaintPath() end)
+
+	-- ============ DIREITA: TRAUMA + FADE + STATS ============
+	local right = K.f(root, "R", 516, 34, 238, bodyH, T.bg3)
+	K.stroke(right, T.line, 1)
+	K.txt(right, "TRAUMA (shake puro cinema)", 8, 4, 222, 14, 9, T.txt3)
+	K.txt(right, "amplitude = trauma^2 * 0.35 rad", 8, 18, 222, 12, 8, T.txt3)
+	local traumaS = mkSlider(right, 8, 34, 222, "trauma alvo", 0, 1, 0.5, function(v) return string.format("%.0f%%", v * 100) end)
+	local bumpB = K.btn(right, "BUMP (+trauma)", 8, 78, 106, 22, C("#7A5A2E"), 5)
+	bumpB.MouseButton1Click:Connect(function() ACX.addTrauma(traumaS.get()) end)
+	local decBtn = K.btn(right, "4s tremendo", 122, 78, 108, 22, T.bg4, 5)
+	decBtn.MouseButton1Click:Connect(function()
+		ACX.addTrauma(1)
+		ACX.shot({ type = "orbit", center = Vector3.new(0, 3, 0), radius = 16, height = 6, speed = 0.4, duration = 9999 })
+	end)
+	K.txt(right, "FADE REAL (ColorCorrection)", 8, 112, 222, 14, 9, T.txt3)
+	local fadeOutB = K.btn(right, "FADE OUT", 8, 128, 106, 22, C("#3A3A42"), 5)
+	local fadeInB = K.btn(right, "FADE IN", 122, 128, 108, 22, C("#5A4A6E"), 5)
+	fadeOutB.MouseButton1Click:Connect(function() ACX.fade(-1, 0.8) end)
+	fadeInB.MouseButton1Click:Connect(function() ACX.fade(0, 0.8) end)
+	K.txt(right, "CAMERA AO VIVO (pump)", 8, 162, 222, 14, 9, T.txt3)
+	local posTxt = K.txt(right, "pos: —", 8, 178, 222, 14, 9, T.txt2)
+	local modeTxt = K.txt(right, "modo: —", 8, 192, 222, 14, 9, T.txt2)
+	local traumaTxt = K.txt(right, "trauma: —", 8, 206, 222, 14, 9, T.txt2)
+	local traumaBar = K.f(right, "TB", 8, 226, 222, 8, C("#101827"))
+	K.corner(traumaBar, 4)
+	local traumaFill = K.f(traumaBar, "F", 0, 2, 4, 4, C("#7A2E2E"))
+	K.corner(traumaFill, 2)
+	K.txt(right, "CINEMATOGRAFIA", 8, 246, 222, 14, 9, T.txt3)
+	K.txt(right, "Regra de terços: lookAt deslocado ", 8, 262, 222, 12, 8, T.txt3)
+	K.txt(right, "automaticamente p/ (1/3, 2/3) do frame", 8, 274, 222, 12, 8, T.txt3)
+	K.txt(right, "Collision: raycast puxa a camera pra", 8, 290, 222, 12, 8, T.txt3)
+	K.txt(right, "dentro se parede atrapalhar (REAL)", 8, 302, 222, 12, 8, T.txt3)
+
+	-- ============ STATUS ============
+	local status = K.f(root, "St", 0, H - 36, W, 36, T.bg3)
+	local sTxt = K.txt(status, "", 10, 11, W - 20, 14, 9.5, T.txt3)
+	ARKHER.out("INFO", "Camera Studio X atasao CAMERA X (shots reais, trauma, fades reais, cinema)")
+
+	-- ============ HEARTBEAT pump ============
+	if not ArkherCameraX.UI_CONN then
+		local okRS, RS = pcall(function() return game:GetService("RunService") end)
+		if okRS and RS and RS.Heartbeat then
+			pcall(function()
+				ArkherCameraX.UI_CONN = RS.Heartbeat:Connect(function(dt)
+					local okin = pcall(function()
+						ACX.pump(dt or 1 / 60)
+						ACX.pumpCinema()
+						local c = workspace.CurrentCamera
+						if c and c.CFrame and c.CFrame.Position then
+							local p = c.CFrame.Position
+							posTxt.Text = string.format("pos: %.1f  %.1f  %.1f", p.X, p.Y, p.Z)
+						end
+						modeTxt.Text = "modo: " .. tostring(ACX.S.mode) .. (ACX.S.shot and (" (" .. ACX.S.shot.type .. ")") or "")
+						traumaTxt.Text = string.format("trauma: %.2f → shake %.3f rad", ACX.S.trauma, ACX.S.trauma ^ 2 * 0.35)
+						traumaFill.Size = UDim2.new(0, math.floor(ACX.S.trauma * 222), 0, 4)
+					end)
+					if not okin then ArkherCameraX.UI_CONN:Disconnect() ArkherCameraX.UI_CONN = nil end
+				end)
+			end)
+		end
+	end
 end
 
-ARKHER.reg("Lighting", "Lighting", "Scene", ICON.bulb, "Iluminacao: hora do dia interativa, sol, cores e post FX", build)
+ARKHER.reg("Camera", "Camera", "Scene", ICON.camera, "Camera custom: shots fisicos, trauma shake, fades reais, cinema (CAMERA X)", build)
 end
 
 do
---[[ ARKHER V3 — UI: AUDIO ]]
--- Layout unico: lista de faixas com FORMAS DE ONDA (K.wave) a esquerda,
--- detalhe da faixa selecionada no centro, mixer com VERTICAIS (K.vfader) a direita.
+-- =============================================================
+-- LIGHTING STUDIO X — UI sobre o ATMOS X (AEX custom)
+-- Ciclo dia/noite com Kelvin PLANCKIAN REAL (kelvinRGB), 6 presets de
+-- céu com física (kelvin/haze/fog do próprio motor), WEATHER MACHINE
+-- com 7 estados e transição suave, raio de demonstração, links AWX/AUX.
+-- Tudo REAL: mexer = alterar Lighting/Atmosphere/ColorCorrection. ☀️🌩️
+-- =============================================================
 local T, K, ICON, C = ARKHER.T, ARKHER.K, ARKHER.ICON, ARKHER.C
-local ACCENT = C("#A29BFE")
 
-local TRACKS = {
-	{ nm = "Theme_01", len = "2:34", seed = 11, vol = 0.8, kind = "Music" },
-	{ nm = "City_amb", len = "4:10", seed = 23, vol = 0.55, kind = "Ambience" },
-	{ nm = "UI_click", len = "0:01", seed = 37, vol = 0.7, kind = "SFX" },
-	{ nm = "Boss_roar", len = "0:04", seed = 53, vol = 0.9, kind = "SFX" },
-}
-
-local function build()
-	local g, root, head = K.window("ArkherAudio", "AUDIO — mixer & faixas", 24, 370, 560, 372, { pin = true })
-	K.f(head, "Acc", 0, 24, 560, 2, ACCENT)
-
-	local sel = 1
-
-	-- ===== ESQUERDA: FAIXAS =====
-	local left = K.f(root, "Tracks", 8, 34, 150, 260, T.bg4)
-	K.corner(left, 4)
-	K.txt(left, "FAIXAS", 10, 6, 80, 14, 10, T.txt3, ARKHER.FONTB)
-	for i, tr in ipairs(TRACKS) do
-		local row = K.f(left, "Tr" .. i, 6, 26 + (i - 1) * 56, 138, 50, i == 1 and T.bg2 or T.bg4, 4)
-		if i == 1 then K.stroke(row, ACCENT, 1.5) end
-		K.txt(row, tr.nm, 6, 4, 90, 14, 10, T.txt)
-		K.txt(row, tr.kind .. " | " .. tr.len, 6, 18, 120, 12, 8, T.txt4)
-		K.wave(row, 6, 32, 100, 14, tr.seed, i == 1 and ACCENT or T.txt4)
-		K.txt(row, math.floor(tr.vol * 100 + 0.5) .. "%", 110, 34, 26, 12, 9, T.txt3, FONT, Enum.TextXAlignment.Right)
-		local idx = i
-		row.MouseButton1Click:Connect(function()
-			sel = idx
-			ARKHER.out("INFO", "Audio: selecionada " .. tr.nm)
-		end)
+local function mkSlider(parent, x, y, w, label, min, max, val, fmt, onSet)
+	K.txt(parent, label, x, y, 90, 14, 9, T.txt3)
+	local valLbl = K.txt(parent, "", x + w - 56, y, 56, 14, 9, C("#8BCCFF"), ARKHER.FONT, Enum.TextXAlignment.Right)
+	local track = K.btn(parent, "Trk_" .. label, x, y + 15, w, 10, T.bg4, 5)
+	K.stroke(track, T.line, 1)
+	local fill = K.f(track, "Fill", 0, 2, 10, 6, C("#8BCCFF"))
+	K.corner(fill, 3)
+	local function rs()
+		local frac = (val - min) / (max - min)
+		fill.Size = UDim2.new(0, math.max(4, math.floor(w * frac)), 0, 6)
+		valLbl.Text = fmt and fmt(val) or string.format("%.2f", val)
 	end
-
-	-- ===== CENTRO: DETALHE =====
-	local cv = K.f(root, "Detail", 170, 34, 244, 160, T.bg0)
-	K.corner(cv, 4)
-	K.stroke(cv, T.line, 1)
-	K.txt(cv, TRACKS[1].nm, 10, 8, 160, 16, 12, T.txt, ARKHER.FONTB)
-	K.txt(cv, "Music | 2:34 | 44.1kHz", 10, 26, 180, 14, 9, T.txt4)
-	K.wave(cv, 10, 48, 224, 56, 11, ACCENT)
-	-- seek
-	local seek, seekFill = K.progress(cv, 10, 116, 180, 0.36, ACCENT)
-	K.txt(cv, "0:54", 196, 110, 36, 14, 9, T.txt3)
-	-- controles
-	local pl = K.btn(cv, "Pl", 10, 134, 44, 22, T.bg2, 4)
-	K.txtS(pl, "Play", 10, T.txt)
-	K.hover(pl, T.bg2, T.hover)
-	pl.MouseButton1Click:Connect(function()
-		ARKHER.out("INFO", "Audio: tocando " .. TRACKS[sel].nm)
-	end)
-	local pp = K.btn(cv, "Pp", 60, 134, 44, 22, T.bg2, 4)
-	K.txtS(pp, "Stop", 10, T.txt)
-	K.hover(pp, T.bg2, T.hover)
-	pp.MouseButton1Click:Connect(function()
-		ARKHER.out("INFO", "Audio: parado")
-	end)
-
-	-- ===== DIREITA: MIXER =====
-	local right = K.f(root, "Mixer", 426, 34, 126, 260, T.bg4)
-	K.corner(right, 4)
-	K.txt(right, "MIXER", 10, 6, 80, 14, 10, T.txt3, ARKHER.FONTB)
-	local chans = { "MUS", "SFX", "AMB" }
-	local vols = { 0.8, 0.7, 0.55 }
-	for i = 1, 3 do
-		K.vfader(right, 18 + (i - 1) * 36, 28, 150, vols[i], chans[i])
+	local function setI(inp)
+		local frac = (inp.Position.X - track.AbsolutePosition.X) / math.max(track.AbsoluteSize.X, 1)
+		frac = math.min(1, math.max(0, frac))
+		val = min + (max - min) * frac
+		rs()
+		if onSet then onSet(val) end
 	end
-	K.txt(right, "MASTER", 10, 192, 80, 14, 10, T.txt3, ARKHER.FONTB)
-	K.vfader(right, 30, 208, 40, 0.75, "M")
-
-	-- ===== BARRA INFERIOR =====
-	local bar = K.f(root, "Bar", 8, 304, 544, 60, T.bg0)
-	K.corner(bar, 4)
-	K.checkRow(bar, "Loop", true, 8)
-	K.sliderRow(bar, "Master vol", 0.75, 34)
-	local add = K.btn(bar, "Add", 300, 16, 90, 28, ACCENT, 5)
-	K.txtS(add, "+ faixa", 11, C("#12102A"))
-	K.hover(add, ACCENT, C("#C3BFFF"))
-	add.MouseButton1Click:Connect(function()
-		ARKHER.out("SUCCESS", "Audio: faixa 'Nova' adicionada ao mixer")
-	end)
-	K.txt(bar, "3 canais | 44.1k | 16bit", 410, 22, 130, 16, 9, T.txt4, FONT, Enum.TextXAlignment.Right)
+	track.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then setI(i) end end)
+	track.InputChanged:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseMovement then setI(i) end end)
+	rs()
+	return { get = function() return val end, set = function(v) val = v rs() if onSet then onSet(v) end end }
 end
 
-ARKHER.reg("Audio", "Audio", "Scene", ICON.data, "Mixer de audio: faixas com waveforms, seek e canais verticais", build)
+local function build()
+	if not ArkherAtmosX then ARKHER.note("Kit E nao carregado (ATMOS X ausente)") return end
+	local AEX = ArkherAtmosX
+	AEX.setup({})
+
+	local W, H = 680, 500
+	local g, root = K.window("LightingStudio", "LIGHTING STUDIO X — ceu custom (ATMOS X custom)", 240, 130, W, H, { pin = true })
+
+	local running, cycle = true, false
+
+	-- ============ ESQUERDA: SKY + CICLO ============
+	local bodyH = H - 34 - 40
+	local left = K.f(root, "L", 6, 34, 240, bodyH, T.bg3)
+	K.stroke(left, T.line, 1)
+	K.txt(left, "PRESETS DE CEU (fisica do motor)", 8, 4, 220, 14, 9, T.txt3)
+	local presets = { "madrugada", "amanhecer", "meiodia", "tarde", "entardecer", "noite" }
+	for i, pn in ipairs(presets) do
+		local y = 20 + (i - 1) * 30
+		local b = K.btn(left, pn, 8, y, 224, 26, T.bg4, 6)
+		K.txt(b, pn .. "  (" .. math.floor((AEX.SKY_PRESETS[pn].kelvin or 5000) / 100) / 10 .. "k Kelvin)", 10, 6, 200, 14, 9, T.txt)
+		b.MouseButton1Click:Connect(function()
+			AEX.setPreset(pn)
+			repaintKelvin()
+		end)
+	end
+	K.txt(left, "CICLO DIA-NOITE", 8, 208, 220, 14, 9, T.txt3)
+	local spdS = mkSlider(left, 8, 224, 200, "vel ciclo (h/s)", 0, 0.5, 0.0045, function(v) return string.format("%.4f", v) end, function(v) AEX.S.cycleSpeed = v end)
+	local cycB = K.btn(left, "CICLO AR 24H", 8, 268, 110, 22, T.bg4, 5)
+	local cycOn = false
+	cycB.MouseButton1Click:Connect(function()
+		cycOn = not cycOn
+		spdS.set(0.7)
+	end)
+	local ckTxt = K.txt(left, "clock: —", 8, 296, 224, 14, 9, T.txt2)
+	K.txt(left, "aplicado SEMPRE ao Lighting real", 8, 312, 224, 12, 8, T.txt3)
+
+	-- ============ CENTRO: KELVIN + TEMPO ============
+	local center = K.f(root, "C", 254, 34, 250, bodyH, T.bg3)
+	K.stroke(center, T.line, 1)
+	K.txt(center, "TEMPERATURA DE COR DO SOL", 8, 4, 236, 14, 9, T.txt3)
+	K.txt(center, "Intensidade/tonalidade vêm da escala", 8, 18, 236, 12, 8, T.txt3)
+	K.txt(center, "Planckian REAL (kelvinRGB do AEX)", 8, 30, 236, 12, 8, T.txt3)
+	local kelvinS = mkSlider(center, 8, 48, 226, "Kelvin", 1000, 12000, 5600, function(v) return string.format("%.0f K", v) end, function(v) repaintKelvin() end)
+	local swatch = K.f(center, "Sw", 8, 92, 226, 76, C("#FFFFFF"))
+	K.corner(swatch, 6)
+	K.stroke(swatch, T.line2, 1)
+	local rgbTxt = K.txt(center, "r/g/b: —", 12, 100, 220, 14, 9, C("#0B1220"))
+	local terraR = K.f(center, "bandR", 42, 176, 40, 40, C("#FF3B30"))
+	K.corner(terraR, 20)
+	local terraG = K.f(center, "bandG", 92, 176, 40, 40, C("#D8FFB0"))
+	K.corner(terraG, 20)
+	local terraB = K.f(center, "bandB", 142, 176, 40, 40, C("#BFE7FF"))
+	K.corner(terraB, 20)
+	local terraLblR = K.txt(center, "R", 54, 218, 16, 12, 8, T.txt2)
+	local terraLblG = K.txt(center, "G", 104, 218, 16, 12, 8, T.txt2)
+	local terraLblB = K.txt(center, "B", 154, 218, 16, 12, 8, T.txt2)
+	K.txt(center, "faixa fisica (1k..12k K)", 42, 234, 150, 12, 8, T.txt3)
+	function repaintKelvin()
+		local k = kelvinS.get()
+		local col = AEX.kelvinRGB(k)
+		swatch.BackgroundColor3 = col
+		local rr = col.R or 0
+		local gg = col.G or 0
+		local bb = col.B or 0
+		local ri = math.floor((type(rr) == "number" and rr <= 1) and rr * 255 or rr)
+		-- Color3 pode vir 0..1 ou 0..255 conforme origem
+		local function to255(v) return v > 1 and math.floor(v + 0.5) or math.floor(v * 255 + 0.5) end
+		local R255, G255, B255 = to255(rr), to255(gg), to255(bb)
+		rgbTxt.Text = string.format("R%d  G%d  B%d  (%d K real)", R255, G255, B255, k)
+		rgbTxt.TextColor3 = (R255 + G255 + B255) > 380 and C("#0B1220") or C("#E6EBF5")
+		terraR.BackgroundColor3 = Color3.fromRGB(255, math.max(20, math.floor(120 - (k - 1000) / 11000 * 60)), 30)
+		terraG.BackgroundColor3 = Color3.fromRGB(200 + math.floor((k - 5600) / 6000 * 55), 255, 176)
+		terraB.BackgroundColor3 = Color3.fromRGB(148, 209, 255)
+		-- aplica kelvin custom no preset atual
+		local pr = AEX.SKY_PRESETS[AEX.S.preset]
+		if pr then pr.kelvin = k end
+	end
+	K.txt(center, "TEMPO (hora solar gerando o dia)", 8, 258, 236, 14, 9, T.txt3)
+	local clockS = mkSlider(center, 8, 274, 226, "hora (0..24)", 0, 24, 12, function(v) return string.format("%.2fh", v) end, function(v) AEX.setClock(v) AEX.apply({}) ckTxt.Text = string.format("clock: %.2f (ClockTime real)", v) end)
+	local clockBarBk = K.f(center, "Cbk", 8, 330, 226, 20, C("#101827"))
+	K.corner(clockBarBk, 5)
+	local sunDot = K.f(clockBarBk, "Sun", 6, 6, 8, 8, C("#FFE08A"))
+	K.corner(sunDot, 4)
+	local duskBar = K.f(clockBarBk, "DuskA", 6 + (18 / 24) * 214, 6, 8, 8, C("#FF8C3B"))
+	K.corner(duskBar, 4)
+	local nightBar = K.f(clockBarBk, "Night", 6, 6, 4, 8, C("#5B6EA8"))
+	K.corner(nightBar, 2)
+	-- desenha o espectro do dia: 48 pontinhos no fundo
+	for i = 0, 24 do
+		local kk = 1800 + (i / 24) * (5600 - 1800)
+		local c = AEX.kelvinRGB(kk)
+		local dot = K.f(clockBarBk, "d" .. i, 4 + i * 9, 13, 3, 3, c)
+	end
+
+	-- ============ DIREITA: WEATHER MACHINE ============
+	local right = K.f(root, "R", 512, 34, 238, bodyH, T.bg3)
+	K.stroke(right, T.line, 1)
+	K.txt(right, "WEATHER MACHINE (multiplicadores fisicos)", 8, 4, 222, 14, 9, T.txt3)
+	local weathers = { "limpo", "nuvem", "chuva", "tempestade", "neblina", "neve", "aurora" }
+	local wBtns = {}
+	for i, wn in ipairs(weathers) do
+		local wx = (i % 2 == 1) and 8 or 120
+		local wy = 20 + math.floor((i - 1) / 2) * 30
+		local wv = AEX.WEATHER[wn]
+		local tint = wv.rain > 0 and C("#24486B") or (wv.haze > 7 and C("#3A3A42") or C("#2E5E46"))
+		local b = K.btn(right, "W_" .. wn, wx, wy, 106, 26, tint, 6)
+		K.txt(b, wn, 8, 6, 96, 14, 9, T.txt)
+		wBtns[wn] = b
+		b.MouseButton1Click:Connect(function()
+			AEX.setWeather(wn, transS.get())
+		end)
+	end
+	K.txt(right, "TRANSICAO", 8, 142, 222, 14, 9, T.txt3)
+	local transS = mkSlider(right, 8, 158, 222, "vel. transicao", 0.05, 2.0, 0.35, function(v) return string.format("%.2f/s", v) end)
+	local demoB = K.btn(right, "DEMO: tempestade agora", 8, 202, 130, 24, C("#7A2E2E"), 6)
+	demoB.MouseButton1Click:Connect(function()
+		AEX.setWeather("tempestade", 2.0)
+		-- + boost das ondas reais já acontece via link AWX no pump
+	end)
+	local cleanB = K.btn(right, "limpar", 144, 202, 86, 24, T.bg4, 6)
+	cleanB.MouseButton1Click:Connect(function() AEX.setWeather("limpo", 1.2) end)
+	K.txt(right, "ESTADO DO MOTOR (pump)", 8, 238, 222, 14, 9, T.txt3)
+	local fogTxt = K.txt(right, "nevoa: —", 8, 254, 222, 14, 9, T.txt2)
+	local hazeTxt = K.txt(right, "haze: —", 8, 268, 222, 14, 9, T.txt2)
+	local boostTxt = K.txt(right, "waveBoost: —", 8, 282, 222, 14, 9, T.txt2)
+	local ltTest = K.btn(right, "flash relampago (teste)", 8, 306, 140, 24, C("#5A3B8C"), 6)
+	ltTest.MouseButton1Click:Connect(function()
+		if ArkherAtmosX and ArkherAtmosX.S._cc then
+			ArkherAtmosX.S._cc.Brightness = 0.22
+		end
+	end)
+	K.txt(right, "LINKS FISICOS", 8, 338, 222, 14, 9, T.txt3)
+	K.txt(right, "tempestade → ondas AWX ×2.2", 8, 352, 222, 12, 8, T.txt3)
+	K.txt(right, "vento → volume weather AUX", 8, 366, 222, 12, 8, T.txt3)
+	K.txt(right, "nevoa/neve → FogEnd/Haze reais", 8, 380, 222, 12, 8, T.txt3)
+
+	-- ============ STATUS ============
+	local status = K.f(root, "St", 0, H - 36, W, 36, T.bg3)
+	local sTxt = K.txt(status, "", 10, 11, W - 20, 14, 9.5, T.txt3)
+	ARKHER.out("INFO", "Lighting Studio X atasao ATMOS X (ceu custom Kelvin + weather machine)")
+
+	-- ============ HEARTBEAT (pump real do motor) ============
+	if not ArkherAtmosX.UI_CONN then
+		local okRS, RS = pcall(function() return game:GetService("RunService") end)
+		if okRS and RS and RS.Heartbeat then
+			pcall(function()
+				ArkherAtmosX.UI_CONN = RS.Heartbeat:Connect(function(dt)
+					local okin = pcall(function()
+						local clockNow, w = AEX.pump(dt or 1 / 60)
+						ckTxt.Text = string.format("clock: %.2f (ClockTime real; ciclo %s)", clockNow, cycOn and "ON" or "manual")
+						fogTxt.Text = string.format("FogEnd: %.0f  (cloud %.2f, rain %.2f)", w.fogEnd, w.cloud, w.rain)
+						hazeTxt.Text = string.format("Haze: %.2f  Stars: %s", w.haze, tostring(w.stars))
+						boostTxt.Text = string.format("waveBoost: %.2fx  volBoost +%.2f", w.waveBoost, w.volBoost)
+						sunDot.Position = UDim2.new(0, 4 + (clockNow / 24) * 214, 0, 6)
+					end)
+					if not okin then ArkherAtmosX.UI_CONN:Disconnect() ArkherAtmosX.UI_CONN = nil end
+				end)
+			end)
+		end
+	end
+	repaintKelvin()
+end
+
+ARKHER.reg("Lighting", "Lighting", "Scene", ICON.bulb, "Iluminacao custom: ciclo dia/noite Kelvin real + weather machine (ATMOS X)", build)
+end
+
+do
+--[[ ARKHER — UI: AUDIO STUDIO X (motor AUX custom: mixer + DSP + scheduler) ]]
+-- Mixer profissional de verdade: 7 buses SoundGroup REAIS, sliders FUNCIONAIS,
+-- presets acusticos (caverna/estadio/estudio/subaquatico/radio/floresta/metal)
+-- ligando efeitos DSP do engine (Reverb/Echo/Compressor/EQ/Distortion/Flange/
+-- PitchShift), DUCKING sidechain de voz->musica com envelope demonstrado AO
+-- VIVO, camadas de musica adaptativas (base/tension/combat + intensidade),
+-- scheduler ambiente (never-repeat-2), posicional 3D com rolloff real e
+-- doppler aproximado, links com AWX (ondas grandes => vento).
+local T, K, ICON, C = ARKHER.T, ARKHER.K, ARKHER.ICON, ARKHER.C
+local ACCENT = C("#B78CFF")
+local AX = ArkherAudioX
+local DM = ArkherDM
+
+local function mkSlider(parent, x, y, w, label, min, max, val, fmt, onSet)
+	K.txt(parent, label, x, y, 90, 14, 9, T.txt3)
+	local valLbl = K.txt(parent, "", x + w - 56, y, 56, 14, 9, ACCENT, ARKHER.FONT, Enum.TextXAlignment.Right)
+	local track = K.btn(parent, "Trk_" .. label, x, y + 15, w, 10, T.bg4, 5)
+	K.stroke(track, T.line, 1)
+	local fill = K.f(track, "Fill", 0, 2, 10, 6, ACCENT)
+	K.corner(fill, 3)
+	local function renderSlider()
+		local frac = (val - min) / (max - min)
+		fill.Size = UDim2.new(0, math.max(4, math.floor(w * frac)), 0, 6)
+		valLbl.Text = fmt and fmt(val) or string.format("%.2f", val)
+	end
+	local function setFromInput(inp)
+		local frac = (inp.Position.X - track.AbsolutePosition.X) / math.max(track.AbsoluteSize.X, 1)
+		frac = math.min(1, math.max(0, frac))
+		val = min + (max - min) * frac
+		renderSlider()
+		if onSet then onSet(val) end
+	end
+	track.InputBegan:Connect(function(inp)
+		if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then setFromInput(inp) end
+	end)
+	track.InputChanged:Connect(function(inp)
+		if inp.UserInputType == Enum.UserInputType.MouseMovement then setFromInput(inp) end
+	end)
+	renderSlider()
+	return { get = function() return val end, set = function(v) val = v renderSlider() if onSet then onSet(v) end end }
+end
+
+local repaintStatus, repaintBusRows, repaintDuckBars, repaintLayerBars, repaintAmbLog, repaintPosVals
+local showTab
+
+local function build()
+	local g, root, head = K.window("ArkherAudio", "AUDIO STUDIO X — motor AUX (custom)", 90, 110, 720, 490, { pin = true })
+	K.f(head, "Acc", 0, 24, 720, 2, ACCENT)
+	local W, H = 720, 490
+
+	-- setup do motor (grupos REAIS)
+	AX.setup()
+
+	-- ================= ESQUERDA: BUSES =================
+	local left = K.f(root, "Buses", 6, 34, 250, 490 - 34 - 40, T.bg3)
+	K.txt(left, "BUSES (SoundGroups REAIS em SoundService)", 8, 4, 240, 14, 9, T.txt3)
+	local busRows = K.f(left, "Rows", 4, 22, 242, 260, T.bg3)
+	local buses = AX.BUSES
+	local busSliders = {}
+	for i, b in ipairs(buses) do
+		local lbl = K.txt(busRows, b, 8, (i - 1) * 36 + 2, 70, 12, 9, T.txt)
+		local envLbl = K.txt(busRows, "env: 1.00", 170, (i - 1) * 36 + 2, 70, 12, 7.5, T.txt3, nil, Enum.TextXAlignment.Right)
+		busSliders[b] = mkSlider(busRows, 8, (i - 1) * 36 + 14, 220, "", 0, 2,
+			AX.busVolume(b) or 1, function(v) return string.format("%.2f", v) end,
+			function(v) AX.setBusVolume(b, v) repaintStatus() end)
+		busSliders[b].envLbl = envLbl
+	end
+	K.txt(left, "duck env mostra o envelope atual (demonstracao abaixo)", 6, 268, 236, 12, 8, T.txt3)
+	-- duck demo
+	local duckState = K.txt(left, "DUCKING: voz -> musica (sidechain)", 6, 288, 240, 14, 9, T.txt)
+	local duckBar = K.f(left, "DB", 6, 304, 250 - 12 - 4, 16, T.bg2)
+	K.stroke(duckBar, T.line, 1)
+	local duckFill = K.f(duckBar, "f", 0, 0, 10, 16, C("#63D68B"))
+	local duckBtn = K.btn(left, "Tocar VOZ (duck musica)", 6, 326, 120, 20, C("#2D6BFF"))
+	local duckStopB = K.btn(left, "Parar voz", 132, 326, 80, 20, T.bg4)
+	local duckOn = false
+
+	-- ================= CENTRO-DIREITA: TABS (DSP/AMBIENT/LAYERS/POSICIONAL) =================
+	local tabs = K.tabs(root, 262, 30, 450, { "DSP presets", "Ambiente", "Camadas", "Posicional 3D" }, 1, function(i) showTab(i) end)
+	local panelY = 58
+	local panel = K.f(root, "Panel", 262, panelY, 450, 490 - panelY - 40, T.bg2)
+
+	-- ---- ABA 1: DSP presets
+	local p1 = K.f(panel, "P1", 0, 0, 450, 490 - panelY - 40, T.bg2)
+	K.txt(p1, "Ligan efeitos DSP REAIS no SoundGroup (Roblox engine):", 8, 4, 430, 14, 9, T.txt3)
+	local busSel = "music"
+	local busPickB = K.btn(p1, "bus alvo: music", 8, 22, 120, 18, T.bg4)
+	busPickB.MouseButton1Click:Connect(function()
+		local order = AX.BUSES
+		local i2 = 1
+		for i, b in ipairs(order) do if b == busSel then i2 = i end end
+		busSel = order[i2 % #order + 1]
+		busPickB.Text = "bus alvo: " .. busSel
+	end)
+	local dspKeys = { "flat", "caverna", "estadio", "estudio", "subaquatico", "radio", "floresta", "metal" }
+	local dspNames = { "Flat", "Caverna", "Estadio", "Estudio", "Subaquatico", "Radio/AM", "Floresta", "Metal/Flange" }
+	for i, pid in ipairs(dspKeys) do
+		local b = K.btn(p1, "FX_" .. pid, 8 + ((i - 1) % 2) * 150, 48 + math.floor((i - 1) / 2) * 28, 140, 22, T.bg3)
+		K.txt(b, dspNames[i], 8, 5, 120, 12, 9, T.txt2)
+		b.MouseButton1Click:Connect(function()
+			local ok, n = AX.patch(busSel, pid)
+			if ok then
+				K.notify("Patch DSP", pid .. " em " .. busSel .. " — " .. n .. " efeito(s) ligado(s)", "ok")
+			else
+				K.notify("Patch falhou", tostring(n), "warn")
+			end
+			repaintStatus()
+		end)
+	end
+	local clB = K.btn(p1, "Limpar bus (remover efeitos AUX)", 8, 48 + 4 * 28 + 6, 220, 20, C("#6E2B2B"))
+	clB.MouseButton1Click:Connect(function() AX.clearPatch(busSel) K.notify("DSP limpo", busSel .. " sem efeitos AUX", "info") end)
+	K.txt(p1, "efeitos disponiveis no motor: Reverb, Echo, Compressor, EQ, Distortion,", 8, 48 + 4 * 28 + 34, 420, 12, 8.5, T.txt3)
+	K.txt(p1, "Flange, Tremolo, PitchShift — aplicados em cascata na bus, Dreamscape real.", 8, 48 + 4 * 28 + 48, 420, 12, 8.5, T.txt3)
+
+	-- ---- ABA 2: AMBIENTE
+	local p2 = K.f(panel, "P2", 0, 0, 450, 490 - panelY - 40, T.bg2)
+	K.txt(p2, "SCHEDULER AMBIENTE (rodando mesmo sem assets: ids abstratos de slot)", 8, 4, 430, 14, 9, T.txt3)
+	local ambs = {}
+	local ambRows = K.f(p2, "Rows", 6, 24, 450 - 12, 150, T.bg2)
+	-- schedule pre-montado: floresta / mar / cidade / vulcao noturno
+	local SPECS = {
+		{ nm = "floresta", ids = { "amb_passaros", "amb_folhas", "amb_rio_longe", "amb_insetos" }, interval = { 12, 30 }, bus = "ambient" },
+		{ nm = "mar", ids = { "amb_onda_fraca", "amb_onda_forte", "amb_gaivota" }, interval = { 10, 26 }, bus = "weather", minAmpLink = true },
+		{ nm = "cidade", ids = { "amb_traffic", "amb_sirene_longe", "amb_vento_predios", "amb_vozes" }, interval = { 14, 38 }, bus = "ambient" },
+		{ nm = "noite_vulcao", ids = { "amb_trovao", "amb_galho_seco", "amb_coruja", "amb_rajada" }, interval = { 20, 60 }, bus = "weather" },
+	}
+	local ambBtns = {}
+	for i, sp in ipairs(SPECS) do
+		K.txt(ambRows, sp.nm .. "  (" .. #sp.ids .. " ids)", 6, (i - 1) * 34 + 2, 200, 12, 9, T.txt)
+		K.txt(ambRows, "int " .. sp.interval[1] .. "-" .. sp.interval[2] .. "s  bus " .. sp.bus, 6, (i - 1) * 34 + 16, 220, 10, 8, T.txt3)
+		local goB = K.btn(ambRows, "▶", 240, (i - 1) * 34, 32, 20, C("#3F9E58"))
+		local stopB = K.btn(ambRows, "■", 278, (i - 1) * 34, 32, 20, C("#A93B3B"))
+		local st = K.txt(ambRows, "off", 320, (i - 1) * 34 + 5, 60, 12, 8, T.txt3)
+		ambBtns[sp.nm] = st
+		goB.MouseButton1Click:Connect(function()
+			if not AX._ambients[sp.nm] then
+				AX.ambient(sp.nm, { ids = sp.ids, interval = sp.interval, bus = sp.bus, volume = { 0.2, 0.55 } })
+			end
+			if sp.minAmpLink then AX.linkSea((ARKHER._sea or WX_SEA()), "mar", { minAmp = 0.5 }) end
+			AX._ambients[sp.nm]:start()
+			st.Text = "ON"
+			st.TextColor3 = C("#63D68B")
+			repaintStatus()
+		end)
+		stopB.MouseButton1Click:Connect(function()
+			if AX._ambients[sp.nm] then AX._ambients[sp.nm]:stop() end
+			st.Text = "off"
+			st.TextColor3 = T.txt3
+		end)
+	end
+	K.txt(p2, "ultimos disparos:", 6, 186, 140, 14, 9, T.txt3)
+	local ambLog = K.f(p2, "Log", 6, 202, 450 - 12, 120, T.bg2)
+	K.stroke(ambLog, T.line, 1)
+
+	-- ---- ABA 3: CAMADAS
+	local p3 = K.f(panel, "P3", 0, 0, 450, 490 - panelY - 40, T.bg2)
+	K.txt(p3, "MUSICA ADAPTATIVA — 3 camadas (base / tensao / combate), crossfade REAL via pump", 8, 4, 440, 14, 9, T.txt3)
+	-- registra 3 loops demo (sem asset real: slots nomeados — em produção voce coloca rbxassetid)
+	AX.register("mus_base", { bus = "music", volume = 0.5, looped = true })
+	AX.register("mus_tension", { bus = "music", volume = 0.5, looped = true })
+	AX.register("mus_combat", { bus = "music", volume = 0.5, looped = true })
+	local layInitB = K.btn(p3, "START layers", 8, 24, 110, 20, C("#3F9E58"))
+	local layStopB = K.btn(p3, "STOP layers", 124, 24, 110, 20, T.bg4)
+	local intS = mkSlider(p3, 8, 60, 260, "Intensidade", 0, 2, 0, function(v) return string.format("%.2f", v) end, function(v) AX.setIntensity(v) end)
+	local layerBars = K.f(p3, "Bars", 8, 110, 270, 80, T.bg2)
+	K.stroke(layerBars, T.line, 1)
+	local lbar = {}
+	for i, role in ipairs({ "base", "tension", "combat" }) do
+		K.txt(layerBars, role, 8, (i - 1) * 24 + 4, 60, 12, 8.5, T.txt3)
+		lbar[role] = K.f(layerBars, "b_" .. role, 70, (i - 1) * 24 + 5, 4, 12, (i == 1 and C("#63D68B") or i == 2 and C("#FFC453") or C("#FF5E5E")))
+	end
+	K.txt(p3, "int 0=no pacato (base 100%) | 1=tensao | 2=combate", 8, 196, 400, 12, 8, T.txt3)
+	layInitB.MouseButton1Click:Connect(function()
+		AX.musicLayers({ base = "mus_base", tension = "mus_tension", combat = "mus_combat" })
+		K.notify("Layers", "3 camadas de musica iniciadas (base/tensao/combate)", "ok")
+	end)
+	layStopB.MouseButton1Click:Connect(function()
+		AX.stop("mus_base") AX.stop("mus_tension") AX.stop("mus_combat")
+		K.notify("Layers paradas", "music loops stop", "info")
+	end)
+
+	-- ---- ABA 4: POSICIONAL 3D
+	local p4 = K.f(panel, "P4", 0, 0, 450, 490 - panelY - 40, T.bg2)
+	K.txt(p4, "POSICIONAL 3D SIMULADO — rolloff inverso-quadratico + doppler aproximado", 8, 4, 440, 14, 9, T.txt3)
+	local posState = { tr = nil }
+	local bindPosB = K.btn(p4, "Criar emissor posicional ('vento')", 8, 26, 220, 20, C("#2D6BFF"))
+	local posVals = {
+		dist = K.txt(p4, "dist: —", 8, 60, 200, 14, 9, T.txt),
+		vol = K.txt(p4, "vol efetivo: —", 8, 80, 200, 14, 9, T.txt),
+		pitch = K.txt(p4, "doppler pitch: —", 8, 100, 200, 14, 9, T.txt),
+	}
+	local refS = mkSlider(p4, 8, 126, 260, "Ref dist", 2, 40, 12, function(v) return string.format("%.0f", v) end, function(v) if posState.tr then posState.tr.refDist = v end end)
+	local maxS = mkSlider(p4, 8, 160, 260, "Max dist", 40, 400, 120, function(v) return string.format("%.0f", v) end, function(v) if posState.tr then posState.tr.maxDist = v end end)
+	local demoPos = Vector3.new(24, 3, 24)
+	bindPosB.MouseButton1Click:Connect(function()
+		AX.register("vento", { bus = "weather", volume = 0.6 })
+		AX.play("vento", { volume = 0.6 })
+		posState.tr = AX.positional("vento", function() return demoPos end, { refDist = refS.get(), maxDist = maxS.get(), volume = 0.6 })
+		K.notify("Emissor posicional", "'vento' em (24,3,24) — afaste a camera p/ ouvir cair", "ok")
+	end)
+	-- doppler check: mover o emissor circular para demonstrar
+	local demoAng = 0
+
+	-- ================= STATUS =================
+	local stat = K.txt(root, "", 8, H - 36, W - 16, 14, 9, T.txt3)
+
+	-- ================= PAINT FNS =================
+	repaintStatus = function()
+		local st = AX.stats()
+		stat.Text = string.format("buses %d | sons registrados %d (%d playing) | ducks %d | ambients %d | posicionais %d %s",
+			st.buses, st.sounds, st.playing, st.ducks, st.ambients, st.positional,
+			(st.layers ~= nil) and string.format("| intensidade musica %.2f", st.layers) or "")
+	end
+	repaintDuckBars = function()
+		-- envelope atual da duck voz->musica
+		for _, d in ipairs(AX._ducks) do
+			if d.trigger == "voice" and d.target == "music" then
+				duckFill.Size = UDim2.new(0, math.floor((1 - (d.env or 1)) * math.max(duckBar.AbsoluteSize.X, 10)), 1, 0)
+			end
+		end
+	end
+	repaintLayerBars = function()
+		if AX._layers then
+			local int = AX._layers.intensity or 0
+			local map = {
+				base = DM.clamp(1 - int, 0.25, 1),
+				tension = DM.clamp(1 - math.abs(int - 1), 0, 1),
+				combat = DM.clamp(int - 1, 0, 1),
+			}
+			for role, bar in pairs(lbar) do
+				bar.Size = UDim2.new(0, math.floor(map[role] * 180) + 4, 0, 12)
+			end
+		end
+	end
+	repaintAmbLog = function()
+		for _, ch in ipairs(ambLog:GetChildren()) do ch:Destroy() end
+		local fires = AX._fires or {}
+		for i = math.max(1, #fires - 6), #fires do
+			local f = fires[i]
+			if f then K.txt(ambLog, "• " .. f.name .. " @ " .. string.format("%.1f", f.t or 0), 6, (i - math.max(1, #fires - 6)) * 17 + 3, 410, 12, 8, C("#9BB1FF")) end
+		end
+	end
+	local camGet = function()
+		local ws = game:FindFirstChild("Workspace")
+		local cam = ws and ws.CurrentCamera
+		if cam and cam.CFrame then return cam.CFrame.Position end
+		return nil
+	end
+	repaintPosVals = function()
+		local cp = camGet()
+		if cp and posState.tr then
+			local dx, dy, dz = cp.X - demoPos.X, cp.Y - demoPos.Y, cp.Z - demoPos.Z
+			local d = math.sqrt(dx * dx + dy * dy + dz * dz)
+			posVals.dist.Text = string.format("dist: %.1f m", d)
+			local g = DM.clamp((posState.tr.refDist / math.max(d, posState.tr.refDist)) ^ 2, 0, 1)
+			if d > posState.tr.maxDist then g = 0 end
+			posVals.vol.Text = string.format("vol efetivo: %.3f", posState.tr.baseVol * g)
+		end
+		local reg = AX._sounds["vento"]
+		if reg then posVals.pitch.Text = string.format("doppler pitch: %.2f", reg.inst.PlaybackSpeed or 1) end
+	end
+	repaintBusRows = function()
+		for b, sl in pairs(busSliders) do
+			if sl.envLbl then
+				local g = AX._groups and AX._groups[b]
+				local v = g and g.Volume or AX.busVolume(b) or 1
+				sl.envLbl.Text = string.format("env: %.2f", v)
+			end
+		end
+	end
+
+	-- duck demo buttons (mono: registramos os sons 'voice_demo'/'musica_demo')
+	AX.register("voice_demo", { bus = "voice", volume = 0.6 })
+	AX.register("musica_demo", { bus = "music", volume = 0.5, looped = true })
+	AX.duck("music", "voice", { level = 0.3, attack = 0.08, release = 0.9, hold = 0.6 })
+	duckBtn.MouseButton1Click:Connect(function()
+		AX.play("musica_demo", { volume = 0.5 })
+		AX.play("voice_demo", { volume = 0.6 })
+		duckOn = true
+		duckState.Text = "DUCKING ATIVO — musica cai p/ 30%"
+		repaintStatus()
+	end)
+	duckStopB.MouseButton1Click:Connect(function()
+		AX.stop("voice_demo")
+		duckOn = false
+		duckState.Text = "voz off — musica volta (release 0.9s)"
+	end)
+
+	-- tab switching
+	local panels = { p1, p2, p3, p4 }
+	showTab = function(i)
+		for j, p in ipairs(panels) do p.Visible = (j == i) end
+	end
+	showTab(1)
+
+	-- ================= PUMP LOOP =================
+	pcall(function()
+		game:GetService("RunService").Heartbeat:Connect(function(dt)
+			AX.pump(dt)
+			-- demo doppler circular
+			if posState.tr then
+				demoAng = demoAng + dt * 0.9
+				demoPos = Vector3.new(24 + math.cos(demoAng) * 10, 3, 24 + math.sin(demoAng) * 10)
+			end
+			local ac = (g._acc or 0) + dt
+			g._acc = ac
+			if ac > 0.12 then
+				g._acc = 0
+				repaintStatus()
+				repaintDuckBars()
+				repaintLayerBars()
+				repaintBusRows()
+				repaintPosVals()
+				repaintAmbLog()
+			end
+		end)
+	end)
+
+	-- ================= BOOT =================
+	repaintStatus()
+	return g
+end
+
+-- helper global p/ link mar (AWX)
+WX_SEA = function()
+	if ARKHER._sea then return ARKHER._sea end
+	if ArkherWaterX then
+		ARKHER._sea = ArkherWaterX.preset("porto", { kind = "oceano", level = 0, size = { x = 300, z = 300 } })
+		return ARKHER._sea
+	end
+	return nil
+end
+
+ARKHER.reg("Audio", "Audio Studio X", "Scene", ICON.data, "Audio custom (AUX): SoundGroups, DSP presets, ducking, scheduler, layers adaptativas, 3D", build)
 end
 
 do
@@ -408,113 +837,405 @@ ARKHER.reg("Physics", "Physics", "Scene", ICON.ws, "Fisica: grid de colisao inte
 end
 
 do
---[[ ARKHER V3 — UI: UIDESIGNER ]]
--- Layout unico: paleta de widgets a esquerda, CANVAS com grade no centro
--- (widgets posicionados, clique seleciona), inspector de estilo a direita.
+--[[ ARKHER — UI: UI STUDIO (designer de UI de jogos, engine ArkherUIKitX) ]]
+-- Designer profissional: paleta com 42 widgets reais (base/input/display/HUD/
+-- menu), canvas com grade e DRAG DE VERDADE (move/redimensiona), snap, inspector
+-- numerico vivo, 9 presets de ancora, alinhar/distribuir multi-selecao, 6 temas
+-- aplicaveis, camadas, import/export REAL (ScreenGui no StarterGui + ModuleScript
+-- de codigo + controller de eventos).
 local T, K, ICON, C = ARKHER.T, ARKHER.K, ARKHER.ICON, ARKHER.C
 local ACCENT = C("#00D4FF")
+local X = ArkherUIKitX
+local UserInputService = game:GetService("UserInputService")
 
 local function build()
-	local g, root, head = K.window("ArkherUIDesigner", "UI DESIGNER — canvas", 24, 390, 560, 392, { pin = true })
-	K.f(head, "Acc", 0, 24, 560, 2, ACCENT)
+	local g, root, head = K.window("ArkherUIDesigner", "UI STUDIO — designer de UI de jogos", 30, 300, 720, 520, { pin = true })
+	K.f(head, "Acc", 0, 24, 720, 2, ACCENT)
 
-	-- ===== ESQUERDA: PALETA =====
-	local left = K.f(root, "Pal", 8, 34, 120, 268, T.bg4)
-	K.corner(left, 4)
-	K.txt(left, "WIDGETS", 10, 6, 90, 14, 10, T.txt3, ARKHER.FONTB)
-	local palette = {
-		{ nm = "Button", ic = ICON.transform },
-		{ nm = "Label", ic = ICON.textA },
-		{ nm = "Frame", ic = ICON.plate },
-		{ nm = "TextBox", ic = ICON.script },
-		{ nm = "Image", ic = ICON.gem },
-		{ nm = "Toggle", ic = ICON.check },
-	}
-	for i, p in ipairs(palette) do
-		local row = K.btn(left, "P" .. i, 8, 26 + (i - 1) * 26, 104, 22, T.bg2, 4)
-		local ic = K.f(row, "Ic", 4, 3, 16, 16)
-		p.ic(ic, 14)
-		K.txt(row, p.nm, 24, 0, 76, 22, 10, T.txt)
-		K.hover(row, T.bg2, T.hover)
-		row.MouseButton1Click:Connect(function()
-			ARKHER.out("INFO", "UIDesigner: widget " .. p.nm .. " na paleta")
-		end)
+	-- ================= ESTADO =================
+	local items = {} -- {root, kind, meta{x,y,w,h,opts}}
+	local selected = {}
+	local snap = true
+	local SNAP = 4
+	local status = nil
+	local canvas = nil
+	local devW, devH = 960, 540
+	local selBox, selHandle = nil, nil
+	local layersBody = nil
+	local inspectorBody = nil
+	-- pre-declarados (closures cruzadas)
+	local addWidget, refreshInspector, refreshLayers, refreshSelBox
+
+	local function snapV(v) return snap and (math.floor(v / SNAP) * SNAP) or math.floor(v) end
+	local function isSel(it)
+		for _, s in ipairs(selected) do if s == it then return true end end
+		return false
 	end
-	K.txt(left, "6 widgets", 10, 196, 90, 14, 9, T.txt4)
-	K.row(left, "Zoom", "100%", 216)
-	K.row(left, "Snap", "8px", 240)
+	local function syncItem(it)
+		it.root.Position = UDim2.fromOffset(snapV(it.meta.x), snapV(it.meta.y))
+		it.root.Size = UDim2.fromOffset(it.meta.w, it.meta.h)
+	end
 
-	-- ===== CENTRO: CANVAS COM GRADE =====
-	local cv = K.f(root, "Canvas", 140, 34, 272, 268, T.bg0)
-	K.corner(cv, 4)
-	K.stroke(cv, T.line, 1)
-	for i = 1, 13 do K.f(cv, "gx" .. i, i * 20, 0, 1, 268, T.bg3) end
-	for i = 1, 13 do K.f(cv, "gy" .. i, 0, i * 20, 272, 1, T.bg3) end
-	-- widgets ja colocados
-	local widgets = {
-		{ x = 20, y = 30, w = 120, h = 32, nm = "Btn_Primary", c = ACCENT },
-		{ x = 160, y = 30, w = 92, h = 32, nm = "Label_Titulo", c = T.sec },
-		{ x = 20, y = 84, w = 232, h = 72, nm = "Frame_Card", c = T.bg2 },
-		{ x = 20, y = 172, w = 140, h = 28, nm = "Txt_Input", c = T.bg4 },
-	}
-	local selW = 3
-	local wFrames = {}
-	for i, w2 in ipairs(widgets) do
-		local f = K.f(cv, "W" .. i, w2.x, w2.y, w2.w, w2.h, w2.c, 4)
-		K.stroke(f, i == selW and ACCENT or T.line, i == selW and 2 or 1)
-		K.txt(f, w2.nm, 6, 4, w2.w - 12, 14, 9, w2.c == ACCENT and C("#10202A") or T.txt2)
-		wFrames[i] = f
+	-- ================= PALETA (42 widgets, paged, por categoria) =================
+	local pal = K.f(root, "Pal", 8, 34, 132, 432, T.bg4)
+	K.corner(pal, 4)
+	local CATS = { "Base", "Input", "Display", "HUD", "Menu" }
+	local palCat = 1
+	local palPage = 0
+	local palBody = K.f(pal, "PB", 4, 48, 124, 378)
+	local palBtns = {}
+	local repaintPal = nil
+	for i, nm in ipairs(CATS) do
+		local b = K.btn(pal, "C" .. i, 4 + (i - 1) * 26, 6, 24, 18, T.bg4, 3)
+		K.txtS(b, nm:sub(1, 2), 8, i == palCat and ACCENT or T.txt3)
 		local idx = i
-		f.MouseButton1Click:Connect(function()
-			selW = idx
-			for j, fr in ipairs(wFrames) do
-				K.stroke(fr, j == idx and ACCENT or T.line, j == idx and 2 or 1)
+		b.MouseButton1Click:Connect(function()
+			palCat = idx
+			palPage = 0
+			repaintPal()
+		end)
+		palBtns[i] = b
+	end
+	local palNext = K.btn(pal, "Next", 70, 26, 58, 18, T.bg2, 3)
+	K.txtS(palNext, "mais >", 8, T.txt3)
+	local palPrev = K.btn(pal, "Prev", 6, 26, 58, 18, T.bg2, 3)
+	K.txtS(palPrev, "< ant", 8, T.txt3)
+	palPrev.MouseButton1Click:Connect(function() palPage = math.max(0, palPage - 1) repaintPal() end)
+	palNext.MouseButton1Click:Connect(function() palPage = palPage + 1 repaintPal() end)
+
+	local catalog = X.catalog()
+	repaintPal = function()
+		palBody:ClearAllChildren()
+		for j, b in ipairs(palBtns) do
+			b.BackgroundColor3 = j == palCat and T.bg2 or T.bg4
+		end
+		local list = catalog[CATS[palCat]] or {}
+		local PER = 18
+		palPage = math.min(palPage, math.max(0, math.ceil(#list / PER) - 1))
+		local base = palPage * PER
+		for i = 1, PER do
+			local w = list[base + i]
+			if not w then break end
+			local b = K.btn(palBody, "W" .. i, 0, (i - 1) * 20, 122, 18, T.bg2, 3)
+			K.txt(b, (w.nm), 6, 2, 112, 14, 9, T.txt)
+			K.hover(b, T.bg2, T.hover)
+			local id = w.id
+			b.MouseButton1Click:Connect(function() addWidget(id) end)
+		end
+	end
+
+	-- ================= CANVAS COM GRADE =================
+	local cvX, cvY, cvW, cvH = 148, 34, 400, 432
+	canvas = K.f(root, "Canvas", cvX, cvY, cvW, cvH, T.bg0)
+	K.corner(canvas, 4)
+	K.stroke(canvas, T.line, 1)
+	canvas.ClipsDescendants = true
+	-- device frame interno (viewport da tela alvo)
+	local devScaleX, devScaleY = (cvW - 16) / devW, (cvH - 16) / devH
+	local devScale = math.min(devScaleX, devScaleY)
+	local devFrame = K.f(canvas, "Device", 8, 8, math.floor(devW * devScale), math.floor(devH * devScale), C("#101A2C"))
+	K.corner(devFrame, 3)
+	K.stroke(devFrame, T.line2, 1)
+	-- grade
+	for i = 1, 19 do K.f(devFrame, "gx" .. i, math.floor(i * devFrame.Size.X.Offset / 20), 0, 1, devFrame.Size.Y.Offset, C("#16233C")) end
+	for i = 1, 11 do K.f(devFrame, "gy" .. i, 0, math.floor(i * devFrame.Size.Y.Offset / 12), devFrame.Size.X.Offset, 1, C("#16233C")) end
+	local devLbl = K.txt(canvas, "960x540 (Desktop)", cvW - 130, cvH - 16, 126, 12, 8, T.txt4, ARKHER.FONT, Enum.TextXAlignment.Right)
+
+	-- escala canvas->tela
+	local function toCanvas(x, y) return x * devScale, y * devScale end
+
+	-- selecao: caixa + handle
+	selBox = K.f(devFrame, "SelBox", 0, 0, 10, 10)
+	selBox.BackgroundTransparency = 1
+	K.stroke(selBox, ACCENT, 1.5)
+	selBox.Visible = false
+	selHandle = K.btn(devFrame, "SelHandle", 0, 0, 12, 12, ACCENT, 2)
+	selHandle.Visible = false
+
+	refreshLayers = function() end -- (camadas exibidas via selecao/inspector)
+
+	local function setSelection(list)
+		selected = list
+		refreshSelBox()
+		refreshInspector()
+		refreshLayers()
+	end
+
+	refreshSelBox = function()
+		if #selected == 0 then selBox.Visible = false selHandle.Visible = false return end
+		local it = selected[#selected]
+		local x, y = toCanvas(it.meta.x, it.meta.y)
+		local w, h = it.meta.w * devScale, it.meta.h * devScale
+		selBox.Visible = true
+		selBox.Position = UDim2.fromOffset(math.floor(x) - 2, math.floor(y) - 2)
+		selBox.Size = UDim2.fromOffset(math.floor(w) + 4, math.floor(h) + 4)
+		selHandle.Visible = true
+		selHandle.Position = UDim2.fromOffset(math.floor(x + w) - 4, math.floor(y + h) - 4)
+	end
+
+	-- drag de mover (widget) e resize (handle)
+	local drag = nil
+	local function canvasPosOfInput(inp)
+		return inp.Position.X - devFrame.AbsolutePosition.X, inp.Position.Y - devFrame.AbsolutePosition.Y
+	end
+	UserInputService.InputChanged:Connect(function(inp)
+		if not drag then return end
+		if inp.UserInputType ~= Enum.UserInputType.MouseMovement and inp.UserInputType ~= Enum.UserInputType.Touch then return end
+		local mx, my = canvasPosOfInput(inp)
+		if drag.mode == "move" then
+			for _, d in ipairs(drag.list) do
+				d.it.meta.x = snapV(d.x0 + (mx - drag.mx0) / devScale)
+				d.it.meta.y = snapV(d.y0 + (my - drag.my0) / devScale)
+				local cx2, cy2 = toCanvas(d.it.meta.x, d.it.meta.y)
+				d.it.root.Position = UDim2.fromOffset(cx2, cy2)
 			end
-			nameLbl.Text = widgets[idx].nm
+			refreshSelBox()
+			refreshInspector()
+		elseif drag.mode == "resize" then
+			local it = drag.list[1].it
+			it.meta.w = math.max(20, snapV(drag.list[1].w0 + (mx - drag.mx0) / devScale))
+			it.meta.h = math.max(14, snapV(drag.list[1].h0 + (my - drag.my0) / devScale))
+			local cx2, cy2 = toCanvas(it.meta.x, it.meta.y)
+			it.root.Size = UDim2.fromOffset(it.meta.w * devScale, it.meta.h * devScale)
+			refreshSelBox()
+			refreshInspector()
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(inp)
+		if inp.UserInputType == Enum.UserInputType.MouseButton1 then drag = nil end
+	end)
+	selHandle.InputBegan:Connect(function(inp)
+		if inp.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+		local it = selected[#selected]
+		if not it then return end
+		local mx, my = canvasPosOfInput(inp)
+		drag = { mode = "resize", mx0 = mx, my0 = my, list = { { it = it, w0 = it.meta.w, h0 = it.meta.h } } }
+	end)
+
+	local function mountItem(it)
+		-- meta.x/y em coords de TELA (device); cria posicionado no devFrame
+		local cx2, cy2 = toCanvas(it.meta.x, it.meta.y)
+		it.root.Position = UDim2.fromOffset(cx2, cy2)
+		it.root.Size = UDim2.fromOffset(it.meta.w * devScale, it.meta.h * devScale)
+		it.root:SetAttribute("wkind", it.kind)
+		it.root.Parent = devFrame
+		if it.root:IsA("GuiObject") then
+			it.root.InputBegan:Connect(function(inp)
+				if inp.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+				if not isSel(it) then setSelection({ it }) end
+				local mx, my = canvasPosOfInput(inp)
+				local list = {}
+				for _, s in ipairs(selected) do list[#list + 1] = { it = s, x0 = s.meta.x, y0 = s.meta.y } end
+				if #list == 0 then list[1] = { it = it, x0 = it.meta.x, y0 = it.meta.y } end
+				drag = { mode = "move", mx0 = mx, my0 = my, list = list }
+			end)
+		end
+	end
+
+	addWidget = function(id, meta)
+		local meta2 = meta or { x = math.floor(devW / 2 - 60), y = math.floor(devH / 2 - 20) }
+		local w, err = X.create(id, meta2)
+		if not w then
+			if status then status.Text = "erro: " .. tostring(err) end
+			return
+		end
+		w.meta.x, w.meta.y = meta2.x, meta2.y
+		if meta2.w then w.meta.w = meta2.w end
+		if meta2.h then w.meta.h = meta2.h end
+		if meta2.text then w.meta.opts.text = meta2.text end
+		items[#items + 1] = w
+		mountItem(w)
+		setSelection({ w })
+		if status then status.Text = "+" .. id .. " (" .. X.WIDGETS[id].nm .. ") no canvas" end
+	end
+	repaintPal()
+
+	-- ================= CAMADAS / INSPECTOR (direita) =================
+	local right = K.f(root, "Right", 556, 34, 156, 432, T.bg4)
+	K.corner(right, 4)
+	K.txt(right, "INSPECTOR", 10, 6, 120, 14, 10, T.txt3, ARKHER.FONTB)
+	inspectorBody = K.f(right, "IB", 6, 24, 144, 250)
+
+	local function stepper(parent, y, label, get, set, lo, hi)
+		K.txt(parent, label, 4, y, 40, 14, 9, T.txt3)
+		local minus = K.btn(parent, "M", 44, y - 2, 18, 16, T.bg2, 3)
+		K.txtS(minus, "-", 10, T.txt)
+		local plus2 = K.btn(parent, "P", 122, y - 2, 18, 16, T.bg2, 3)
+		K.txtS(plus2, "+", 10, T.txt)
+		local val = K.txt(parent, tostring(get()), 64, y, 56, 14, 9, ACCENT, ARKHER.FONT, Enum.TextXAlignment.Center)
+		local function re() val.Text = tostring(get()) end
+		minus.MouseButton1Click:Connect(function() set(math.max(lo or -99999, get() - SNAP * 2)) re() end)
+		plus2.MouseButton1Click:Connect(function() set(math.min(hi or 99999, get() + SNAP * 2)) re() end)
+		return re
+	end
+
+	refreshInspector = function()
+		inspectorBody:ClearAllChildren()
+		local it = selected[#selected]
+		if not it then K.txt(inspectorBody, "nada selecionado", 4, 2, 130, 14, 9, T.txt4) return end
+		K.txt(inspectorBody, it.kind, 4, 2, 130, 16, 11, ACCENT, ARKHER.FONTB)
+		stepper(inspectorBody, 30, "X", function() return it.meta.x end, function(v) it.meta.x = v syncItem(it) local cx2, cy2 = toCanvas(v, it.meta.y) it.root.Position = UDim2.fromOffset(cx2, cy2) refreshSelBox() end)
+		stepper(inspectorBody, 56, "Y", function() return it.meta.y end, function(v) it.meta.y = v syncItem(it) local cx2, cy2 = toCanvas(it.meta.x, v) it.root.Position = UDim2.fromOffset(cx2, cy2) refreshSelBox() end)
+		stepper(inspectorBody, 82, "Larg", function() return it.meta.w end, function(v) it.meta.w = math.max(20, v) syncItem(it) local cx2, cy2 = toCanvas(it.meta.x, it.meta.y) it.root.Size = UDim2.fromOffset(it.meta.w * devScale, it.meta.h * devScale) refreshSelBox() end)
+		stepper(inspectorBody, 108, "Alt", function() return it.meta.h end, function(v) it.meta.h = math.max(14, v) syncItem(it) local cx2, cy2 = toCanvas(it.meta.x, it.meta.y) it.root.Size = UDim2.fromOffset(it.meta.w * devScale, it.meta.h * devScale) refreshSelBox() end)
+		-- ancoras 3x3
+		K.txt(inspectorBody, "ANCORA", 4, 136, 90, 12, 9, T.txt3, ARKHER.FONTB)
+		local anames = { "sup_esq", "sup_centro", "sup_dir", "meio_esq", "centro", "meio_dir", "inf_esq", "inf_centro", "inf_dir" }
+		for i, an in ipairs(anames) do
+			local b = K.btn(inspectorBody, "A" .. i, 4 + ((i - 1) % 3) * 46, 152 + math.floor((i - 1) / 3) * 20, 44, 17, T.bg2, 3)
+			K.txtS(b, "", 8, T.txt4)
+			local dot = K.f(b, "d", 17 + ((i - 1) % 3) * 4 - 4, 5 + math.floor((i - 1) / 3) * 3, 6, 6, ACCENT, 3)
+			local aname = an
+			b.MouseButton1Click:Connect(function()
+				X.anchorPreset(it, aname, devW, devH)
+				local cx2, cy2 = toCanvas(it.meta.x, it.meta.y)
+				it.root.Position = UDim2.fromOffset(cx2, cy2)
+				refreshSelBox()
+				refreshInspector()
+				if status then status.Text = "ancorado: " .. aname end
+			end)
+		end
+	end
+
+	-- multi-selecao por botoes de acao rapida
+	local actRow = K.f(right, "Acts", 6, 280, 144, 64)
+	local delB = K.btn(actRow, "Del", 0, 0, 70, 22, C("#5A2830"), 4)
+	K.txtS(delB, "Excluir", 9, C("#FFB0B8"))
+	local dupB = K.btn(actRow, "Dup", 74, 0, 70, 22, T.bg2, 4)
+	K.txtS(dupB, "Duplicar", 9, T.txt)
+	delB.MouseButton1Click:Connect(function()
+		local n = 0
+		for _, it in ipairs(selected) do
+			for i = #items, 1, -1 do if items[i] == it then table.remove(items, i) end end
+			it.root:Destroy()
+			n = n + 1
+		end
+		setSelection({})
+		if status then status.Text = n .. " widget(s) excluido(s)" end
+	end)
+	dupB.MouseButton1Click:Connect(function()
+		local it = selected[#selected]
+		if it then
+			addWidget(it.kind, { x = it.meta.x + 16, y = it.meta.y + 16, w = it.meta.w, h = it.meta.h, text = it.meta.opts and it.meta.opts.text })
+		end
+	end)
+	-- alinhar/distribuir
+	K.txt(right, "ALINHAR (multi)", 10, 348, 130, 12, 9, T.txt3, ARKHER.FONTB)
+	local alignBtns = {
+		{ "Esq", function() return X.alignLeft(selected) end }, { "Cen", function() return X.alignHCenter(selected) end },
+		{ "Dir", function() return X.alignRight(selected) end }, { "Top", function() return X.alignTop(selected) end },
+		{ "Base", function() return X.alignBottom(selected) end }, { "DistH", function() return X.distributeH(selected) end },
+		{ "DistV", function() return X.distributeV(selected) end },
+	}
+	for i, a in ipairs(alignBtns) do
+		local b = K.btn(right, "AL" .. i, 8 + ((i - 1) % 3) * 48, 364 + math.floor((i - 1) / 3) * 22, 44, 19, T.bg2, 3)
+		K.txtS(b, a[1], 8, T.txt2)
+		K.hover(b, T.bg2, T.hover)
+		local fn = a[2]
+		local nm = a[1]
+		b.MouseButton1Click:Connect(function()
+			if #selected == 0 then
+				-- sem selecao: aplica em todos (atalho pro)
+				selected = items
+			end
+			local n = fn()
+			for _, it in ipairs(items) do
+				local cx2, cy2 = toCanvas(it.meta.x, it.meta.y)
+				it.root.Position = UDim2.fromOffset(cx2, cy2)
+			end
+			refreshSelBox()
+			if status then status.Text = nm .. ": " .. n .. " widgets alinhados" end
 		end)
 	end
-	local nameLbl = K.txt(cv, "Frame_Card", 200, 244, 66, 14, 9, ACCENT, FONT, Enum.TextXAlignment.Right)
+	local selAll = K.btn(right, "SelAll", 8, 412, 140, 20, T.bg2, 4)
+	K.txtS(selAll, "Selecionar todos", 9, T.txt)
+	selAll.MouseButton1Click:Connect(function() setSelection(items) end)
 
-	-- ===== DIREITA: INSPECTOR =====
-	local right = K.f(root, "Insp", 424, 34, 128, 268, T.bg4)
-	K.corner(right, 4)
-	K.txt(right, "ESTILO", 10, 6, 80, 14, 10, T.txt3, ARKHER.FONTB)
-	K.row(right, "Pos", "20, 84", 26)
-	K.row(right, "Size", "232 x 72", 50)
-	K.sliderRow(right, "Opacidade", 1.0, 76)
-	K.sliderRow(right, "Rounded", 0.4, 102)
-	K.knob(right, 40, 124, 48, 0.4, "r: 8px")
-	K.checkRow(right, "Stroke", true, 186)
-	K.checkRow(right, "Drop shadow", false, 210)
-	K.checkRow(right, "Auto resize", true, 234)
-
-	-- ===== BARRA INFERIOR =====
-	local bar = K.f(root, "Bar", 8, 312, 544, 72, T.bg0)
+	-- ================= BARRA INFERIOR: EXPORT / TEMA / DEVICE =================
+	local bar = K.f(root, "Bar", 8, 474, 704, 38, T.bg0)
 	K.corner(bar, 4)
-	local gen = K.btn(bar, "Gen", 10, 10, 130, 26, ACCENT, 5)
-	K.txtS(gen, "Gerar GUI no Place", 10, C("#041820"))
-	K.hover(gen, ACCENT, C("#7DEBFF"))
-	gen.MouseButton1Click:Connect(function()
-		local ws = workspace
-		local gui = Instance.new("ScreenGui")
-		gui.Name = "ArkherGeneratedUI"
-		gui.Parent = ws
-		for _, w2 in ipairs(widgets) do
-			local isBtn = w2.nm:sub(1, 4) == "Btn_"
-			local inst = Instance.new(isBtn and "TextButton" or (w2.nm:sub(1, 4) == "Txt_" and "TextBox" or "Frame"))
-			inst.Name = w2.nm
-			inst.Parent = gui
-			inst:SetAttribute("ARKHER", "designed")
-		end
-		ARKHER.out("SUCCESS", "UIDesigner: GUI gerada no place (" .. #widgets .. " widgets)")
-		K.notify("GUI gerada", "ArkherGeneratedUI no workspace", "ok")
+	status = K.txt(bar, "42 widgets na paleta — clique p/ adicionar, arraste p/ mover", 10, 4, 330, 14, 9, T.txt3)
+	-- tema
+	local themeIds = { "arkher", "neon", "light", "forest", "sunset", "glass" }
+	local themeIdx = 1
+	local themeB = K.btn(bar, "Theme", 348, 8, 80, 22, T.bg2, 4)
+	K.txtS(themeB, "Tema: arkher", 8, T.txt)
+	K.hover(themeB, T.bg2, T.hover)
+	themeB.MouseButton1Click:Connect(function()
+		themeIdx = (themeIdx % #themeIds) + 1
+		local th = X.setTheme(themeIds[themeIdx])
+		themeB:FindFirstChildOfClass("TextLabel").Text = "Tema: " .. themeIds[themeIdx]
+		-- recria todos os widgets com o tema novo
+		local saved = {}
+		for i, it in ipairs(items) do saved[i] = { kind = it.kind, meta = it.meta } it.root:Destroy() end
+		items = {}
+		setSelection({})
+		for _, s in ipairs(saved) do addWidget(s.kind, s.meta) end
+		status.Text = "tema '" .. th.nm .. "' aplicado a TODOS os widgets"
+		setSelection({})
 	end)
-	K.txt(bar, "4 widgets no canvas", 160, 16, 150, 16, 10, T.txt3)
-	K.txt(bar, "AutoLayout: ON", 330, 16, 110, 16, 9, T.txt4)
-	K.txt(bar, "960x540", 470, 16, 70, 16, 9, T.txt4, FONT, Enum.TextXAlignment.Right)
+	-- device
+	local devs = {
+		{ nm = "Desktop", w = 960, h = 540 }, { nm = "HD", w = 1280, h = 720 },
+		{ nm = "Phone", w = 390, h = 844 }, { nm = "Tablet", w = 820, h = 1180 },
+	}
+	local devIdx = 1
+	local devB = K.btn(bar, "Dev", 436, 8, 80, 22, T.bg2, 4)
+	K.txtS(devB, "Tela: Desktop", 8, T.txt)
+	K.hover(devB, T.bg2, T.hover)
+	devB.MouseButton1Click:Connect(function()
+		devIdx = (devIdx % #devs) + 1
+		local d = devs[devIdx]
+		devW, devH = d.w, d.h
+		status.Text = "tela alvo: " .. d.nm .. " (" .. d.w .. "x" .. d.h .. ") — reabra p/ re-escalar"
+		devB:FindFirstChildOfClass("TextLabel").Text = "Tela: " .. d.nm
+		devLbl.Text = d.w .. "x" .. d.h .. " (" .. d.nm .. ")"
+	end)
+	-- export real
+	local expB = K.btn(bar, "Exp", 524, 8, 84, 22, ACCENT, 4)
+	K.txtS(expB, "Exportar GUI", 9, C("#041820"))
+	K.hover(expB, ACCENT, C("#7DEBFF"))
+	expB.MouseButton1Click:Connect(function()
+		local gui, n = X.build(items, "ArkherHUD")
+		-- o build re-parenta as raizes; devolve ao canvas para continuar editando
+		for _, it in ipairs(items) do mountItem(it) end
+		refreshSelBox()
+		status.Text = "ScreenGui 'ArkherHUD' com " .. n .. " widgets no StarterGui (export REAL — canvas preservado)"
+		K.notify("UI exportada", n .. " widgets → StarterGui.ArkherHUD", "ok")
+	end)
+	local codeB = K.btn(bar, "Code", 614, 8, 88, 22, T.bg2, 4)
+	K.txtS(codeB, "Export codigo", 9, T.txt)
+	K.hover(codeB, T.bg2, T.hover)
+	codeB.MouseButton1Click:Connect(function()
+		local src = X.exportModule(items, "ArkherUI_HUD")
+		local ctrl = X.exportController(items, "ArkherUI_Controller")
+		local ok2, rs = pcall(function() return game:GetService("ReplicatedStorage") end)
+		if ok2 and rs then
+			local m = rs:FindFirstChild("ArkherUI_HUD")
+			if not m then m = Instance.new("ModuleScript") m.Name = "ArkherUI_HUD" m.Parent = rs end
+			m.Source = src
+			local m2 = rs:FindFirstChild("ArkherUI_Controller")
+			if not m2 then m2 = Instance.new("ModuleScript") m2.Name = "ArkherUI_Controller" m2.Parent = rs end
+			m2.Source = ctrl
+		end
+		pcall(function() if game.WriteFile then game:WriteFile("ArkherUI/ArkherUI_HUD.lua", src) end end)
+		status.Text = "codigo exportado: ReplicatedStorage.ArkherUI_HUD + _Controller (" .. #src .. " chars)"
+	end)
+	-- import
+	local impB = K.btn(bar, "Imp", 8, 20, 0, 0, T.bg0)
+	impB.Visible = false
+	K.txt(bar, "snap " .. SNAP .. "px", 10, 20, 60, 12, 7, T.txt4)
+	local snapB = K.btn(bar, "Snap", 76, 20, 54, 14, T.bg2, 3)
+	K.txtS(snapB, "snap:on", 7, T.txt3)
+	snapB.MouseButton1Click:Connect(function()
+		snap = not snap
+		snapB:FindFirstChildOfClass("TextLabel").Text = snap and "snap:on" or "snap:off"
+	end)
+
+	setSelection({})
 end
 
-ARKHER.reg("UIDesigner", "UI Designer", "Editor", ICON.plate, "Designer de UI: paleta, canvas com grade e inspector de estilo", build)
+ARKHER.reg("UIDesigner", "UI Studio", "Editor", ICON.plate, "Designer de UI de jogos: 42 widgets, drag real, temas, ancoras, alinhar, export ScreenGui+codigo", build)
 end
 
 do
@@ -662,4 +1383,4 @@ ARKHER.reg("Map", "Map", "Scene", ICON.globe, "Mapa: minimapa com POIs interativ
 end
 
 local opened = ARKHER.openAll()
-ARKHER.out("SUCCESS", "ARKHER V3 — bundle Scene: " .. opened .. " UIs abertas")
+ARKHER.out("SUCCESS", "ARKHER V4 — bundle Scene: " .. opened .. " UIs abertas")

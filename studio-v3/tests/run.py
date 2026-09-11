@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ARKHER V3 — test runner.
 
-Fase 1 (ALL): shim + build unico + bateria de 46 checagens.
+Fase 1 (ALL): shim + build unico + bateria de 126 checagens.
 Fase 2 (kitflow): fluxo REAL de instalacao — 2 ModuleScripts (kits) +
 LocalScripts (launchers) que usam require, num runtime limpo.
 """
@@ -80,7 +80,7 @@ def main():
     total_pass, total_fail = 0, 0
 
     # ================= FASE 1: ALL =================
-    print("== fase 1: ALL (core + shell + 23 UIs) ==")
+    print("== fase 1: ALL (core + shell + 25 UIs) ==")
     lua = lupa.LuaRuntime()
     lua.execute(PRINT_CAPTURE)
     exec(lua, "shim", read(os.path.join(HERE, "shim.lua")))
@@ -103,9 +103,12 @@ def main():
         read(os.path.join(HERE, "kitflow.lua")),
         read(os.path.join(DIST, "ArkherKit_A.lua")),
         read(os.path.join(DIST, "ArkherKit_B.lua")),
+        read(os.path.join(DIST, "ArkherKit_C.lua")),
+        read(os.path.join(DIST, "ArkherKit_D.lua")),
+        read(os.path.join(DIST, "ArkherKit_E.lua")),
         read(os.path.join(DIST, "ArkherStudio_MainUI.lua")),
         read(os.path.join(DIST, "UI_Bundle_Editors.lua")),
-        read(os.path.join(DIST, "UI_Animator.lua")),
+        read(os.path.join(DIST, "UI_Water.lua")),
     )
     lines2 = drain(lua2)
     for line in lines2:

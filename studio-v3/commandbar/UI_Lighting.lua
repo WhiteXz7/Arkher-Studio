@@ -1,124 +1,219 @@
---[[ ARKHER V3 — LocalScript. Requer o kit (ReplicatedStorage.ArkherV3.ArkherKit_B). ]]
+--[[ ARKHER V4 — LocalScript. Requer os kits (ReplicatedStorage.ArkherV3.ArkherKit_B/C/D/E). ]]
 local function _arkherKit()
 	local rs = game:GetService("ReplicatedStorage")
 	local folder = rs:FindFirstChild("ArkherV3")
-	local b = folder and folder:FindFirstChild("ArkherKit_B")
-	if not b then b = script:FindFirstChild("ArkherKit_B") end
-	if not b then b = script.Parent:FindFirstChild("ArkherKit_B") end
-	if not b then
-		error("[ARKHER] ArkherKit_B nao encontrado: rode os 2 installers (ArkherKit_A e ArkherKit_B) primeiro.")
+	for _, kn in ipairs({ "ArkherKit_B", "ArkherKit_C", "ArkherKit_D", "ArkherKit_E" }) do
+		local m = folder and folder:FindFirstChild(kn)
+		if not m then m = script:FindFirstChild(kn) end
+		if not m then m = script.Parent and script.Parent:FindFirstChild(kn) end
+		if not m then
+			error("[ARKHER] " .. kn .. " nao encontrado: rode os installers A+B+C+D+E primeiro.")
+		end
+		require(m)
 	end
-	require(b)
 end
 _arkherKit()
 ARKHER.boot()
 
 do
---[[ ARKHER V3 — UI: LIGHTING ]]
--- Layout unico: knobs de sol/ambiente a esquerda, faixa HORA DO DIA clicavel
--- no centro (mexe o ceu + posicao do sol no preview), cores e toggles a direita.
+-- =============================================================
+-- LIGHTING STUDIO X — UI sobre o ATMOS X (AEX custom)
+-- Ciclo dia/noite com Kelvin PLANCKIAN REAL (kelvinRGB), 6 presets de
+-- céu com física (kelvin/haze/fog do próprio motor), WEATHER MACHINE
+-- com 7 estados e transição suave, raio de demonstração, links AWX/AUX.
+-- Tudo REAL: mexer = alterar Lighting/Atmosphere/ColorCorrection. ☀️🌩️
+-- =============================================================
 local T, K, ICON, C = ARKHER.T, ARKHER.K, ARKHER.ICON, ARKHER.C
-local ACCENT = C("#FFD93D")
 
-local SKY_STEPS = {
-	{ nm = "Noite", sky = C("#0B1026"), sun = C("#B0BEC5"), y = 78, x = 40 },
-	{ nm = "Amanhecer", sky = C("#3E2748"), sun = C("#FF9770"), y = 60, x = 80 },
-	{ nm = "Manha", sky = C("#4A78A8"), sun = C("#FFD93D"), y = 34, x = 120 },
-	{ nm = "Meio-dia", sky = C("#5B9BD5"), sun = C("#FFF176"), y = 14, x = 160 },
-	{ nm = "Tarde", sky = C("#4A6FA5"), sun = C("#FFCA28"), y = 40, x = 200 },
-	{ nm = "Pôr do sol", sky = C("#5D3A4E"), sun = C("#FF7043"), y = 62, x = 240 },
-	{ nm = "Anoitecer", sky = C("#2A2440"), sun = C("#FF8A65"), y = 78, x = 280 },
-	{ nm = "Meia-noite", sky = C("#070B1A"), sun = C("#90A4AE"), y = 84, x = 320 },
-}
-
-local function build()
-	local g, root, head = K.window("ArkherLighting", "LIGHTING — hora do dia", 24, 360, 560, 392, { pin = true })
-	K.f(head, "Acc", 0, 24, 560, 2, ACCENT)
-
-	local step = 4
-
-	-- ===== ESQUERDA: KNOBS =====
-	local left = K.f(root, "Knobs", 8, 34, 132, 240, T.bg4)
-	K.corner(left, 4)
-	K.txt(left, "SOL", 10, 6, 60, 14, 10, T.txt3, ARKHER.FONTB)
-	K.knob(left, 36, 22, 60, (step - 1) / 7, "35deg")
-	K.txt(left, "AMBIENTE", 10, 96, 90, 14, 10, T.txt3, ARKHER.FONTB)
-	K.knob(left, 36, 112, 60, 0.45, "0.45")
-	K.txt(left, "EXPOSICAO", 10, 184, 100, 14, 10, T.txt3, ARKHER.FONTB)
-	K.knob(left, 36, 200, 60, 0.5, "1.0x")
-
-	-- ===== CENTRO: PREVIEW DO CEU + FAIXA =====
-	local cv = K.f(root, "Sky", 152, 34, 264, 150, C("#5B9BD5"))
-	K.corner(cv, 4)
-	K.stroke(cv, T.line, 1)
-	-- nuvens
-	K.f(cv, "Cl1", 30, 20, 54, 14, C("#FFFFFF"), 7)
-	K.f(cv, "Cl2", 150, 34, 70, 16, C("#F5F7FA"), 8)
-	K.f(cv, "Cl3", 90, 58, 40, 10, C("#FFFFFF"), 5)
-	-- terreno
-	K.f(cv, "Hil", 0, 108, 264, 42, C("#1B2B22"))
-	local hill = K.f(cv, "Hill", 60, 92, 140, 26, C("#16241C"))
-	hill.Rotation = -3
-	-- sol/lua (move com a hora)
-	local sun = K.f(cv, "SunObj", SKY_STEPS[step].x, SKY_STEPS[step].y, 20, 20, SKY_STEPS[step].sun, 10)
-	K.txt(cv, SKY_STEPS[step].nm, 8, 128, 120, 18, 11, T.txt, ARKHER.FONTB)
-
-	-- faixa hora do dia (clicavel)
-	local strip = K.f(root, "Strip", 152, 196, 264, 34, T.bg0)
-	K.corner(strip, 4)
-	for i, s in ipairs(SKY_STEPS) do
-		local b = K.f(strip, "S" .. i, (i - 1) * 33, 4, 31, 26, s.sky, 2)
-		K.txt(b, s.nm, 0, 14, 31, 10, 7, T.txt3, FONT, Enum.TextXAlignment.Center)
-		local idx = i
-		b.MouseButton1Click:Connect(function()
-			step = idx
-			cv.BackgroundColor3 = s.sky
-			sun.Position = UDim2.new(0, s.x, 0, s.y)
-			sun.BackgroundColor3 = s.sun
-			ARKHER.out("INFO", "Lighting: " .. s.nm)
-		end)
+local function mkSlider(parent, x, y, w, label, min, max, val, fmt, onSet)
+	K.txt(parent, label, x, y, 90, 14, 9, T.txt3)
+	local valLbl = K.txt(parent, "", x + w - 56, y, 56, 14, 9, C("#8BCCFF"), ARKHER.FONT, Enum.TextXAlignment.Right)
+	local track = K.btn(parent, "Trk_" .. label, x, y + 15, w, 10, T.bg4, 5)
+	K.stroke(track, T.line, 1)
+	local fill = K.f(track, "Fill", 0, 2, 10, 6, C("#8BCCFF"))
+	K.corner(fill, 3)
+	local function rs()
+		local frac = (val - min) / (max - min)
+		fill.Size = UDim2.new(0, math.max(4, math.floor(w * frac)), 0, 6)
+		valLbl.Text = fmt and fmt(val) or string.format("%.2f", val)
 	end
-
-	-- ===== DIREITA: CORES + TOGGLES =====
-	local right = K.f(root, "Cols", 428, 34, 124, 240, T.bg4)
-	K.corner(right, 4)
-	K.txt(right, "CORES", 10, 6, 80, 14, 10, T.txt3, ARKHER.FONTB)
-	local colors = {
-		{ "Sky", C("#5B9BD5") }, { "Cloud", C("#F5F7FA") },
-		{ "Shadow", C("#3E5C76") }, { "Fog", C("#B0C4DE") },
-	}
-	for i, c2 in ipairs(colors) do
-		K.row(right, c2[1], "", 26 + (i - 1) * 24)
-		local sw = K.f(right, "CSw" .. i, 78, 26 + (i - 1) * 24, 34, 16, c2[2], 3)
-		K.stroke(sw, T.line2, 1)
+	local function setI(inp)
+		local frac = (inp.Position.X - track.AbsolutePosition.X) / math.max(track.AbsoluteSize.X, 1)
+		frac = math.min(1, math.max(0, frac))
+		val = min + (max - min) * frac
+		rs()
+		if onSet then onSet(val) end
 	end
-	K.checkRow(right, "Sombras", true, 126)
-	K.checkRow(right, "Fog", false, 150)
-	K.checkRow(right, "Global light", true, 174)
-	K.checkRow(right, "Post FX", true, 198)
-
-	-- ===== BARRA INFERIOR =====
-	local bar = K.f(root, "Bar", 8, 294, 544, 90, T.bg0)
-	K.corner(bar, 4)
-	local create = K.btn(bar, "Create", 10, 10, 140, 26, ACCENT, 5)
-	K.txtS(create, "Criar luz no Place", 10, C("#1A1403"))
-	K.hover(create, ACCENT, C("#FFE57A"))
-	create.MouseButton1Click:Connect(function()
-		local ws = workspace
-		if ws:FindFirstChild("ArkherLighting") then ws:FindFirstChild("ArkherLighting"):Destroy() end
-		local f = Instance.new("Folder")
-		f.Name = "ArkherLighting"
-		f:SetAttribute("Hora", SKY_STEPS[step].nm)
-		f:SetAttribute("Sol", 35)
-		f.Parent = ws
-		ARKHER.out("SUCCESS", "Lighting: luz " .. SKY_STEPS[step].nm .. " criada no place")
-	end)
-	K.txt(bar, "sun: " .. SKY_STEPS[step].nm, 170, 16, 180, 16, 10, T.txt3)
-	K.progress(bar, 10, 46, 524, (step - 1) / 7, ACCENT)
-	K.txt(bar, "ciclo: 0h -> " .. ((step - 1) * 3) .. "h", 170, 58, 200, 14, 9, T.txt4)
+	track.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then setI(i) end end)
+	track.InputChanged:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseMovement then setI(i) end end)
+	rs()
+	return { get = function() return val end, set = function(v) val = v rs() if onSet then onSet(v) end end }
 end
 
-ARKHER.reg("Lighting", "Lighting", "Scene", ICON.bulb, "Iluminacao: hora do dia interativa, sol, cores e post FX", build)
+local function build()
+	if not ArkherAtmosX then ARKHER.note("Kit E nao carregado (ATMOS X ausente)") return end
+	local AEX = ArkherAtmosX
+	AEX.setup({})
+
+	local W, H = 680, 500
+	local g, root = K.window("LightingStudio", "LIGHTING STUDIO X — ceu custom (ATMOS X custom)", 240, 130, W, H, { pin = true })
+
+	local running, cycle = true, false
+
+	-- ============ ESQUERDA: SKY + CICLO ============
+	local bodyH = H - 34 - 40
+	local left = K.f(root, "L", 6, 34, 240, bodyH, T.bg3)
+	K.stroke(left, T.line, 1)
+	K.txt(left, "PRESETS DE CEU (fisica do motor)", 8, 4, 220, 14, 9, T.txt3)
+	local presets = { "madrugada", "amanhecer", "meiodia", "tarde", "entardecer", "noite" }
+	for i, pn in ipairs(presets) do
+		local y = 20 + (i - 1) * 30
+		local b = K.btn(left, pn, 8, y, 224, 26, T.bg4, 6)
+		K.txt(b, pn .. "  (" .. math.floor((AEX.SKY_PRESETS[pn].kelvin or 5000) / 100) / 10 .. "k Kelvin)", 10, 6, 200, 14, 9, T.txt)
+		b.MouseButton1Click:Connect(function()
+			AEX.setPreset(pn)
+			repaintKelvin()
+		end)
+	end
+	K.txt(left, "CICLO DIA-NOITE", 8, 208, 220, 14, 9, T.txt3)
+	local spdS = mkSlider(left, 8, 224, 200, "vel ciclo (h/s)", 0, 0.5, 0.0045, function(v) return string.format("%.4f", v) end, function(v) AEX.S.cycleSpeed = v end)
+	local cycB = K.btn(left, "CICLO AR 24H", 8, 268, 110, 22, T.bg4, 5)
+	local cycOn = false
+	cycB.MouseButton1Click:Connect(function()
+		cycOn = not cycOn
+		spdS.set(0.7)
+	end)
+	local ckTxt = K.txt(left, "clock: —", 8, 296, 224, 14, 9, T.txt2)
+	K.txt(left, "aplicado SEMPRE ao Lighting real", 8, 312, 224, 12, 8, T.txt3)
+
+	-- ============ CENTRO: KELVIN + TEMPO ============
+	local center = K.f(root, "C", 254, 34, 250, bodyH, T.bg3)
+	K.stroke(center, T.line, 1)
+	K.txt(center, "TEMPERATURA DE COR DO SOL", 8, 4, 236, 14, 9, T.txt3)
+	K.txt(center, "Intensidade/tonalidade vêm da escala", 8, 18, 236, 12, 8, T.txt3)
+	K.txt(center, "Planckian REAL (kelvinRGB do AEX)", 8, 30, 236, 12, 8, T.txt3)
+	local kelvinS = mkSlider(center, 8, 48, 226, "Kelvin", 1000, 12000, 5600, function(v) return string.format("%.0f K", v) end, function(v) repaintKelvin() end)
+	local swatch = K.f(center, "Sw", 8, 92, 226, 76, C("#FFFFFF"))
+	K.corner(swatch, 6)
+	K.stroke(swatch, T.line2, 1)
+	local rgbTxt = K.txt(center, "r/g/b: —", 12, 100, 220, 14, 9, C("#0B1220"))
+	local terraR = K.f(center, "bandR", 42, 176, 40, 40, C("#FF3B30"))
+	K.corner(terraR, 20)
+	local terraG = K.f(center, "bandG", 92, 176, 40, 40, C("#D8FFB0"))
+	K.corner(terraG, 20)
+	local terraB = K.f(center, "bandB", 142, 176, 40, 40, C("#BFE7FF"))
+	K.corner(terraB, 20)
+	local terraLblR = K.txt(center, "R", 54, 218, 16, 12, 8, T.txt2)
+	local terraLblG = K.txt(center, "G", 104, 218, 16, 12, 8, T.txt2)
+	local terraLblB = K.txt(center, "B", 154, 218, 16, 12, 8, T.txt2)
+	K.txt(center, "faixa fisica (1k..12k K)", 42, 234, 150, 12, 8, T.txt3)
+	function repaintKelvin()
+		local k = kelvinS.get()
+		local col = AEX.kelvinRGB(k)
+		swatch.BackgroundColor3 = col
+		local rr = col.R or 0
+		local gg = col.G or 0
+		local bb = col.B or 0
+		local ri = math.floor((type(rr) == "number" and rr <= 1) and rr * 255 or rr)
+		-- Color3 pode vir 0..1 ou 0..255 conforme origem
+		local function to255(v) return v > 1 and math.floor(v + 0.5) or math.floor(v * 255 + 0.5) end
+		local R255, G255, B255 = to255(rr), to255(gg), to255(bb)
+		rgbTxt.Text = string.format("R%d  G%d  B%d  (%d K real)", R255, G255, B255, k)
+		rgbTxt.TextColor3 = (R255 + G255 + B255) > 380 and C("#0B1220") or C("#E6EBF5")
+		terraR.BackgroundColor3 = Color3.fromRGB(255, math.max(20, math.floor(120 - (k - 1000) / 11000 * 60)), 30)
+		terraG.BackgroundColor3 = Color3.fromRGB(200 + math.floor((k - 5600) / 6000 * 55), 255, 176)
+		terraB.BackgroundColor3 = Color3.fromRGB(148, 209, 255)
+		-- aplica kelvin custom no preset atual
+		local pr = AEX.SKY_PRESETS[AEX.S.preset]
+		if pr then pr.kelvin = k end
+	end
+	K.txt(center, "TEMPO (hora solar gerando o dia)", 8, 258, 236, 14, 9, T.txt3)
+	local clockS = mkSlider(center, 8, 274, 226, "hora (0..24)", 0, 24, 12, function(v) return string.format("%.2fh", v) end, function(v) AEX.setClock(v) AEX.apply({}) ckTxt.Text = string.format("clock: %.2f (ClockTime real)", v) end)
+	local clockBarBk = K.f(center, "Cbk", 8, 330, 226, 20, C("#101827"))
+	K.corner(clockBarBk, 5)
+	local sunDot = K.f(clockBarBk, "Sun", 6, 6, 8, 8, C("#FFE08A"))
+	K.corner(sunDot, 4)
+	local duskBar = K.f(clockBarBk, "DuskA", 6 + (18 / 24) * 214, 6, 8, 8, C("#FF8C3B"))
+	K.corner(duskBar, 4)
+	local nightBar = K.f(clockBarBk, "Night", 6, 6, 4, 8, C("#5B6EA8"))
+	K.corner(nightBar, 2)
+	-- desenha o espectro do dia: 48 pontinhos no fundo
+	for i = 0, 24 do
+		local kk = 1800 + (i / 24) * (5600 - 1800)
+		local c = AEX.kelvinRGB(kk)
+		local dot = K.f(clockBarBk, "d" .. i, 4 + i * 9, 13, 3, 3, c)
+	end
+
+	-- ============ DIREITA: WEATHER MACHINE ============
+	local right = K.f(root, "R", 512, 34, 238, bodyH, T.bg3)
+	K.stroke(right, T.line, 1)
+	K.txt(right, "WEATHER MACHINE (multiplicadores fisicos)", 8, 4, 222, 14, 9, T.txt3)
+	local weathers = { "limpo", "nuvem", "chuva", "tempestade", "neblina", "neve", "aurora" }
+	local wBtns = {}
+	for i, wn in ipairs(weathers) do
+		local wx = (i % 2 == 1) and 8 or 120
+		local wy = 20 + math.floor((i - 1) / 2) * 30
+		local wv = AEX.WEATHER[wn]
+		local tint = wv.rain > 0 and C("#24486B") or (wv.haze > 7 and C("#3A3A42") or C("#2E5E46"))
+		local b = K.btn(right, "W_" .. wn, wx, wy, 106, 26, tint, 6)
+		K.txt(b, wn, 8, 6, 96, 14, 9, T.txt)
+		wBtns[wn] = b
+		b.MouseButton1Click:Connect(function()
+			AEX.setWeather(wn, transS.get())
+		end)
+	end
+	K.txt(right, "TRANSICAO", 8, 142, 222, 14, 9, T.txt3)
+	local transS = mkSlider(right, 8, 158, 222, "vel. transicao", 0.05, 2.0, 0.35, function(v) return string.format("%.2f/s", v) end)
+	local demoB = K.btn(right, "DEMO: tempestade agora", 8, 202, 130, 24, C("#7A2E2E"), 6)
+	demoB.MouseButton1Click:Connect(function()
+		AEX.setWeather("tempestade", 2.0)
+		-- + boost das ondas reais já acontece via link AWX no pump
+	end)
+	local cleanB = K.btn(right, "limpar", 144, 202, 86, 24, T.bg4, 6)
+	cleanB.MouseButton1Click:Connect(function() AEX.setWeather("limpo", 1.2) end)
+	K.txt(right, "ESTADO DO MOTOR (pump)", 8, 238, 222, 14, 9, T.txt3)
+	local fogTxt = K.txt(right, "nevoa: —", 8, 254, 222, 14, 9, T.txt2)
+	local hazeTxt = K.txt(right, "haze: —", 8, 268, 222, 14, 9, T.txt2)
+	local boostTxt = K.txt(right, "waveBoost: —", 8, 282, 222, 14, 9, T.txt2)
+	local ltTest = K.btn(right, "flash relampago (teste)", 8, 306, 140, 24, C("#5A3B8C"), 6)
+	ltTest.MouseButton1Click:Connect(function()
+		if ArkherAtmosX and ArkherAtmosX.S._cc then
+			ArkherAtmosX.S._cc.Brightness = 0.22
+		end
+	end)
+	K.txt(right, "LINKS FISICOS", 8, 338, 222, 14, 9, T.txt3)
+	K.txt(right, "tempestade → ondas AWX ×2.2", 8, 352, 222, 12, 8, T.txt3)
+	K.txt(right, "vento → volume weather AUX", 8, 366, 222, 12, 8, T.txt3)
+	K.txt(right, "nevoa/neve → FogEnd/Haze reais", 8, 380, 222, 12, 8, T.txt3)
+
+	-- ============ STATUS ============
+	local status = K.f(root, "St", 0, H - 36, W, 36, T.bg3)
+	local sTxt = K.txt(status, "", 10, 11, W - 20, 14, 9.5, T.txt3)
+	ARKHER.out("INFO", "Lighting Studio X atasao ATMOS X (ceu custom Kelvin + weather machine)")
+
+	-- ============ HEARTBEAT (pump real do motor) ============
+	if not ArkherAtmosX.UI_CONN then
+		local okRS, RS = pcall(function() return game:GetService("RunService") end)
+		if okRS and RS and RS.Heartbeat then
+			pcall(function()
+				ArkherAtmosX.UI_CONN = RS.Heartbeat:Connect(function(dt)
+					local okin = pcall(function()
+						local clockNow, w = AEX.pump(dt or 1 / 60)
+						ckTxt.Text = string.format("clock: %.2f (ClockTime real; ciclo %s)", clockNow, cycOn and "ON" or "manual")
+						fogTxt.Text = string.format("FogEnd: %.0f  (cloud %.2f, rain %.2f)", w.fogEnd, w.cloud, w.rain)
+						hazeTxt.Text = string.format("Haze: %.2f  Stars: %s", w.haze, tostring(w.stars))
+						boostTxt.Text = string.format("waveBoost: %.2fx  volBoost +%.2f", w.waveBoost, w.volBoost)
+						sunDot.Position = UDim2.new(0, 4 + (clockNow / 24) * 214, 0, 6)
+					end)
+					if not okin then ArkherAtmosX.UI_CONN:Disconnect() ArkherAtmosX.UI_CONN = nil end
+				end)
+			end)
+		end
+	end
+	repaintKelvin()
+end
+
+ARKHER.reg("Lighting", "Lighting", "Scene", ICON.bulb, "Iluminacao custom: ciclo dia/noite Kelvin real + weather machine (ATMOS X)", build)
 end
 
 ARKHER.open("Lighting")

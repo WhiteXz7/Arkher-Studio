@@ -368,6 +368,345 @@ A["cloud.disconnect"] = function()
 	Bus.emit("cloud.status", ARKHER.STATE.cloud)
 end
 
+-- ================= TERRAIN X (custom, ArkherTerrainX) =================
+local function txWorld(preset, seed)
+	if not ArkherTerrainX then return nil, "Kit C nao carregado (ArkherKit_Installer_C)" end
+	ARKHER._world = ArkherTerrainX.new({ seed = seed or 1337, preset = preset or "continentes", cell = 8 })
+	return ARKHER._world
+end
+A["terrain.generate"] = function(preset, seed)
+	local w, err = txWorld(preset, seed)
+	if not w then ARKHER.out("WARNING", "terrain.generate: " .. err) return end
+	local res = w:materializeRegion(-96, -96, 192, 192, {})
+	ARKHER.out("SUCCESS", "terrain.generate: preset '" .. w.preset .. "' seed " .. w.seed .. " → " .. res.parts .. " parts em " .. res.chunks .. " chunks")
+end
+A["terrain.erode"] = function(iters)
+	if not ARKHER._world then txWorld() end
+	local w = ARKHER._world
+	if not w then ARKHER.out("WARNING", "terrain.erode: sem mundo ATX") return end
+	local r = w:erodeHydraulic(1, 1, 48, 32, iters or 3000)
+	ARKHER.out("SUCCESS", "terrain.erode: " .. (iters or 3000) .. " gotas | dMedio " .. string.format("%.3f", r.meanDelta))
+end
+A["terrain.rivers"] = function()
+	if not ARKHER._world then txWorld() end
+	if not ARKHER._world then return end
+	local r = ARKHER._world:carveRivers(1, 1, 48, 32, 20)
+	ARKHER.out("SUCCESS", "terrain.rivers: " .. r.cells .. " celulas fluviais (acum. max " .. r.maxAcc .. ")")
+end
+A["terrain.lakes"] = function()
+	if not ARKHER._world then txWorld() end
+	if not ARKHER._world then return end
+	local r = ARKHER._world:fillLakes(1, 1, 48, 32)
+	ARKHER.out("SUCCESS", "terrain.lakes: " .. r.cells .. " celulas de lago")
+end
+A["terrain.materialize"] = function(span)
+	if not ARKHER._world then txWorld() end
+	if not ARKHER._world then return end
+	span = span or 192
+	local res = ARKHER._world:materializeRegion(-span / 2, -span / 2, span, span, {})
+	ARKHER.out("SUCCESS", "terrain.materialize: " .. span .. "x" .. span .. " → " .. res.parts .. " parts (LOD D-O15)")
+end
+A["terrain.lod"] = function(fx, fz)
+	if not ARKHER._world then ARKHER.out("WARNING", "terrain.lod: sem mundo ATX") return end
+	local r = ARKHER._world:updateLOD(fx or 0, fz or 0)
+	ARKHER.out("INFO", "terrain.lod: " .. r.updated .. " chunks re-materializados adaptativamente")
+end
+A["terrain.clear"] = function()
+	if ARKHER._world then ArkherTerrainX.clearWorld(ARKHER._world) end
+	ARKHER.out("SUCCESS", "terrain.clear: ATX_World removido")
+end
+A["terrain.export"] = function()
+	if not ARKHER._world then ARKHER.out("WARNING", "terrain.export: sem mundo ATX") return end
+	local str, path, ok = ARKHER._world:exportFile()
+	ARKHER.out("SUCCESS", "terrain.export: " .. #str .. " chars → " .. path .. (ok and "" or " (string retornada)"))
+end
+
+-- ================= WATER X (custom, ArkherWaterX) =================
+local function wxSea(preset)
+	if not ArkherWaterX then return nil, "Kit C nao carregado (ArkherKit_Installer_C)" end
+	ARKHER._sea = ArkherWaterX.preset(preset or "porto", { kind = "oceano", level = 0, size = { x = 420, z = 320 } })
+	return ARKHER._sea
+end
+A["water.ocean"] = function(preset)
+	local sea, err = wxSea(preset)
+	if not sea then ARKHER.out("WARNING", "water.ocean: " .. err) return end
+	local _, n = ArkherWaterX.materialize(sea, { maxSpan = 420 })
+	ARKHER.out("SUCCESS", "water.ocean: preset '" .. (preset or "porto") .. "' → " .. n .. " tiles animadas de Gerstner")
+end
+A["water.caustics"] = function()
+	if not ARKHER._sea then wxSea() end
+	if not ARKHER._sea then return end
+	local n = ArkherWaterX.caustics(ARKHER._sea, ARKHER._sea.level - 9)
+	ARKHER.out("SUCCESS", "water.caustics: " .. n .. " brilhos")
+end
+A["water.float"] = function()
+	if not ARKHER._sea then wxSea() end
+	if not ARKHER._sea then return end
+	local ok, sel = pcall(function() return Selection:Get() end)
+	local n = 0
+	if ok and sel then
+		for _, inst in ipairs(sel) do
+			if inst:IsA("BasePart") then ArkherWaterX.float(ARKHER._sea, inst, {}) n = n + 1 end
+		end
+	end
+	ARKHER.out("SUCCESS", "water.float: flutuabilidade arquimediana em " .. n .. " parts")
+end
+A["water.underwater"] = function()
+	if not ARKHER._sea then wxSea() end
+	if not ARKHER._sea then return end
+	ARKHER._underwater = not ARKHER._underwater
+	ArkherWaterX.applyUnderwater(ARKHER._sea, ARKHER._underwater)
+	ARKHER.out("INFO", "water.underwater: " .. (ARKHER._underwater and "ON" or "OFF"))
+end
+A["water.splash"] = function()
+	if not ARKHER._sea then wxSea() end
+	if not ARKHER._sea then return end
+	if not ARKHER._sea.tiles then ArkherWaterX.materialize(ARKHER._sea, { maxSpan = 240 }) end
+	ArkherWaterX.splash(ARKHER._sea, 0, ARKHER._sea:heightAt(0, 0, 0), 0, 2)
+	ARKHER.out("SUCCESS", "water.splash emitido")
+end
+
+-- ================= SCRIPT X (IDE) =================
+A["script.new"] = function(name, templateId)
+	if not ArkherScripterX then ARKHER.out("WARNING", "script.new: Kit D nao carregado") return end
+	name = name or "NovoScript"
+	local tp = templateId and ArkherScripterX.template(templateId) or ArkherScripterX.template("basico")
+	local sc = Instance.new(tp.cls)
+	sc.Name = name
+	sc.Source = tp.src
+	sc.Parent = workspace
+	ARKHER.out("SUCCESS", "script.new: " .. tp.cls .. " '" .. name .. "' (template " .. tp.id .. ") criado no workspace")
+end
+A["script.newfromgoal"] = function(goal)
+	if not ArkherScripterX then ARKHER.out("WARNING", "script.newfromgoal: Kit D nao carregado") return end
+	local src, id2 = ArkherScripterX.compose(goal or "basico")
+	local sc = Instance.new("Script")
+	sc.Name = "IA_" .. id2
+	sc.Source = src
+	sc.Parent = workspace
+	ARKHER.out("SUCCESS", "script.newfromgoal: template '" .. id2 .. "' composto p/ '" .. tostring(goal) .. "'")
+end
+A["script.lintreport"] = function()
+	if not ArkherScripterX then return end
+	local sel2 = sel()
+	if not (sel2 and sel2:IsA("LuaSourceContainer")) then
+		ARKHER.out("INFO", "script.lintreport: selecione um Script no explorer")
+		return
+	end
+	local diags = ArkherScripterX.lint(sel2.Source or "")
+	local sum = ArkherScripterX.lintSummary(diags)
+	ARKHER.out("INFO", "lint " .. sel2.Name .. ": " .. sum.errors .. " err, " .. sum.warns .. " warn, " .. sum.infos .. " info")
+end
+
+-- ================= UI KIT X =================
+A["uix.hud"] = function()
+	if not ArkherUIKitX then ARKHER.out("WARNING", "uix.hud: Kit D nao carregado") return end
+	local X = ArkherUIKitX
+	local widgets = {
+		X.create("health", { x = 16, y = 16 }),
+		X.create("hotbar", { x = 16, y = 470, slots = 6 }),
+		X.create("timer", { x = 850, y = 16, text = "10:00" }),
+		X.create("coins", { x = 16, y = 52, text = "1.0K" }),
+	}
+	local gui, n = X.build(widgets, "ArkherHUD")
+	ARKHER.out("SUCCESS", "uix.hud: " .. n .. " widgets no StarterGui.ArkherHUD")
+end
+A["uix.theme"] = function(id)
+	if ArkherUIKitX then ArkherUIKitX.setTheme(id or "arkher") ARKHER.out("INFO", "uix.theme: " .. (id or "arkher")) end
+end
+
+-- ================= ANIMATION X (AAX) =================
+A["anim.demo"] = function()
+	if not ArkherAnimX then ARKHER.out("WARNING", "anim.demo: Kit E nao carregado (ArkherKit_Installer_E)") return end
+	local AX = ArkherAnimX
+	local ws = workspace
+	local p = Instance.new("Part")
+	p.Name = "AAX_DemoCube"
+	p.Size = Vector3.new(2, 2, 2)
+	p.Anchored = true
+	p.Color = Color3.fromRGB(255, 170, 60)
+	p.CFrame = CFrame.new(0, 4, 0)
+	p.Parent = ws
+	local c = AX.clip("DemoCube", { loop = "pingpong" })
+	c:addTrack("Position", { AX.key(0, { x = 0, y = 4, z = 0 }, "easeInOut_sine"), AX.key(1.2, { x = 0.4, y = 7.2, z = 0 }, "easeOut_spring"), AX.key(2.4, { x = 0, y = 4, z = 0 }, "easeInOut_sine") })
+	c:addTrack("Transparency", { AX.key(0, 0.5, "linear"), AX.key(1.2, 0, "easeOut_sine"), AX.key(2.4, 0.5, "linear") })
+	c:marker(1.2, "pico")
+	c:bind(p, {})
+	c:play({ from = 0 })
+	ARKHER._animDemo = c
+	ARKHER.out("SUCCESS", "anim.demo: cube no workspace tocando (easeOut_spring + pingpong)")
+end
+A["anim.pump"] = function(dt)
+	if ArkherAnimX then
+		local n = ArkherAnimX.pump(dt or 0.016)
+		ArkherAnimX.pumpDeformers(dt or 0.016)
+		ARKHER.out("INFO", "anim.pump: " .. n .. " clips vivos")
+	end
+end
+A["anim.stopall"] = function()
+	if ArkherAnimX then ArkherAnimX.stopAll() ARKHER.out("SUCCESS", "anim.stopall executado") end
+end
+A["anim.wave"] = function()
+	if not ArkherAnimX then return end
+	local ok, sel = pcall(function() return Selection:Get() end)
+	if ok and sel and #sel >= 1 then
+		local asm = ArkherAnimX.assemble(sel)
+		ARKHER._deform = ArkherAnimX.deform(asm, ArkherAnimX.DEFORMERS.wave(1.2, 14, 2.2), {})
+		ARKHER.out("SUCCESS", "anim.wave: deformer ondulando " .. #sel .. " parts (assembly)")
+	else
+		ARKHER.out("INFO", "anim.wave: selecione parts")
+	end
+end
+
+-- ================= AUDIO X (AUX) =================
+A["audio.setup"] = function()
+	if not ArkherAudioX then ARKHER.out("WARNING", "audio.*: Kit E nao carregado") return end
+	ArkherAudioX.setup()
+	local st = ArkherAudioX.stats()
+	ARKHER.out("SUCCESS", "audio.setup: " .. st.buses .. " buses SoundGroup criadas no SoundService")
+end
+A["audio.duckdemo"] = function()
+	if not ArkherAudioX then return end
+	ArkherAudioX.setup()
+	ArkherAudioX.register("musica_demo", { bus = "music", volume = 0.5, looped = true })
+	ArkherAudioX.register("voice_demo", { bus = "voice", volume = 0.6 })
+	ArkherAudioX.duck("music", "voice", { level = 0.3 })
+	ArkherAudioX.play("musica_demo")
+	ArkherAudioX.play("voice_demo")
+	ARKHER.out("SUCCESS", "audio.duckdemo: musica ducked p/ 30% quando a voz toca (sidechain)")
+end
+A["audio.patch"] = function(bus, preset)
+	if not ArkherAudioX then return end
+	local ok, n = ArkherAudioX.patch(bus or "music", preset or "caverna")
+	ARKHER.out(ok and "SUCCESS" or "WARNING", "audio.patch: " .. (preset or "caverna") .. " → " .. tostring(n))
+end
+
+-- ================= SCENE / SCATTER X (ASXN) =================
+A["scene.forest"] = function(radius)
+	if not ArkherSceneX then ARKHER.out("WARNING", "scene.*: Kit E nao carregado") return end
+	local w = ARKHER._world or (ArkherTerrainX and ArkherTerrainX.new({ seed = 1337, preset = "montanhas", cell = 8 }))
+	ARKHER._world = w
+	local res = ArkherSceneX.scatter({ x = 0, z = 0, radius = radius or 90, count = 70, minDist = 6, maxSlope = 0.9, world = w, seed = 777, name = "ASXN_Forest" })
+	ARKHER.out("SUCCESS", "scene.forest: " .. res.count .. " arvores/arbustos/grama no mundo (biomas Whittaker)")
+end
+A["scene.patina"] = function()
+	if not ArkherSceneX then return end
+	local ok, sel = pcall(function() return Selection:Get() end)
+	local n = 0
+	if ok and sel then n = ArkherSceneX.patina(sel, {}) end
+	ARKHER.out("SUCCESS", "scene.patina: variacao anti-CG em " .. n .. " parts")
+end
+A["scene.query"] = function(cls)
+	if not ArkherSceneX then return end
+	local list = ArkherSceneX.query({ class = cls or "Part" })
+	ARKHER.out("INFO", "scene.query '" .. (cls or "Part") .. "' → " .. #list .. " resultados")
+end
+A["scene.rehash"] = function()
+	if ArkherSceneX then
+		local n = ArkherSceneX.rehash()
+		ARKHER.out("SUCCESS", "scene.rehash: " .. n .. " parts no spatial hash")
+	end
+end
+A["scene.lod"] = function()
+	if ArkherSceneX then
+		local r = ArkherSceneX.applyLOD(0, 0)
+		ARKHER.out("INFO", "scene.lod: " .. r.shown .. " visiveis, " .. r.ghosts .. " ghosts, " .. r.culled .. " culled")
+	end
+end
+
+-- ================= ATMOS X (ceu + clima custom) =================
+A["atmos.setup"] = function()
+	if not ArkherAtmosX then ARKHER.out("WARNING", "atmos.*: Kit E nao carregado") return end
+	ArkherAtmosX.setup({})
+	ARKHER.out("SUCCESS", "atmos.setup: Lighting real vinculado (Atmosphere + ColorCorrection)")
+end
+A["atmos.preset"] = function(name)
+	if not ArkherAtmosX then ARKHER.out("WARNING", "atmos.*: Kit E nao carregado") return end
+	name = name or "meiodia"
+	if ArkherAtmosX.setPreset(name) then
+		ArkherAtmosX.apply({})
+		ARKHER.out("SUCCESS", "atmos.preset: " .. name .. " (Kelvin real aplicado ao Lighting)")
+	else
+		ARKHER.out("ERROR", "atmos.preset desconhecido: " .. name)
+	end
+end
+A["atmos.weather"] = function(name, speedo)
+	if not ArkherAtmosX then ARKHER.out("WARNING", "atmos.*: Kit E nao carregado") return end
+	name = name or "limpo"
+	if ArkherAtmosX.setWeather(name, speedo or 0.6) then
+		for i = 1, 90 do ArkherAtmosX.pump(1 / 30) end
+		ARKHER.out("SUCCESS", "atmos.weather: " .. name .. " (transicao completa, links AWX/AUX aplicados)")
+	else
+		ARKHER.out("ERROR", "atmos.weather desconhecido: " .. name)
+	end
+end
+A["atmos.cycle"] = function(speedo)
+	if not ArkherAtmosX then ARKHER.out("WARNING", "atmos.*: Kit E nao carregado") return end
+	ArkherAtmosX.S.cycleSpeed = speedo or 0.2
+	ARKHER.out("INFO", "atmos.cycle: velocidade do ciclo solar = " .. tostring(ArkherAtmosX.S.cycleSpeed) .. " h/s")
+end
+
+-- ================= CAMERA X (cinematografia custom) =================
+A["cam.orbit"] = function(radius, height, seconds)
+	if not ArkherCameraX then ARKHER.out("WARNING", "cam.*: Kit E nao carregado") return end
+	ArkherCameraX.shot({ type = "orbit", center = Vector3.new(0, 3, 0), radius = radius or 14, height = height or 6, speed = 0.6, duration = 9999 })
+	ARKHER.out("SUCCESS", "cam.orbit: camera orbitando (raio " .. (radius or 14) .. " m)")
+end
+A["cam.crane"] = function()
+	if not ArkherCameraX then ARKHER.out("WARNING", "cam.*: Kit E nao carregado") return end
+	ArkherCameraX.shot({ type = "crane", from = Vector3.new(-18, 2, 0), to = Vector3.new(18, 2, 0), lookAt = Vector3.new(0, 3, 0), duration = 4, lift = 10 })
+	ARKHER.out("SUCCESS", "cam.crane: movimento crane 4s com lift")
+end
+A["cam.fly"] = function()
+	if not ArkherCameraX then ARKHER.out("WARNING", "cam.*: Kit E nao carregado") return end
+	ArkherCameraX.shot({ type = "fly", from = Vector3.new(-20, 8, -20), mid = Vector3.new(0, 16, 0), to = Vector3.new(20, 8, 20), lookAt = Vector3.new(0, 3, 0), duration = 5 })
+	ARKHER.out("SUCCESS", "cam.fly: trajetoria Catmull-Rom 3D real (5s)")
+end
+A["cam.shake"] = function(t)
+	if not ArkherCameraX then ARKHER.out("WARNING", "cam.*: Kit E nao carregado") return end
+	ArkherCameraX.addTrauma(t or 0.8)
+	ARKHER.out("INFO", "cam.shake: trauma +" .. (t or 0.8) .. " (amplitude trauma^2 real)")
+end
+A["cam.fade"] = function(to)
+	if not ArkherCameraX then ARKHER.out("WARNING", "cam.*: Kit E nao carregado") return end
+	ArkherCameraX.fade(to or -1, 0.8)
+	ARKHER.out("SUCCESS", "cam.fade: ColorCorrection real -> brightness " .. tostring(to or -1))
+end
+A["cam.cinema"] = function()
+	if not ArkherCameraX then ARKHER.out("WARNING", "cam.*: Kit E nao carregado") return end
+	ArkherCameraX.cinema({
+		{ type = "crane", from = Vector3.new(-20, 2, 0), to = Vector3.new(0, 12, 0), lookAt = Vector3.new(0, 3, 0), duration = 4, lift = 10 },
+		{ type = "orbit", center = Vector3.new(0, 3, 0), radius = 12, height = 6, speed = 0.5, duration = 3.5 },
+		{ type = "dolly", from = Vector3.new(0, 6, 14), to = Vector3.new(0, 3, 2), lookAt = Vector3.new(0, 3, 0), duration = 2.5 },
+	})
+	ARKHER.out("SUCCESS", "cam.cinema: sequencia de 3 cortes reais iniciada")
+end
+A["cam.stop"] = function() if ArkherCameraX then ArkherCameraX.stop() ARKHER.out("INFO", "cam.stop") end end
+
+-- ================= PARTICLES X (emissores custom) =================
+A["px.emit"] = function(kind)
+	if not ArkherParticlesX then ARKHER.out("WARNING", "px.*: Kit E nao carregado") return end
+	kind = kind or "fogo"
+	local pe = ArkherParticlesX.emit(nil, kind)
+	ARKHER.out("SUCCESS", "px.emit: " .. kind .. " (ParticleEmitter real, budget D-O15 aplicado)")
+	return pe
+end
+A["px.demo"] = function()
+	if not ArkherParticlesX then ARKHER.out("WARNING", "px.*: Kit E nao carregado") return end
+	local kinds = { "fogo", "fumaca", "magia" }
+	for _, k in ipairs(kinds) do ArkherParticlesX.emit(nil, k) end
+	ARKHER.out("SUCCESS", "px.demo: fogo + fumaca + magia emitidos")
+end
+A["px.clear"] = function()
+	if ArkherParticlesX then ArkherParticlesX.clear() ARKHER.out("INFO", "px.clear: todos desligados") end
+end
+A["px.storm"] = function()
+	if not ArkherParticlesX then ARKHER.out("WARNING", "px.*: Kit E nao carregado") return end
+	if ArkherAtmosX then ArkherAtmosX.setup({}) ArkherAtmosX.setWeather("tempestade", 1.2) end
+	ArkherParticlesX.emit(nil, "chuva", { rate = 240, speed = 40 })
+	ARKHER.out("SUCCESS", "px.storm: chuva fisica + ATX... AEX tempestade (onda awx no pump)")
+end
+
 -- ================= GENERIC: ui.<nome> =================
 function A.registerUICommands()
 	for name in pairs(ARKHER.CATALOG) do

@@ -1,5 +1,137 @@
 # ARKHER V3 — RELATÓRIO FINAL DE ENTREGA
 
+> **ATUALIZAÇÃO V4 (2026-09-11) — OS CUSTOMS: motores próprios além do Roblox**
+>
+> Segunda onda de expansão máxima: 4 motores completamente NOSSOS —
+> - **D-MATH** (fundamento): campos determinísticos (gradient/value noise,
+>   fBm/turbulence/ridged/worley, Whittaker, splines, integração, falloffs).
+> - **TERRAIN X (ATX)** — terreno custom SEM o Terrain do Roblox: 7 presets
+>   geográficos, 21 materiais com densidade/dureza/parâmetros TERMAIS reais,
+>   erosão hidráulica (gotas com sedimento) + térmica (talus), rios por
+>   acumulação de fluxo, lagos (flood fill), classes Whittaker (T/M→bioma),
+>   14 pincéis de edição, chunks com **LOD adaptativo D-O15** (re-materializa
+>   por foco), serialize/export JSON. Terrain Studio refeita: soil grid,
+>   escultura direta no mapa, biomes, seed export, link cruzado com Water.
+> - **WATER X (AWX)** — água custom SEM água/shader do Roblox: 8 tipos d'água
+>   (densidade/salinidade/temperatura/viscosidade), **Gerstner com dispersão
+>   REAL (ω=√(g·k))**, marés lunares, Stokes drift, crest foam,
+>   **flutuabilidade arquimediana estável**, natação, ambiente subaquático,
+>   caustics, splash, hidrologia↔ATX. **Water Studio NOVA**: gráfico ao vivo
+>   do perfil de onda real, 6 presets de mar, wave designer, ANIMAR playback,
+>   flutuar seleção, submerso, JSON.
+> - **SCRIPT STUDIO X (SX)** — IDE backend: tokenizer, lint de escopo real
+>   (bloco não fechado, var não usada, shadowing, APIs depreciadas, `==` vs
+>   `=`), autocomplete Roblox 60+, outline, find/replace, diff, métricas
+>   McCabe, format, 30 templates, 45 snippets, IA compose, compile-check.
+>   Script Studio IDE reescrito: multi-doc, editor por linha + FullEdit, undo,
+>   painéis lint/outline/completar/snippets/templates, **cria Script real no
+>   Place**, **exporta arquivo**, AI compose por objetivo.
+> - **UI KIT X (AXI)** — 42 widgets de jogo em 5 categorias (minimap com
+>   coord AO VIVO, hotbar, radial, leaderboard...), anchors 9 presets,
+>   align/distribute, 6 temas, **build REAL no StarterGui**, **export que GERA
+>   CÓDIGO Roblox funcional** (Module builders + Controller com binds de input).
+>   UI Studio Designer reescrito: drag multi, resize handle, snap, steppers
+>   X/Y/W/H, anchor 9 presets, align/distrib., device cycler (iPhone/iPad),
+>   theme cycler, export real + código.
+> - **Singularity V4**: planner com intents `terrain/water/ui` + 3 novos
+>   especialistas reais (mundo ATX erodido e materializado; oceano AWX com
+>   caustics; HUD AXI com 8 widgets).
+> - **Comandos V4**: `terrain.*`, `water.*`, `script.*`, `uix.*` (paleta/menus/IA).
+> - **Build**: 4 kits (A 65K / B 72K / C 62K / D 84K), bundles reorganizados
+>   (Editors inclui **Water**; novo bundle **Code** p/ a IDE; bundle extra
+>   Mundo), instalação em 9 pastes.
+> - **Testes**: 46 → **137 verificações, 0 falhas** — incluindo determinismo de
+>   mundo por seed, erosão alterando relevo, **boia subindo por Arquimedes**,
+>   lint detectando erros reais, export gerando código válido, kitflow com 4
+>   kits e WATER registrada.
+>
+> **ONDA 2 (V4-W2, 2026-09-11) — +3 motores, +nova UI, MAIS física**
+> - **ANIMATOR X (AAX)** — animação custom sem KeyframeSequence: clips
+>   multi-track (Position/CFrame/Size/Color/Transparency/atributos), **37
+>   easings físicos** (quad → bounce/overshoot/spring), splines Catmull-Rom,
+>   **molas amortecidas REAL** (oscilador harmônico — mesma física do D-O15),
+>   loop/ping-pong, markers, time-warp, **blend de clips**, **DEFORMERS**
+>   procedurais (bend/twist/wave/taper/breathe) em assemblies sem rig, JSON.
+>   UI Animator Studio X reescrita: curva amostrada desenhada do motor, keys
+>   clicáveis, easing grid, markers, play real na seleção, export.
+> - **AUDIO X (AUX)** — mixer/DSP custom: 7 buses SoundGroup REAIS, presets
+>   acústicos (caverna/estádio/estúdio/subaquático/rádio/floresta/metal)
+>   ligando efeitos REAIS do engine (Reverb/Echo/Compressor/EQ/Distortion/
+>   Flange/PitchShift), **ducking sidechain** voz→música com envelope,
+>   **layers adaptativas** (base/tensão/combate crossfade), **scheduler
+>   ambiente never-repeat**, **posicional 3D simulado** (rolloff² + doppler),
+>   links AWX. UI Audio Studio X reescrita (buses funcionais, duck AO VIVO,
+>   DSP presets, scheduler, layers, posicional demo).
+> - **SCENE/SCATTER X (ASXN)** — povoamento custom: spatial hash real,
+>   query por classe/nome/atributo/raio, **PATINA anti-CG determinística**,
+>   **scatter Poisson** com regras por **bioma Whittaker do ATX** (a árvore
+>   certa no bioma certo), declive máximo, acima do mar, biblioteca de
+>   vegetação procedural (árvore dossel-orgânico/arbusto/roca/grama),
+>   **LOD de distância** cooperando com D-O15 (ghost mid, cull far),
+>   MERGE/EXPLODE/ALIGN-ARRAY. **UI Scatter / Scene X NOVA** (preview de
+>   pontos ANTES de materializar, makers por bioma, query ao vivo, patina).
+> - **WATER X extras**: **CACHOEIRA física** (droplets com gravidade real →
+>   splash/foam ao pousar) e **BARCO com flutuabilidade 4 pontos** (proa/popa/
+>   boreste/bombordo → empuxo Arquimedes por amostra, pitch/roll, motor, leme,
+>   arrasto hidrodinâmico).
+> - **TERRAIN X extras**: **CAVERNAS reais** (coluna split base+tecto),
+>   **2 presets novos** (pantanal/taiga → **10 presets**), preset `seaLevel`
+>   honrado, **`biomeAt`** Whittaker por célula (alimenta o scatter).
+> - **Singularity W2**: especialistas `audio AUX` (buses+duck+patch+scheduler),
+>   `animacao AAX` (demo real), `natureza SCATTER` (povoamento por bioma
+>   substituindo caixas crude).
+> - **Comandos W2**: `anim.*`, `audio.*`, `scene.*`.
+> - **Build**: 5 kits (A 65K/B 79K/C 70K/D 84K/E 51K), bundles reorganizados
+>   (Editors 6 UIs, **Motion** novo com Animator+Audio, Mundo +Scatter),
+>   instalação em 10 pastes.
+> - **Testes**: 137 → **207 verificações, 0 falhas** (elastic/spline/spring/
+>   blend/pingpong/deform/JSON; buses reais, patch DSP, **envelope ducking**,
+>   never-repeat, layers, posicional; poisson minDist, bioma garantido,
+>   patina altera cor, LOD cull+retorno; gotas com splash, barco avançando;
+>   cavernas, presets, kitflow 5 kits + Scatter registrada).
+>
+> Status V4-W2: **26 UIs, 17 motores/sistemas, 207/207 — tudo funcional.**
+>
+> **ONDA 3 (V4-W3, 2026-09-11) — CÉU, CÂMERA, PARTÍCULAS (W3)**
+> - **ATMOS X (AEX)** (`core/atmosx.luau`, novo) — céu/clima custom com
+>   **temperatura de cor Kelvin→RGB REAL** (aprox. CIE/Planckian), 6 presets
+>   de céu com física (kelvin/haze/fog), **WEATHER MACHINE 7 estados** com
+>   transições suaves reais, relâmpagos agendados (flash ColorCorrection
+>   REAL + sfx thunder), estrelas (Sky real) à noite, e **LINKS AWX/AUX**
+>   (tempestade → ondas ×2.2 com amp+speed reais / vento → volume weather).
+>   UI **Lighting Studio X** reescrita inteira sobre o motor.
+> - **CAMERA X (ACX)** (`core/camerax.luau`, novo) — cinematografia custom
+>   na CurrentCamera REAL: SHOTS orbit/dolly/crane (lift)/follow (lag
+>   exponencial)/**flypath Catmull-Rom 3D** (AAX.curve em 3 componentes),
+>   **SHAKE trauma²** (amplitude real de cinema), camera collision por
+>   **raycast real**, **FADE real via ColorCorrectionEffect** + callback, e
+>   **CINEMA** — cortes encadeados. UI **Camera Studio X** reescrita inteira.
+> - **PARTICLES X (APX)** (`core/particlesx.luau`, novo) — 12 presets com
+>   física própria sobre ParticleEmitters REAIS (foguete balístico, fogo
+>   up-draft, **magia vortex** (RotSpeed tangencial), ring shockwave, chuva/
+>   neve com área, folhas sway, trilha...), SPEC EDITOR dinâmico,
+>   **BUDGET D-O15-aware** (pressão restringe emissão). UI **Particles
+>   Studio X** reescrita inteira.
+> - **Singularity W3**: especialistas `clima AEX`, `camera ACX`,
+>   `particulas APX` (dedução por keywords: tempest/chuva/neve/aurora; orbit/
+>   crane/fly/shake; fogo/faisca/magia/explosao/...).
+> - **Comandos W3**: `atmos.*`, `cam.*`, `px.*`.
+> - **Water X**: criado `AWX.bodies` — registro vivo de corpos d'água
+>   (alimentou os links real-time do ATMOS X).
+> - **Testes**: 207 → **244 verificações, 0 falhas** (Kelvin 2200 quente
+>   /5600 neutro; preset clock 18.3; blend avança; **tempestade waveBoost>2**;
+>   relâmpago dispara; volta ao limpo; orbit mede raio REAL 10m na
+>   CurrentCamera; dolly termina→free; Catmull-Rom 3D; trauma decai; fade
+>   -1→callback→restaura; cinema inicia; 12 presets; emit cria anchor REAL
+>   no world; Rate cone>0 / burst 0 / vortex RotSpeed<0; budget D-O15 [0,1];
+>   clear; chuva cria ancoragem no world).
+> - **Build**: Kit E 51K → **74K** (6 motores); todos os artefatos abaixo
+>   do limite de 100K do Studio.
+>
+> Status V4-W3: **26 UIs, 20 motores/sistemas, 244/244 — tudo funcional.**
+>
+---
+
 Data: 2026-09-09 · Branch: `arena/01a087a9-arkher-studio` · Commits: `1db758d`, `a699eae`
 
 ## 1. O que foi pedido

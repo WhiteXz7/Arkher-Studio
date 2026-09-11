@@ -1,14 +1,16 @@
---[[ ARKHER V3 — LocalScript. Requer o kit (ReplicatedStorage.ArkherV3.ArkherKit_B). ]]
+--[[ ARKHER V4 — LocalScript. Requer os kits (ReplicatedStorage.ArkherV3.ArkherKit_B/C/D/E). ]]
 local function _arkherKit()
 	local rs = game:GetService("ReplicatedStorage")
 	local folder = rs:FindFirstChild("ArkherV3")
-	local b = folder and folder:FindFirstChild("ArkherKit_B")
-	if not b then b = script:FindFirstChild("ArkherKit_B") end
-	if not b then b = script.Parent:FindFirstChild("ArkherKit_B") end
-	if not b then
-		error("[ARKHER] ArkherKit_B nao encontrado: rode os 2 installers (ArkherKit_A e ArkherKit_B) primeiro.")
+	for _, kn in ipairs({ "ArkherKit_B", "ArkherKit_C", "ArkherKit_D", "ArkherKit_E" }) do
+		local m = folder and folder:FindFirstChild(kn)
+		if not m then m = script:FindFirstChild(kn) end
+		if not m then m = script.Parent and script.Parent:FindFirstChild(kn) end
+		if not m then
+			error("[ARKHER] " .. kn .. " nao encontrado: rode os installers A+B+C+D+E primeiro.")
+		end
+		require(m)
 	end
-	require(b)
 end
 _arkherKit()
 ARKHER.boot()

@@ -73,17 +73,35 @@ function Vector3.new(x, y, z)
 end
 
 CFrame = {}
+local cfm = {}
+cfm.__mul = function(a, b)
+	-- composicao aproximada p/ testes: posicao soma; guarda os angulos p/ debug
+	local posA = a.Position or { X = 0, Y = 0, Z = 0 }
+	local posB = b.Position or { X = 0, Y = 0, Z = 0 }
+	local angA = a.Ang or { X = 0, Y = 0, Z = 0 }
+	local angB = b.Ang or { X = 0, Y = 0, Z = 0 }
+	return setmetatable({
+		Position = Vector3.new(posA.X + posB.X, posA.Y + posB.Y, posA.Z + posB.Z),
+		Ang = { X = angA.X + angB.X, Y = angA.Y + angB.Y, Z = angA.Z + angB.Z },
+		__t = "CFrame",
+	}, cfm)
+end
 local function isVec3(x)
 	return type(x) == "table" and type(x.X) == "number" and type(x.Y) == "number" and type(x.Z) == "number"
 end
 function CFrame.new(x, y, z)
 	if isVec3(x) then
-		return { Position = x, __t = "CFrame" }
+		return setmetatable({ Position = x, __t = "CFrame" }, cfm)
 	end
-	return { Position = Vector3.new(x or 0, y or 0, z or 0), __t = "CFrame" }
+	return setmetatable({ Position = Vector3.new(x or 0, y or 0, z or 0), __t = "CFrame" }, cfm)
 end
+function CFrame.Angles(rx, ry, rz)
+	return setmetatable({ Position = Vector3.new(0, 0, 0), Ang = { X = rx or 0, Y = ry or 0, Z = rz or 0 }, __t = "CFrame" }, cfm)
+end
+function CFrame.fromEulerAnglesXYZ(rx, ry, rz) return CFrame.Angles(rx, ry, rz) end
+function CFrame.fromAxisAngle(axis, angle) return CFrame.Angles(0, angle, 0) end
 function CFrame.lookAt(eye, target)
-	return { Position = eye, LookVector = Vector3.new(target.X - eye.X, target.Y - eye.Y, target.Z - eye.Z).Unit, __t = "CFrame" }
+	return setmetatable({ Position = eye, LookVector = Vector3.new(target.X - eye.X, target.Y - eye.Y, target.Z - eye.Z).Unit, __t = "CFrame" }, cfm)
 end
 
 BrickColor = {}
@@ -97,6 +115,8 @@ TweenInfo = {}
 function UDim2.new(a, b, c, d)
 	return { X = { Scale = a or 0, Offset = b or 0 }, Y = { Scale = c or 0, Offset = d or 0 }, __t = "UDim2" }
 end
+function UDim2.fromOffset(x, y) return UDim2.new(0, x or 0, 0, y or 0) end
+function UDim2.fromScale(x, y) return UDim2.new(x or 0, 0, y or 0, 0) end
 function UDim.new(a, b)
 	return { Scale = a or 0, Offset = b or 0, __t = "UDim" }
 end
@@ -521,6 +541,11 @@ workspace = mkInstance("Workspace")
 rawget(workspace, "__props").ClassName = "Workspace"
 rawget(workspace, "__props").Name = "Workspace"
 workspace.Parent = gameObj
+local _cam = mkInstance("Camera")
+rawget(_cam, "__props").ClassName = "Camera"
+rawget(_cam, "__props").Name = "CurrentCamera"
+_cam.Parent = workspace
+rawset(workspace, "CurrentCamera", _cam)
 
 local function seed(name, class, props)
 	local o = mkInstance(class)

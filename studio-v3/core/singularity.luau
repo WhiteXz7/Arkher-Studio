@@ -34,6 +34,14 @@ local INTENTS = {
 	check = { "diagnostico", "diagnóstico", "diagnostics", "analisar", "analyze", "auditoria", "audit" },
 	material = { "material", "pbr", "superficie", "superfície", "textura", "texture" },
 	place = { "place", "mundo", "world", "mapa", "map" },
+	terrain = { "terreno", "terrain", "relief", "relevo", "heightmap", "erosao", "erosão", "rio", "rios", "river", "geologia", "canyon", "vulcao", "vulcão", "ilha", "ilhas", "vale", "bioma", "biomas", "continente", "geography" },
+	water = { "agua", "água", "water", "oceano", "ocean", "mar", "sea", "onda", "ondas", "wave", "waves", "cachoeira", "waterfall", "lagoa", "tsunami", "rio2", "piscina", "pool" },
+	ui = { "hud", "ui", "interface", "gui", "menu", "barra de vida", "lifetime", "hotbar", "inventario", "inventário", "placar", "leaderboard" },
+	audio = { "som", "audio", "musica", "music", "sound", "trilha", "soundtrack", "barulho", "mixer", "reverb", "acustica", "acústica" },
+	anim = { "animacao", "animação", "anim", "animation", "mover", "movimento", "dancar", "dançar", "timeline", "keyframe" },
+	clima = { "clima", "weather", "chuva", "rain", "tempestade", "storm", "neve", "snow", "neblina", "fog", "aurora", "trovao", "trovão", "raio", "lightning", "ensolarado", "ceu", "céu", "sky" },
+	camera = { "camera", "câmera", "filme", "film", "cinematic", "cinematica", "cinematográfica", "orbita", "orbit", "crane", "dolly", "shake", "tremor", "fly", "corte", "shot" },
+	particles = { "particulas", "partículas", "particles", "fogo", "fire", "faisca", "faísca", "sparks", "magia", "magic", "explosao", "explosão", "fumaca", "fumaça", "smoke", "splash", "poeira", "dust" },
 }
 
 local function detectIntents(text)
@@ -53,7 +61,7 @@ end
 function SG.plan(goal)
 	local intents = detectIntents(goal)
 	local plan = { goal = goal, tasks = {}, mode = ARKHER.STATE.ai.mode }
-	local order = { "place", "city", "nature", "space", "material", "light", "npc", "clean", "perf", "check" }
+	local order = { "place", "terrain", "water", "city", "nature", "space", "material", "light", "npc", "ui", "audio", "anim", "clima", "particles", "camera", "clean", "perf", "check" }
 	for _, name in ipairs(order) do
 		if intents[name] then table.insert(plan.tasks, name) end
 	end
@@ -111,6 +119,20 @@ function E.city(ctx)
 end
 
 function E.nature(ctx)
+	-- V4: se o Scene/Scatter X esta carregado, o "natureza" vira povoamento
+	-- REAL por bioma/declive no ATX (arvores com dossel organico, arbustos, etc)
+	if ArkherSceneX then
+		local w = SG.world or (ArkherTerrainX and ArkherTerrainX.new({ seed = 1337, preset = "montanhas", cell = 8 }))
+		SG.world = SG.world or w
+		local res = ArkherSceneX.scatter({ x = 0, z = 0, radius = 110, count = 60, minDist = 7, maxSlope = 0.9, world = w, seed = 99 + SG.memory.tasks, name = "ASXN_Nature" })
+		local trees, bushes = 0, 0
+		for _, m in ipairs(res.made or {}) do
+			local tg = m:GetAttribute("arkher_tag")
+			if tg == "tree" then trees = trees + 1 elseif tg == "bush" then bushes = bushes + 1 end
+		end
+		ctx.lines[#ctx.lines + 1] = "natureza SCATTER: " .. res.count .. " entidades (" .. trees .. " arvores dossel-organico, " .. bushes .. " arbustos — " .. res.tries .. " amostras poisson)"
+		return
+	end
 	local rng = Random.new(99)
 	local trees = 0
 	for i = 1, 12 do
@@ -272,6 +294,154 @@ function E.check(ctx)
 	ctx.lines[#ctx.lines + 1] = "diagnostico: " .. parts .. " parts | " .. models .. " models | " .. scripts .. " scripts | " .. total .. " instancias"
 	ctx.lines[#ctx.lines + 1] = "diagnostico: " .. unanchored .. " partes sem anchor (verificar fisica)"
 	ctx.lines[#ctx.lines + 1] = "diagnostico: FPS=" .. tostring(math.floor(rep.fps or 0)) .. " | D-O15=" .. tostring(rep.levelName or "?") .. " | frame=" .. string.format("%.1f", rep.frameMs or 0) .. "ms"
+end
+
+function E.terrain(ctx)
+	if not ArkherTerrainX then
+		ctx.lines[#ctx.lines + 1] = "terreno: Kit C (ATX) nao carregado — rode ArkherKit_Installer_C"
+		return
+	end
+	local TX = ArkherTerrainX
+	local seed = 1000 + SG.memory.tasks * 137
+	local w = TX.new({ seed = seed, preset = "continentes", cell = 8 })
+	local hyd = w:erodeHydraulic(1, 1, 48, 32, 2200)
+	local riv = w:carveRivers(1, 1, 48, 32, 20)
+	w:fillLakes(1, 1, 48, 32)
+	local built = w:materializeRegion(-96, -96, 192, 192, {})
+	local biomes = w:biomeCounts()
+	local nb = 0
+	for _ in pairs(biomes) do nb = nb + 1 end
+	SG.world = w
+	ctx.lines[#ctx.lines + 1] = "terreno ATX: mundo procedural seed " .. seed .. " (erosao " .. string.format("%.3f", hyd.meanDelta) .. " dMedio/" .. string.format("%.1f", hyd.maxDelta) .. " dMax)"
+	ctx.lines[#ctx.lines + 1] = "terreno ATX: rios " .. riv.cells .. " celulas | " .. nb .. " biomas Whittaker | " .. built.parts .. " parts em " .. built.chunks .. " chunks (materializacao real)"
+end
+
+function E.water(ctx)
+	if not ArkherWaterX then
+		ctx.lines[#ctx.lines + 1] = "agua: Kit C (AWX) nao carregado — rode ArkherKit_Installer_C"
+		return
+	end
+	local WX = ArkherWaterX
+	local sea = WX.preset("porto", { kind = "oceano", level = (SG.world and SG.world.seaLevel) or 0, size = { x = 420, z = 320 } })
+	sea.foaminess = 0.55
+	local model, tiles = WX.materialize(sea, { maxSpan = 420 })
+	local cau = WX.caustics(sea, sea.level - 9)
+	SG.sea = sea
+	ctx.lines[#ctx.lines + 1] = "agua AWX: oceano preset 'porto' — " .. #sea.waves .. " ondas Gerstner (dispersao omega=sqrt(gk)), mare, correntes Stokes"
+	ctx.lines[#ctx.lines + 1] = "agua AWX: " .. tiles .. " tiles animadas + " .. cau .. " causticas | dens " .. sea.props.dens .. " | salinidade " .. sea.props.sal .. " g/L"
+end
+
+function E.ui(ctx)
+	if not ArkherUIKitX then
+		ctx.lines[#ctx.lines + 1] = "hud: Kit D (AXI) nao carregado — rode ArkherKit_Installer_D"
+		return
+	end
+	local X = ArkherUIKitX
+	local widgets = {
+		X.create("health", { x = 16, y = 16 }),
+		X.create("stamina", { x = 16, y = 48, value = 0.7 }),
+		X.create("xpbar", { x = 16, y = 70, value = 0.35 }),
+		X.create("hotbar", { x = 16, y = 470, slots = 6 }),
+		X.create("coins", { x = 16, y = 100, text = "8.2K" }),
+		X.create("timer", { x = 850, y = 16, text = "09:41" }),
+		X.create("minimap", { x = 790, y = 60 }),
+		X.create("questtracker", { x = 690, y = 230 }),
+	}
+	local gui, n = X.build(widgets, "ArkherHUD_AI")
+	ctx.lines[#ctx.lines + 1] = "hud AXI: " .. n .. " widgets montados no StarterGui.ArkherHUD_AI (health/stamina/xp/hotbar/coins/timer/minimap/quest)"
+end
+
+function E.audio(ctx)
+	if not ArkherAudioX then
+		ctx.lines[#ctx.lines + 1] = "audio: Kit E (AUX) nao carregado — rode ArkherKit_Installer_E"
+		return
+	end
+	local AX = ArkherAudioX
+	AX.setup()
+	AX.register("musica_demo", { bus = "music", volume = 0.5, looped = true })
+	AX.register("voice_demo", { bus = "voice", volume = 0.6 })
+	AX.duck("music", "voice", { level = 0.3 })
+	AX.play("musica_demo")
+	AX.play("voice_demo")
+	AX.patch("music", "estudio")
+	AX.ambient("floresta", { ids = { "passaros", "folhas", "rio_longe" }, interval = { 10, 24 }, bus = "ambient" })
+	AX._ambients.floresta:start()
+	local st = AX.stats()
+	ctx.lines[#ctx.lines + 1] = "audio AUX: " .. st.buses .. " buses + duck voz->musica + patch estudio + scheduler floresta ON (" .. st.sounds .. " sons)"
+end
+
+function E.anim(ctx)
+	if not ArkherAnimX then
+		ctx.lines[#ctx.lines + 1] = "animacao: Kit E (AAX) nao carregado — rode ArkherKit_Installer_E"
+		return
+	end
+	ARKHER.cmd("anim.demo")
+	ctx.lines[#ctx.lines + 1] = "animacao AAX: clip easeOut_spring/pingpong tocando REAL (AAX_DemoCube no workspace)"
+end
+
+function E.clima(ctx)
+	if not ArkherAtmosX then
+		ctx.lines[#ctx.lines + 1] = "clima: Kit E (AEX) nao carregado — rode ArkherKit_Installer_E"
+		return
+	end
+	local AEX = ArkherAtmosX
+	AEX.setup({})
+	local g = (ctx.goal or ""):lower()
+	local w = "limpo"
+	if g:find("tempest") or g:find("trov") or g:find("raio") then w = "tempestade"
+	elseif g:find("chuva") or g:find("rain") then w = "chuva"
+	elseif g:find("neve") or g:find("snow") then w = "neve"
+	elseif g:find("neblina") or g:find("fog") then w = "neblina"
+	elseif g:find("aurora") then w = "aurora"
+	elseif g:find("nuvem") then w = "nuvem" end
+	AEX.setWeather(w, 0.8)
+	for i = 1, 60 do AEX.pump(1 / 30) end
+	if g:find("noite") then AEX.setPreset("noite") elseif g:find("amanhecer") then AEX.setPreset("amanhecer") elseif g:find("entardecer") or g:find("sunset") then AEX.setPreset("entardecer") end
+	local mix = AEX.weatherMix()
+	ctx.lines[#ctx.lines + 1] = string.format("clima AEX: %s (fog %.0f, haze %.1f, waveBoost %.2fx) — Lighting/Atmosphere REAIS", AEX.S.state, mix.fogEnd, mix.haze, mix.waveBoost)
+end
+
+function E.camera(ctx)
+	if not ArkherCameraX then
+		ctx.lines[#ctx.lines + 1] = "camera: Kit E (ACX) nao carregado — rode ArkherKit_Installer_E"
+		return
+	end
+	local ACX = ArkherCameraX
+	local g = (ctx.goal or ""):lower()
+	if g:find("crane") then
+		ACX.shot({ type = "crane", from = Vector3.new(-18, 2, 0), to = Vector3.new(18, 2, 0), lookAt = Vector3.new(0, 3, 0), duration = 4, lift = 10 })
+		ctx.lines[#ctx.lines + 1] = "camera ACX: crane 4s (lift fisico)"
+	elseif g:find("fly") or g:find("voo") then
+		ACX.shot({ type = "fly", from = Vector3.new(-20, 8, -20), mid = Vector3.new(0, 16, 0), to = Vector3.new(20, 8, 20), lookAt = Vector3.new(0, 3, 0), duration = 5 })
+		ctx.lines[#ctx.lines + 1] = "camera ACX: fly path Catmull-Rom REAL (5s)"
+	elseif g:find("shake") or g:find("tremor") then
+		ACX.addTrauma(0.9)
+		ctx.lines[#ctx.lines + 1] = "camera ACX: trauma +0.9 (shake trauma^2)"
+	else
+		ACX.shot({ type = "orbit", center = Vector3.new(0, 3, 0), radius = 14, height = 6, speed = 0.6, duration = 9999 })
+		ctx.lines[#ctx.lines + 1] = "camera ACX: orbit cinematografico real na CurrentCamera"
+	end
+end
+
+function E.particles(ctx)
+	if not ArkherParticlesX then
+		ctx.lines[#ctx.lines + 1] = "particulas: Kit E (APX) nao carregado — rode ArkherKit_Installer_E"
+		return
+	end
+	local APX = ArkherParticlesX
+	local g = (ctx.goal or ""):lower()
+	local k = "fogo"
+	if g:find("faisca") or g:find("spark") then k = "faiscas"
+	elseif g:find("magia") or g:find("magic") then k = "magia"
+	elseif g:find("fumaca") or g:find("smoke") then k = "fumaca"
+	elseif g:find("explosao") or g:find("explos") then k = "faiscas"
+	elseif g:find("splash") or g:find("agua") then k = "agua"
+	elseif g:find("neve") then k = "neve"
+	elseif g:find("poeira") or g:find("dust") then k = "poeira" end
+	APX.emit(nil, k)
+	if g:find("explosao") or g:find("explos") then APX.emit(nil, "fumaca") end
+	local bs = APX.budgetScale()
+	ctx.lines[#ctx.lines + 1] = string.format("particulas APX: %s emitido (Emitter REAL, budget D-O15 %.0f%%)", k, bs * 100)
 end
 
 function E.default(ctx)
