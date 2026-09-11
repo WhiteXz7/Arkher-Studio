@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Aplica edicoes cirurgicas ao 01_Nucleo: dispatch dos menus, Command Bar,
-F5, lock de execucao, remover WIP dos recursos implementados."""
+"""Aplica edicoes cirurgicas ao 01_Nucleo (a partir do .orig) e valida limite de
+statement p/ Luau. Todas as insercoes usam ';' explicito entre statements."""
 P = "studio-completo/scripts/01_Nucleo.lua"
-s = open(P, encoding="utf-8").read()
+ORIG = "studio-completo/scripts/01_Nucleo.orig.lua"
+s = open(ORIG, encoding="utf-8").read()
 
 
 def rep(old, new, tag):
     global s
-    assert s.count(old) == 1, f"{tag}: {s.count(old)}x de {old[:50]!r}"
+    assert s.count(old) == 1, f"{tag}: {s.count(old)}x de {old[:60]!r}"
     s = s.replace(old, new)
 
 
@@ -21,8 +22,8 @@ rep('if X=="Insert"then cD()return end',
     'if X=="Insert"then ag(a7,ab,"Menu",{name="Insert",button=aV})return end',
     "2-Insert")
 
-# 3) remover o antigo handler de View (agora o menu View abre)
-rep('if X=="View"then C.Visible=true;A.Visible=true;return end',
+# 3) remover o antigo handler de View (com o ';' antecedente, p/ nao sobrar ';;')
+rep(';if X=="View"then C.Visible=true;A.Visible=true;return end',
     '',
     "3-View")
 
@@ -36,12 +37,20 @@ rep('local X=(V(aV,"SelectionKey")or aV.Name):gsub("^Menu_","")if cK[X]then',
     'local X=(V(aV,"SelectionKey")or aV.Name):gsub("^Menu_","")if V(a0,"ArkherRunning")==true and(cK[X]or X=="Folder"or X=="Model"or X=="Script"or X=="Text")and X~="Select"then aQ("Em execução — use Run > Stop para voltar a editar.",true)return end;if cK[X]then',
     "5-RunLock")
 
-# 6) Command Bar executa Luau
+# 6) Command Bar executa Luau (';' explicito em todo limite de statement)
+CB = ('cV.PlaceholderText="Command Bar — escreva Luau e aperte Enter (executa no cliente)"'
+      'cw(cV,"Executa Luau no cliente. Ex: game:GetService(\'Workspace\').Gravity=200")'
+      'an(cV.FocusLost,function()local code=cV.Text;'
+      'if not code:match("%S")then cV.Text="";return end;'
+      'local ok,fn=loadstring(code,"==ArkherCommandBar==");'
+      'if not ok then aQ(tostring(fn),true);cV.Text="";return end;'
+      'local rok,rres=pcall(fn);'
+      'if rok then local msg="Comando executado";'
+      'if type(rres)~="nil"then msg=msg.." ("..tostring(rres)..")"end;'
+      'aQ(msg);else aQ("Erro: "..tostring(rres),true);end;'
+      'cV.Text=""end,I.propertyConnections)')
 rep('cV.PlaceholderText="Command Bar — execução de código em desenvolvimento"cw(cV,"Este campo ainda não executa código.")',
-    'cV.PlaceholderText="Command Bar — escreva Luau e aperte Enter (executa no cliente)"cw(cV,"Executa Luau no cliente. Ex: game:GetService(\'Workspace\').Gravity=200")'
-    'an(cV.FocusLost,function()local cb=cV.Text if not cb:match("%S")then return end '
-    'local okc,fnc=loadstring(cb,"==ArkherCommandBar==")if not okc then aQ(tostring(fnc),true)return end '
-    'local rok,rres=pcall(fnc)if rok then aQ("Comando executado"..(type(rres)~="nil"and(": "..tostring(rres))or ""))else aQ("Erro: "..tostring(rres),true)end cV.Text=""end,I.propertyConnections)',
+    CB,
     "6-CommandBar")
 
 # 7) cO: remove os implementados (Edit/View/Run/Game/Play/Pause/topos/Save)
@@ -57,5 +66,9 @@ rep('if cV.KeyCode==Enum.KeyCode.F8 then x.Enabled=not x.Enabled;return end',
     'if cV.KeyCode==Enum.KeyCode.F8 then x.Enabled=not x.Enabled;return end;if cV.KeyCode==Enum.KeyCode.F5 then ag(a7,ab,"RunToggle")return end',
     "9-F5")
 
+# ---- valida: nenhum ';;' e parens balanceados ----
+assert s.count(";;") == 0, f"sobrou ';;': {s.count(';;')}"
+assert s.count("(") == s.count(")"), "parens desbalanceados"
+
 open(P, "w", encoding="utf-8").write(s)
-print(f"01_Nucleo.lua atualizado: {len(s)} chars (9 edicoes aplicadas)")
+print(f"01_Nucleo.lua atualizado: {len(s)} chars (9 edicoes, sem ';;', parens ok)")
