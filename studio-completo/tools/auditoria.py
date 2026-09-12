@@ -205,6 +205,17 @@ CHECKS = [
      ["PresenceGet"], None),
     ("IDE", "Plugin manager real (liga/desliga pumps via atributos)",
      ["PluginToggle", "modOn"], None),
+    # ===== ROUND 11: topbar VISIVEL + spawn + baseplate + permissao =====
+    ("IDE", "Topbar hostada DIRETO na ScreenGui (bug do Folder morto) + HOME com botoes novos",
+     ["ArkherTopbarHost", 'uiRoot:FindFirstChild("Canvas")'], None),
+    ("IDE", "Spawn de pecas na frente da camera via servidor (QuickPart)",
+     ["camSpawnPos", "QuickPart"], None),
+    ("IDE", "Toolbox insert com fallback REAL (InsertService:LoadAsset server-side)",
+     ["LoadAsset", "Creator Store recusou"], None),
+    ("IDE", "Baseplate garantida (boot automatico + botao BASEPLATE)",
+     ["ensureBaseplate", "handlers.EnsureBase"], None),
+    ("IDE", "Permissao estendida: WhiteXz73_Developer + tentandoserbanido_9",
+     ["tentandoserbanido_9"], None),
     # ===== Integridade de engenharia =====
     ("INTEGRIDADE", "Placa X passa na validação #StudioSafe (121 chunks PROP, PRNT/END)",
      ["StudioSafe"], None),

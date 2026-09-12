@@ -139,6 +139,35 @@ em cada um dos 121 chunks PROP (#StudioSafe). Baixe novamente a placa atual.
 - **RIG X + MESH X no DECK** (os docks 05/06/07 foram removidos: eram
   "enfeite" de retângulos e a diretriz é ZERO painel sem efeito real).
 
+**ROUND 11 (2026-09-12) — TOPBAR VISÍVEL de verdade + spawn funcionando + Baseplate + permissão:**
+
+- **Bug raiz topbar MORTO**: o 09 parentava a faixa de abas dentro de
+  `ArkherServerClientRuntime` — que é um **Folder** (o 01_Nucleo cria Folder,
+  não Frame!). GuiObject debaixo de Folder **nunca renderiza** → nenhum botão
+  novo aparecia e "clicar nas abas não fazia nada" (as abas vistas eram as
+  velhas DocumentTabs da UI original). Agora a topbar vive em
+  `ArkherTopbarHost`, **filho direto da ScreenGui**, medido em pixels de tela
+  contra a Ribbon real (`Canvas/Ribbon`), com compensação da `UIScale`.
+- **HOME = botões NOVOS**: a aba inicial agora mostra botões novos com ícone
+  desenhado (Baseplate / Part ▸ / Toolbox / Propriedades / Cores / Output /
+  Comando / Scripts). O ribbon original inteiro sobrou na nova aba
+  **ORIGINAL** (última), intacto, a um clique de distância.
+- **Cliques à prova de bala**: `Activated` + `MouseButton1Click` com dedupe
+  (0,12 s) em todas as abas, botões e itens do submenu.
+- **Spawn de bloco REAL**: PART ▸ abre o submenu de 7 formas e spawna via
+  `QuickPart` **no servidor**, posicionado **na frente da câmera**
+  (`camSpawnPos`). Union/Negate/Baseplate também saem da topbar.
+- **Insert da TOOLBOX vivo**: `ToolboxInsert` ganhou fallback real — id
+  numérico que não é template vira `InsertService:LoadAsset` **server-side**
+  (id de Creator Store inserts de verdade; mensagem honesta se recusado).
+- **Baseplate garantida**: no boot do servidor (se não existir) **e** por
+  botão (canto HOME/CONSTRUIR): Part 2048×2×2048, topo em Y=0, Concrete,
+  selecionada no editor — com entrada no histórico.
+- **Permissão**: `AUTHORIZED_USERNAMES` agora tem `WhiteXz73_Developer` **e**
+  `tentandoserbanido_9` (ambos editam; anti-explorer intacto).
+- Auditoria: **66/66 ✅** · testes **100%** · placa **236.503 B** (32 tipos,
+  1.752 instâncias, #StudioSafe).
+
 **ROUND 10 (2026-09-12) — CSG + Sculpt + Collab-radar + Plugins + 3 kills de erro:**
 
 - **Erro 889 MORTO DE VEZ** (`cannot write 'Source' — PluginOrOpenCloud`, o

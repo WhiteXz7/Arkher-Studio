@@ -517,11 +517,38 @@ function handlers.ToolboxList(player) needSvc() return services.toolboxList() en
 function handlers.ToolboxInsert(player, payload)
 	needSvc()
 	local tpl = services.toolboxGet(payload.id)
-	assert(tpl, "Template nao encontrado.")
-	local parent = workspace
-	if payload.parentId and objects[payload.parentId] then parent = objects[payload.parentId] end
-	assert(editable(parent), "Pai invalido para este template.")
-	return buildToolboxTemplate(player, parent, tpl)
+	if tpl then
+		local parent = workspace
+		if payload.parentId and objects[payload.parentId] then parent = objects[payload.parentId] end
+		assert(editable(parent), "Pai invalido para este template.")
+		return buildToolboxTemplate(player, parent, tpl)
+	end
+	-- fallback REAL (ROUND 11): id numerico = asset da Creator Store -> InsertService:LoadAsset no SERVIDOR
+	local aid = tonumber(payload.id)
+	assert(aid, "Template nao encontrado.")
+	local okA, asset = pcall(function()
+		return game:GetService("InsertService"):LoadAsset(aid)
+	end)
+	if not okA then
+		return { error = "Creator Store recusou o asset " .. tostring(aid) .. ": " .. tostring(asset) .. " (só funciona com o jogo publicado/online)." }
+	end
+	assert(asset, "Asset vazio.")
+	if payload.x or payload.y or payload.z then
+		pcall(function()
+			if asset:IsA("Model") then asset:PivotTo(CFrame.new(payload.x or 0, payload.y or 4, payload.z or -14)) end
+		end)
+	end
+	asset.Parent = workspace
+	local n2 = 0
+	pcall(function() register(asset) n2 = n2 + 1 end)
+	for _, d2 in ipairs(asset:GetDescendants()) do
+		if n2 > 400 then break end
+		local okR = pcall(function() if inspectable(d2) then register(d2) n2 = n2 + 1 end end)
+		if not okR then break end
+	end
+	selected[player] = asset
+	pcall(function() hCreate(player, asset) end)
+	return { msg = "Asset " .. tostring(aid) .. " INSERIDO no mundo (" .. tostring(asset.Name) .. ", " .. tostring(n2) .. " objeto(s)) — selecionado no editor." }
 end
 '''
 BLOCK_S = BLOCK_S.replace("__MODULE__", MODULE_SRC)
@@ -1216,7 +1243,37 @@ end
 src = replace_once(src, MARK_A, MARK_A + BLOCK_A, "A")
 src = replace_once(src, "local function getObject(id)", SER_DESER + "local function getObject(id)", "B")
 src = replace_once(src, "local handlers={}", HIST_OPS + "local handlers={}", "C")
-src = replace_once(src, "request.OnServerInvoke=function(player,action,payload)", NEW_HANDLERS + BLOCK_S + BLOCK_X7 + BLOCK_X8 + BLOCK_X9 + BLOCK_X10 + "request.OnServerInvoke=function(player,action,payload)", "D")
+BLOCK_X11 = r'''
+-- ============ BLOCK_X11 (ROUND 11): BASEPLATE garantida (boot auto + botão BASEPLATE) ============
+local function ensureBaseplate()
+    local b = workspace:FindFirstChild("Baseplate")
+    if b and b:IsA("BasePart") then return b end
+    b = Instance.new("Part")
+    b.Name = "Baseplate"
+    b.Size = Vector3.new(2048, 2, 2048)
+    b.CFrame = CFrame.new(0, -1, 0)
+    b.Anchored = true
+    b.Color = Color3.fromRGB(100, 104, 118)
+    b.Material = Enum.Material.Concrete
+    pcall(function() b.TopSurface = Enum.SurfaceType.Smooth b.BottomSurface = Enum.SurfaceType.Smooth end)
+    b.Parent = workspace
+    register(b) created[b] = true
+    return b
+end
+
+function handlers.EnsureBase(player)
+    local old = workspace:FindFirstChild("Baseplate")
+    local wasMissing = not (old and old:IsA("BasePart"))
+    local b = ensureBaseplate()
+    selected[player] = b
+    if wasMissing then pcall(function() hCreate(player, b) end) end
+    return { id = idOf[b], msg = wasMissing and "BASEPLATE criada (2048×2048, topo em Y=0) e selecionada." or "Baseplate já existia — selecionada no editor." }
+end
+'''
+
+src = replace_once(src, "request.OnServerInvoke=function(player,action,payload)", NEW_HANDLERS + BLOCK_S + BLOCK_X7 + BLOCK_X8 + BLOCK_X9 + BLOCK_X10 + BLOCK_X11 + "request.OnServerInvoke=function(player,action,payload)", "D")
+src = replace_once(src, 'print("ArkherEditorServer pronto',
+    '-- ROUND 11 boot: baseplate sempre presente\npcall(function()\n\tlocal b0 = workspace:FindFirstChild("Baseplate")\n\tif not (b0 and b0:IsA("BasePart")) then\n\t\tensureBaseplate()\n\t\tprint("[Arkher] Baseplate criada automaticamente no boot (2048x2048).")\n\tend\nend)\nprint("ArkherEditorServer pronto', "X11boot")
 # Delete original -> delega para Delete_ (reusa hDelete)
 src = replace_once(
     src,

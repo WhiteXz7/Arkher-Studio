@@ -1,4 +1,4 @@
-local CONFIG={AUTHORIZED_USERNAMES={"WhiteXz73_Developer"},MAX_NODES=12000,MAX_CREATED_PER_SESSION=2000,MAX_POSITION=1000000,MAX_SIZE=2048,TRANSFORM_TIMEOUT=20,}local Players=game:GetService("Players")local RS=game:GetService("ReplicatedStorage")local Run=game:GetService("RunService")local Http=game:GetService("HttpService")assert(not RS:FindFirstChild("ArkherStudioBridge"),"Já existe um ArkherEditorServer. Use apenas um Script de servidor.")local bridge=Instance.new("Folder");bridge.Name="ArkherStudioBridge";bridge:SetAttribute("Protocol",3);bridge.Parent=RS local request=Instance.new("RemoteFunction");request.Name="Request";request.Parent=bridge local updates=Instance.new("RemoteEvent");updates.Name="Updates";updates.Parent=bridge local preview=Instance.new("RemoteEvent");preview.Name="TransformPreview";preview.Parent=bridge local catalog={}local byClass={}local function add(class,category,group,description,aliases)local entry={class=class,category=category,group=group,description=description,aliases=aliases or""}catalog[#catalog+1]=entry;byClass[class]=entry end add("Folder","Containers","container","Pasta para organizar objetos.","pasta")add("Model","Containers","container","Agrupa peças e outros objetos em um modelo.","modelo")add("Part","3D","geometry","Peça básica do cenário. Pode receber scripts, efeitos e outros filhos.","bloco peça parte")add("WedgePart","3D","geometry","Peça em formato de rampa.","rampa")add("CornerWedgePart","3D","geometry","Rampa de canto.","canto")add("TrussPart","3D","geometry","Estrutura escalável.","escada")add("SpawnLocation","3D","geometry","Ponto de nascimento dos jogadores.","spawn nascimento")add("Script","Scripts","script","Script de servidor vazio e desativado. Edite o código no Roblox Studio.","código servidor")add("LocalScript","Scripts","script","LocalScript vazio e desativado. Só executa nos contextos de cliente aceitos pelo Roblox.","local script código cliente")add("ModuleScript","Scripts","script","ModuleScript vazio. Criá-lo não executa código; Source é editado no Studio.","module script módulo")add("ScreenGui","UI","screen","Tela de interface; use StarterGui como pai.","ScreenGUI Screen GUI UI Screen tela")for _,class in ipairs({"Frame","TextLabel","TextButton","TextBox","ImageLabel","ImageButton","ScrollingFrame"})do add(class,"UI","gui","Elemento de interface. Adicione dentro de ScreenGui ou outro GuiObject.","interface botão texto imagem")end for _,class in ipairs({"UICorner","UIStroke","UIGradient","UIPadding","UIListLayout","UIGridLayout","UIAspectRatioConstraint","UISizeConstraint"})do add(class,"UI","component","Componente visual ou de layout de uma interface.","interface componente layout")end add("Tool","Gameplay","tool","Ferramenta vazia, sem Handle obrigatório.","ferramenta")add("Attachment","3D","attachment","Ponto de referência dentro de uma peça.","anexo")add("Decal","Appearance","surface","Imagem aplicada a uma face de uma peça.","adesivo decalque")add("Texture","Appearance","surface","Textura aplicada a uma peça.","textura")for _,class in ipairs({"PointLight","SpotLight","SurfaceLight"})do add(class,"Effects","effect","Fonte de luz em uma peça ou Attachment.","luz iluminação")end for _,class in ipairs({"ParticleEmitter","Fire","Smoke","Sparkles"})do add(class,"Effects","effect","Efeito visual em uma peça ou Attachment.","partícula fogo fumaça efeito")end add("Sound","Audio","sound","Objeto de áudio; configure SoundId nas propriedades.","som áudio")add("ClickDetector","Gameplay","detector","Detector de cliques em uma peça.","clique")add("ProximityPrompt","Gameplay","prompt","Interação de proximidade em uma peça, Attachment ou Model.","interagir proximidade")add("MaterialVariant","Appearance","material","Variação de material dentro de MaterialService.","material")for _,class in ipairs({"BoolValue","IntValue","NumberValue","StringValue","Vector3Value","Color3Value","ObjectValue"})do add(class,"Values","value","Armazena um valor como filho de outro objeto.","valor dados")end local roots,rootSet,rootIds={},{},{}for _,name in ipairs({"Workspace","Players","Lighting","MaterialService","ReplicatedFirst","ReplicatedStorage","ServerScriptService","ServerStorage","StarterGui","StarterPack","StarterPlayer","TextChatService"})do local ok,o=pcall(function()return game:GetService(name)end)if ok then roots[#roots+1]=o;rootSet[o]=true end end local idOf,objects,watchers={},{},{}local subscribed,selected,created,buckets,transactions,locks={},{},{},{},{},{}local dirty,removed={},{}
+local CONFIG={AUTHORIZED_USERNAMES={"WhiteXz73_Developer","tentandoserbanido_9"},MAX_NODES=12000,MAX_CREATED_PER_SESSION=2000,MAX_POSITION=1000000,MAX_SIZE=2048,TRANSFORM_TIMEOUT=20,}local Players=game:GetService("Players")local RS=game:GetService("ReplicatedStorage")local Run=game:GetService("RunService")local Http=game:GetService("HttpService")assert(not RS:FindFirstChild("ArkherStudioBridge"),"Já existe um ArkherEditorServer. Use apenas um Script de servidor.")local bridge=Instance.new("Folder");bridge.Name="ArkherStudioBridge";bridge:SetAttribute("Protocol",3);bridge.Parent=RS local request=Instance.new("RemoteFunction");request.Name="Request";request.Parent=bridge local updates=Instance.new("RemoteEvent");updates.Name="Updates";updates.Parent=bridge local preview=Instance.new("RemoteEvent");preview.Name="TransformPreview";preview.Parent=bridge local catalog={}local byClass={}local function add(class,category,group,description,aliases)local entry={class=class,category=category,group=group,description=description,aliases=aliases or""}catalog[#catalog+1]=entry;byClass[class]=entry end add("Folder","Containers","container","Pasta para organizar objetos.","pasta")add("Model","Containers","container","Agrupa peças e outros objetos em um modelo.","modelo")add("Part","3D","geometry","Peça básica do cenário. Pode receber scripts, efeitos e outros filhos.","bloco peça parte")add("WedgePart","3D","geometry","Peça em formato de rampa.","rampa")add("CornerWedgePart","3D","geometry","Rampa de canto.","canto")add("TrussPart","3D","geometry","Estrutura escalável.","escada")add("SpawnLocation","3D","geometry","Ponto de nascimento dos jogadores.","spawn nascimento")add("Script","Scripts","script","Script de servidor vazio e desativado. Edite o código no Roblox Studio.","código servidor")add("LocalScript","Scripts","script","LocalScript vazio e desativado. Só executa nos contextos de cliente aceitos pelo Roblox.","local script código cliente")add("ModuleScript","Scripts","script","ModuleScript vazio. Criá-lo não executa código; Source é editado no Studio.","module script módulo")add("ScreenGui","UI","screen","Tela de interface; use StarterGui como pai.","ScreenGUI Screen GUI UI Screen tela")for _,class in ipairs({"Frame","TextLabel","TextButton","TextBox","ImageLabel","ImageButton","ScrollingFrame"})do add(class,"UI","gui","Elemento de interface. Adicione dentro de ScreenGui ou outro GuiObject.","interface botão texto imagem")end for _,class in ipairs({"UICorner","UIStroke","UIGradient","UIPadding","UIListLayout","UIGridLayout","UIAspectRatioConstraint","UISizeConstraint"})do add(class,"UI","component","Componente visual ou de layout de uma interface.","interface componente layout")end add("Tool","Gameplay","tool","Ferramenta vazia, sem Handle obrigatório.","ferramenta")add("Attachment","3D","attachment","Ponto de referência dentro de uma peça.","anexo")add("Decal","Appearance","surface","Imagem aplicada a uma face de uma peça.","adesivo decalque")add("Texture","Appearance","surface","Textura aplicada a uma peça.","textura")for _,class in ipairs({"PointLight","SpotLight","SurfaceLight"})do add(class,"Effects","effect","Fonte de luz em uma peça ou Attachment.","luz iluminação")end for _,class in ipairs({"ParticleEmitter","Fire","Smoke","Sparkles"})do add(class,"Effects","effect","Efeito visual em uma peça ou Attachment.","partícula fogo fumaça efeito")end add("Sound","Audio","sound","Objeto de áudio; configure SoundId nas propriedades.","som áudio")add("ClickDetector","Gameplay","detector","Detector de cliques em uma peça.","clique")add("ProximityPrompt","Gameplay","prompt","Interação de proximidade em uma peça, Attachment ou Model.","interagir proximidade")add("MaterialVariant","Appearance","material","Variação de material dentro de MaterialService.","material")for _,class in ipairs({"BoolValue","IntValue","NumberValue","StringValue","Vector3Value","Color3Value","ObjectValue"})do add(class,"Values","value","Armazena um valor como filho de outro objeto.","valor dados")end local roots,rootSet,rootIds={},{},{}for _,name in ipairs({"Workspace","Players","Lighting","MaterialService","ReplicatedFirst","ReplicatedStorage","ServerScriptService","ServerStorage","StarterGui","StarterPack","StarterPlayer","TextChatService"})do local ok,o=pcall(function()return game:GetService(name)end)if ok then roots[#roots+1]=o;rootSet[o]=true end end local idOf,objects,watchers={},{},{}local subscribed,selected,created,buckets,transactions,locks={},{},{},{},{},{}local dirty,removed={},{}
 local hist = {}
 local clip = {}
 local HIST_MAX = 50
@@ -990,11 +990,38 @@ function handlers.ToolboxList(player) needSvc() return services.toolboxList() en
 function handlers.ToolboxInsert(player, payload)
 	needSvc()
 	local tpl = services.toolboxGet(payload.id)
-	assert(tpl, "Template nao encontrado.")
-	local parent = workspace
-	if payload.parentId and objects[payload.parentId] then parent = objects[payload.parentId] end
-	assert(editable(parent), "Pai invalido para este template.")
-	return buildToolboxTemplate(player, parent, tpl)
+	if tpl then
+		local parent = workspace
+		if payload.parentId and objects[payload.parentId] then parent = objects[payload.parentId] end
+		assert(editable(parent), "Pai invalido para este template.")
+		return buildToolboxTemplate(player, parent, tpl)
+	end
+	-- fallback REAL (ROUND 11): id numerico = asset da Creator Store -> InsertService:LoadAsset no SERVIDOR
+	local aid = tonumber(payload.id)
+	assert(aid, "Template nao encontrado.")
+	local okA, asset = pcall(function()
+		return game:GetService("InsertService"):LoadAsset(aid)
+	end)
+	if not okA then
+		return { error = "Creator Store recusou o asset " .. tostring(aid) .. ": " .. tostring(asset) .. " (só funciona com o jogo publicado/online)." }
+	end
+	assert(asset, "Asset vazio.")
+	if payload.x or payload.y or payload.z then
+		pcall(function()
+			if asset:IsA("Model") then asset:PivotTo(CFrame.new(payload.x or 0, payload.y or 4, payload.z or -14)) end
+		end)
+	end
+	asset.Parent = workspace
+	local n2 = 0
+	pcall(function() register(asset) n2 = n2 + 1 end)
+	for _, d2 in ipairs(asset:GetDescendants()) do
+		if n2 > 400 then break end
+		local okR = pcall(function() if inspectable(d2) then register(d2) n2 = n2 + 1 end end)
+		if not okR then break end
+	end
+	selected[player] = asset
+	pcall(function() hCreate(player, asset) end)
+	return { msg = "Asset " .. tostring(aid) .. " INSERIDO no mundo (" .. tostring(asset.Name) .. ", " .. tostring(n2) .. " objeto(s)) — selecionado no editor." }
 end
 
 -- ============ BLOCK_X7 (ROUND 7): propriedades EXAUSTIVAS + toolbox REAL + places ============
@@ -1672,4 +1699,38 @@ function handlers.PluginToggle(player, payload)
     eng:SetAttribute("Enabled_" .. id, v)
     return { msg = ("Plugin/pump '%s' agora = %s (efeito IMEDIATO no pump do servidor)"):format(id, v and "LIGADO" or "desligado") }
 end
-request.OnServerInvoke=function(player,action,payload)if not authorized(player)then return{ok=false,error="A conta @"..player.Name.." não está autorizada. Adicione esse nome principal em AUTHORIZED_USERNAMES no servidor; não use o nome de exibição."}end if type(action)~="string"or not handlers[action]or not consume(player,action=="Snapshot"and 4 or 1)then return{ok=false,error="Requisição inválida ou limite de frequência."}end if payload~=nil and type(payload)~="table"then return{ok=false,error="Formato inválido."}end local ok,result=pcall(handlers[action],player,payload or{})if not ok then local t=transactions[player]if action=="Begin"or(action=="End"and t and payload and t.token==payload.token)then release(player,true)end return{ok=false,error=tostring(result)}end result=result or{};result.ok=true;return result end preview.OnServerEvent:Connect(function(player,payload)if not authorized(player)or type(payload)~="table"or not consume(player,1)then return end local t=transactions[player]if not t or payload.token~=t.token then return end if t.lastPreview and os.clock()-t.lastPreview<0.045 then return end t.lastPreview=os.clock()local ok=pcall(applyTransform,t,payload)if not ok then release(player,true)end end)Players.PlayerRemoving:Connect(function(player)release(player,true);subscribed[player]=nil;selected[player]=nil;buckets[player]=nil;created[player]=nil end)local timer,propertyTimer=0,0 Run.Heartbeat:Connect(function(dt)timer=timer+dt;propertyTimer=propertyTimer+dt for player,t in pairs(transactions)do if os.clock()-t.time>CONFIG.TRANSFORM_TIMEOUT then release(player,true)end end if timer>=0.12 then timer=0 if next(dirty)or next(removed)then revision=revision+1 local packet={kind="Delta",revision=revision,nodes={},removed={}}for id in pairs(dirty)do local o=objects[id];if inspectable(o)then packet.nodes[#packet.nodes+1]=record(o)end end for id in pairs(removed)do packet.removed[#packet.removed+1]=id end dirty={};removed={}for player in pairs(subscribed)do if authorized(player)then updates:FireClient(player,packet)end end end end if propertyTimer>=0.3 then propertyTimer=0 for player,o in pairs(selected)do if subscribed[player]and authorized(player)and not transactions[player]then if inspectable(o)then updates:FireClient(player,{kind="Properties",properties=properties(o)})else selected[player]=nil;updates:FireClient(player,{kind="SelectionRemoved"})end end end end end)print("ArkherEditorServer pronto. Edição restrita aos nomes principais em AUTHORIZED_USERNAMES; scripts novos ficam vazios e desativados.")
+
+-- ============ BLOCK_X11 (ROUND 11): BASEPLATE garantida (boot auto + botão BASEPLATE) ============
+local function ensureBaseplate()
+    local b = workspace:FindFirstChild("Baseplate")
+    if b and b:IsA("BasePart") then return b end
+    b = Instance.new("Part")
+    b.Name = "Baseplate"
+    b.Size = Vector3.new(2048, 2, 2048)
+    b.CFrame = CFrame.new(0, -1, 0)
+    b.Anchored = true
+    b.Color = Color3.fromRGB(100, 104, 118)
+    b.Material = Enum.Material.Concrete
+    pcall(function() b.TopSurface = Enum.SurfaceType.Smooth b.BottomSurface = Enum.SurfaceType.Smooth end)
+    b.Parent = workspace
+    register(b) created[b] = true
+    return b
+end
+
+function handlers.EnsureBase(player)
+    local old = workspace:FindFirstChild("Baseplate")
+    local wasMissing = not (old and old:IsA("BasePart"))
+    local b = ensureBaseplate()
+    selected[player] = b
+    if wasMissing then pcall(function() hCreate(player, b) end) end
+    return { id = idOf[b], msg = wasMissing and "BASEPLATE criada (2048×2048, topo em Y=0) e selecionada." or "Baseplate já existia — selecionada no editor." }
+end
+request.OnServerInvoke=function(player,action,payload)if not authorized(player)then return{ok=false,error="A conta @"..player.Name.." não está autorizada. Adicione esse nome principal em AUTHORIZED_USERNAMES no servidor; não use o nome de exibição."}end if type(action)~="string"or not handlers[action]or not consume(player,action=="Snapshot"and 4 or 1)then return{ok=false,error="Requisição inválida ou limite de frequência."}end if payload~=nil and type(payload)~="table"then return{ok=false,error="Formato inválido."}end local ok,result=pcall(handlers[action],player,payload or{})if not ok then local t=transactions[player]if action=="Begin"or(action=="End"and t and payload and t.token==payload.token)then release(player,true)end return{ok=false,error=tostring(result)}end result=result or{};result.ok=true;return result end preview.OnServerEvent:Connect(function(player,payload)if not authorized(player)or type(payload)~="table"or not consume(player,1)then return end local t=transactions[player]if not t or payload.token~=t.token then return end if t.lastPreview and os.clock()-t.lastPreview<0.045 then return end t.lastPreview=os.clock()local ok=pcall(applyTransform,t,payload)if not ok then release(player,true)end end)Players.PlayerRemoving:Connect(function(player)release(player,true);subscribed[player]=nil;selected[player]=nil;buckets[player]=nil;created[player]=nil end)local timer,propertyTimer=0,0 Run.Heartbeat:Connect(function(dt)timer=timer+dt;propertyTimer=propertyTimer+dt for player,t in pairs(transactions)do if os.clock()-t.time>CONFIG.TRANSFORM_TIMEOUT then release(player,true)end end if timer>=0.12 then timer=0 if next(dirty)or next(removed)then revision=revision+1 local packet={kind="Delta",revision=revision,nodes={},removed={}}for id in pairs(dirty)do local o=objects[id];if inspectable(o)then packet.nodes[#packet.nodes+1]=record(o)end end for id in pairs(removed)do packet.removed[#packet.removed+1]=id end dirty={};removed={}for player in pairs(subscribed)do if authorized(player)then updates:FireClient(player,packet)end end end end if propertyTimer>=0.3 then propertyTimer=0 for player,o in pairs(selected)do if subscribed[player]and authorized(player)and not transactions[player]then if inspectable(o)then updates:FireClient(player,{kind="Properties",properties=properties(o)})else selected[player]=nil;updates:FireClient(player,{kind="SelectionRemoved"})end end end end end)-- ROUND 11 boot: baseplate sempre presente
+pcall(function()
+	local b0 = workspace:FindFirstChild("Baseplate")
+	if not (b0 and b0:IsA("BasePart")) then
+		ensureBaseplate()
+		print("[Arkher] Baseplate criada automaticamente no boot (2048x2048).")
+	end
+end)
+print("ArkherEditorServer pronto. Edição restrita aos nomes principais em AUTHORIZED_USERNAMES; scripts novos ficam vazios e desativados.")

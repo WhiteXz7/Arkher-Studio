@@ -1,16 +1,21 @@
 -- =============================================================
 -- Arkher_09_Topbar — A TOPBAR DE VERDADE: ABAS estilo Roblox.
 --
--- Estrutura: uma faixa de ABAS (HOME/MUNDO/NATUREZA/CRIAÇÃO/
--- ESTÚDIO/CONSTRUIR/DEV) logo ACIMA do Ribbon original. Cada aba
--- tem sua PÁGINA de botões GRANDES com ÍCONE DESENHADO EM CIMA +
--- label embaixo — mesmo estilo dos botões originais. Aba HOME =
--- Ribbon INTACTO do estúdio (nada do original é destruído nem
--- movido: só deslocado 26px para baixo, junto com os docks, para a
--- faixa de abas respirar). Ícones: IconX procedural 32x32 (mesh de
--- linhas/formas), desenhados na hora, SEM depender de asset upload.
--- Ação padrão: deckOpen(viewId) — cada botão abre a UI única dele
--- (a diretriz "clicou na topbar -> ativou o sistema dela").
+-- ROUND 11 (correção cirúrgica dos bugs vistos no Play):
+--  * BUG #1 (topbar invisível / cliques sem efeito): o script
+--    parentava a faixa em `i` — o FOLDER ArkherServerClientRuntime.
+--    GuiObject debaixo de Folder NÃO renderiza. Agora TUDO mora em
+--    host próprio filho DIRETO da ScreenGui, medido em pixels de
+--    tela contra a Ribbon REAL (Canvas/Ribbon), sem escala suspeita.
+--  * BUG #2 (aba inicial só tinha botões antigos): HOME era "só o
+--    ribbon original". Agora HOME é uma PÁGINA de botões novos com
+--    ícone desenhado (BASEPLATE / PART / TOOLBOX / PROPS / CORES /
+--    OUTPUT / COMANDO / SCRIPTS). O ribbon original sobrou na aba
+--    ORIGINAL (última), intacto e acessível num clique.
+--  * BUG #3 (spawn/insert morto): PART ▸ agora realmente abre o
+--    submenu de formas e spawna via QuickPart NO SERVIDOR, na frente
+--    da CÂMERA. BASEPLATE garante o chão (EnsureBase + boot server).
+--  * Cliques: Activated + MouseButton1Click (dedupe 0.12s) em TUDO.
 -- =============================================================
 
 local Players = game:GetService("Players")
@@ -18,10 +23,9 @@ local UIS = game:GetService("UserInputService")
 local client = Players.LocalPlayer
 local playerGui = client:WaitForChild("PlayerGui")
 
--- espera o núcleo da UI (mesmo contrato do 03)
+-- espera o núcleo da UI (mesmo contrato do 03/02/04)
 local uiRoot = script:FindFirstAncestorOfClass("ScreenGui")
 if not uiRoot then warn("[ArkherX] 09_Topbar precisa estar dentro de ArkherStudioUI") return end
--- o núcleo mora dentro de ArkherServerClientRuntime (mesmo contrato do 03/02/04)
 local i = uiRoot:WaitForChild("ArkherServerClientRuntime", 20)
 if not i then warn("[ArkherX] 09: núcleo (01_Nucleo) não achado.") return end
 local j = i:WaitForChild("ClientBus", 20)
@@ -49,12 +53,30 @@ local function deckOpen(v)
 	W("Message", { text = "Deck X ainda carregando…", bad = true })
 end
 
--- ---------- Canvas/Ribbon descobertos por medida (não por nome decorado) ----------
-local canvas = i:FindFirstChild("Canvas") or i
-local ribbon = canvas:FindFirstChild("Ribbon")
-local menuBar = canvas:FindFirstChild("MenuBar")
+-- clique à prova de bala: Activated + MouseButton1Click com dedupe
+local function onTap(btn, fn)
+	local lastEvt, lastT = nil, -1
+	local function fire(src, ...)
+		local now = os.clock()
+		if lastEvt and lastEvt ~= src and now - lastT < 0.12 then
+			lastEvt, lastT = nil, now
+			return
+		end
+		lastEvt, lastT = src, now
+		local ok, err = pcall(fn, ...)
+		if not ok then warn("[ArkherX] 09 clique: " .. tostring(err)) end
+	end
+	pcall(function() btn.Activated:Connect(function(...) fire("Activated", ...) end) end)
+	pcall(function() btn.MouseButton1Click:Connect(function(...) fire("MouseButton1Click", ...) end) end)
+	btn.Active = true
+	btn.Selectable = true
+end
 
--- ---------- paleta (mesma do estúdio) ----------
+-- ---------- estrutura ORIGINAL medida (SEM parentar nada nela) ----------
+local canvas = uiRoot:FindFirstChild("Canvas")
+local ribbon = canvas and canvas:FindFirstChild("Ribbon") or nil
+
+-- ---------- paleta ----------
 local m = {
 	bg = Color3.fromRGB(7, 16, 32), panel = Color3.fromRGB(9, 23, 44), section = Color3.fromRGB(20, 42, 75),
 	border = Color3.fromRGB(52, 80, 120), text = Color3.fromRGB(228, 240, 255), muted = Color3.fromRGB(146, 170, 202),
@@ -180,7 +202,7 @@ local function drawIcon(kind, parent, size)
 	elseif kind == "CIDADE" then
 		box(4, 14, 8, 15, P.section) box(5.5, 16.5, 5, 3, P.cyan) box(5.5, 22, 5, 3, P.cyan)
 		box(13, 7, 9, 22, m.blue) box(14.5, 10, 6, 4, P.text) box(14.5, 17, 6, 4, P.text) box(14.5, 24, 6, 4, P.text)
-		box(23, 12, 6, 17, P.gold) box(24.5, 14.5, 3, 3, P.text) box(24.5, 20, 3, 3, P.text)
+		box(23, 12, 6, 17, P.gold) box(24.5, 14.5, 3, 3, P.text) box(24.5, 20.5, 3, 3, P.text)
 		line(2, 29, 30, 29, P.muted, 1.8)
 	elseif kind == "AUDIO" then
 		box(4, 12, 7, 9, P.cyan, 1) line(11, 12, 17, 6, P.cyan, 2.6) line(17, 6, 17, 27, P.cyan, 2.6) line(17, 27, 11, 21, P.cyan, 2.6)
@@ -202,6 +224,15 @@ local function drawIcon(kind, parent, size)
 	elseif kind == "PART" then
 		box(6, 8, 20, 20, m.blue, 3) box(9, 11, 14, 5, Color3.fromRGB(90, 170, 255), 2)
 		line(6, 24, 26, 30, m.cyan, 2)
+	elseif kind == "BASEPLATE" then
+		box(3, 20, 26, 8, Color3.fromRGB(100, 104, 118), 2)
+		box(3, 16, 26, 5, Color3.fromRGB(125, 130, 146), 2)
+		for q = 0, 3 do line(6 + q * 6, 16, 6 + q * 6, 28, Color3.fromRGB(84, 88, 100), 1.2) end
+		circ(8, 8, 3, P.cyan) line(8, 11, 8, 15, P.cyan, 2)
+		circ(24, 7, 2, P.gold)
+	elseif kind == "ORIGINAL" then
+		box(4, 5, 24, 5, P.muted, 2) box(4, 13, 24, 5, P.section, 2) box(4, 21, 24, 5, P.section, 2)
+		circ(7, 16, 1.6, P.cyan) circ(7, 24, 1.6, P.gold) circ(7, 8, 1.6, P.text)
 	elseif kind == "TOOLBOX" then
 		box(4, 10, 24, 18, Color3.fromRGB(190, 140, 60), 3)
 		box(11, 6, 10, 5, Color3.fromRGB(150, 108, 44), 3)
@@ -260,9 +291,6 @@ local function drawIcon(kind, parent, size)
 		circ(14, 16, 10, P.cyan, 2.4)
 		circ(24, 16, 7, P.error, 2.4)
 		circ(25.5, 16, 5.6, m.ribbonBg)
-	elseif kind == "PUBLISH" then
-		line(16, 26, 16, 6, P.cyan, 3) line(10, 12, 16, 6, P.cyan, 3) line(16, 6, 22, 12, P.cyan, 3)
-		box(6, 28, 20, 3, P.section, 1)
 	else
 		circ(16, 16, 10, P.muted, 2)
 	end
@@ -272,9 +300,17 @@ end
 -- =============================================================
 -- Estrutura de ABAS + páginas (botões com ícone em cima)
 -- =============================================================
--- { icon, label, action = {kind="deck", view} | {kind="part"} | {kind="api", action, payload} }
 local TABS = {
-	{ name = "HOME", original = true, tip = "O ribbon ORIGINAL do estúdio (FileTools, gizmos etc) — intacto" },
+	{ name = "HOME", items = {
+		{ "BASEPLATE", "Baseplate", { kind = "api", action = "EnsureBase", payload = {} } },
+		{ "PART", "Part ▸", { kind = "part" } },
+		{ "TOOLBOX", "Toolbox", { kind = "deck", view = "toolbox" } },
+		{ "PROPS", "Propriedades", { kind = "deck", view = "props" } },
+		{ "CORES", "Cores", { kind = "deck", view = "cores" } },
+		{ "OUTPUT", "Output", { kind = "deck", view = "output" } },
+		{ "COMANDO", "Comando", { kind = "deck", view = "comando" } },
+		{ "SCRIPTS", "Scripts", { kind = "deck", view = "scripts" } },
+	} },
 	{ name = "MUNDO", items = {
 		{ "TERRAIN", "Terrain", { kind = "deck", view = "terrain" } },
 		{ "SCULPT", "Sculpt", { kind = "deck", view = "sculpt" } },
@@ -299,6 +335,7 @@ local TABS = {
 		{ "PART", "Part ▸", { kind = "part" } },
 		{ "UNION", "Union", { kind = "api", action = "CsgDo", payload = { op = "union" } } },
 		{ "NEGATE", "Negate", { kind = "api", action = "CsgDo", payload = { op = "negate" } } },
+		{ "BASEPLATE", "Baseplate", { kind = "api", action = "EnsureBase", payload = {} } },
 		{ "TOOLBOX", "Toolbox", { kind = "deck", view = "toolbox" } },
 	} },
 	{ name = "ESTÚDIO", items = {
@@ -306,6 +343,7 @@ local TABS = {
 		{ "CORES", "Cores", { kind = "deck", view = "cores" } },
 		{ "OUTPUT", "Output", { kind = "deck", view = "output" } },
 		{ "COMANDO", "Comando", { kind = "deck", view = "comando" } },
+		{ "SCRIPTS", "Scripts", { kind = "deck", view = "scripts" } },
 	} },
 	{ name = "DEV", items = {
 		{ "SCRIPTS", "Scripts", { kind = "deck", view = "scripts" } },
@@ -313,42 +351,60 @@ local TABS = {
 		{ "PLUGINS", "Plugins", { kind = "deck", view = "plugins" } },
 		{ "GRUPOS", "Colisões", { kind = "deck", view = "grupos" } },
 	} },
+	{ name = "ORIGINAL", original = true, tip = "O ribbon ORIGINAL do estúdio (FileTools, gizmos, menus) — intacto" },
 }
 
--- medidas
+-- ---------- medida da ribbon em PIXELS DE TELA (gui space) ----------
 local ribbonRect = { x = 0, y = 78, w = 1366, h = 96 }
 local function measureRibbon()
 	if ribbon then
-		local ok, ap, asz, cp = pcall(function()
-			return ribbon.AbsolutePosition, ribbon.AbsoluteSize, canvas.AbsolutePosition
+		local ok, ap, asz = pcall(function()
+			return ribbon.AbsolutePosition, ribbon.AbsoluteSize
 		end)
 		if ok and asz and asz.Y > 10 then
-			ribbonRect = { x = ap.X - cp.X, y = ap.Y - cp.Y, w = asz.X, h = asz.Y }
+			ribbonRect = { x = ap.X, y = ap.Y, w = asz.X, h = asz.Y }
 		end
 	end
 	return ribbonRect
 end
 
--- 1) empurra o ribbon original + docks 26px para baixo (UMA VEZ só)
+-- escala do Canvas (ResponsiveScale = UIScale) p/ corrigir o deslocamento
+local function canvasScale()
+	if not canvas then return 1 end
+	local s = canvas:FindFirstChildOfClass("UIScale")
+	if s and s.Scale and s.Scale > 0 then return s.Scale end
+	return 1
+end
+
+-- empurra a ribbon original + docks para baixo (UMA VEZ), compensando a escala
 local pushedDone = false
 local function pushOriginal()
-	if pushedDone then return end
-	if not ribbon then return end
+	if pushedDone or not ribbon then return end
 	local ok = pcall(function()
-		local m0 = measureRibbon()
-		ribbon.Position = ribbon.Position + UDim2.fromOffset(0, 26)
+		local px = math.ceil(30 / canvasScale())
+		ribbon.Position = ribbon.Position + UDim2.fromOffset(0, px)
 		for _, nm in ipairs({ "HierarchyDock", "PropertiesDock" }) do
-			local d2 = canvas:FindFirstChild(nm)
-			if d2 then
-				d2.Position = d2.Position + UDim2.fromOffset(0, 26)
-				d2.Size = d2.Size - UDim2.fromOffset(0, 26)
+			local d2 = canvas and canvas:FindFirstChild(nm)
+			if d2 and d2:IsA("GuiObject") then
+				d2.Position = d2.Position + UDim2.fromOffset(0, px)
+				d2.Size = d2.Size - UDim2.fromOffset(0, px)
 			end
 		end
 	end)
 	if ok then pushedDone = true end
-	-- re-medir depois do deslocamento
 	task.defer(measureRibbon)
 end
+
+-- ---------- host PRÓPRIO: filho direto da ScreenGui (renderiza SEMPRE) ----------
+local host = Instance.new("Frame")
+host.Name = "ArkherTopbarHost"
+host.BackgroundTransparency = 1
+host.BorderSizePixel = 0
+host.Size = UDim2.fromScale(1, 1)
+host.Position = UDim2.fromOffset(0, 0)
+host.ZIndex = 50
+host.ClipsDescendants = false
+host.Parent = uiRoot
 
 -- 2) tab strip
 local tabStrip = Instance.new("Frame")
@@ -357,6 +413,7 @@ tabStrip.BackgroundColor3 = m.bg
 tabStrip.BackgroundTransparency = 0.05
 tabStrip.BorderSizePixel = 0
 tabStrip.ZIndex = 55
+tabStrip.Active = true
 local tpad = Instance.new("UIPadding") tpad.PaddingLeft = UDim.new(0, 6) tpad.PaddingTop = UDim.new(0, 2) tpad.Parent = tabStrip
 local tlay = Instance.new("UIListLayout")
 tlay.FillDirection = Enum.FillDirection.Horizontal
@@ -365,7 +422,7 @@ tlay.VerticalAlignment = Enum.VerticalAlignment.Center
 tlay.SortOrder = Enum.SortOrder.LayoutOrder
 tlay.Parent = tabStrip
 
--- 3) faixa de páginas (cobre o ribbon quando aba ≠ HOME)
+-- 3) faixa de páginas (cobre o ribbon quando aba ≠ ORIGINAL)
 local pagesHost = Instance.new("Frame")
 pagesHost.Name = "ArkherTabPages"
 pagesHost.BackgroundColor3 = m.ribbonBg
@@ -373,27 +430,29 @@ pagesHost.BackgroundTransparency = 0.02
 pagesHost.BorderSizePixel = 0
 pagesHost.Visible = false
 pagesHost.ZIndex = 54
+pagesHost.Active = false
 local pstroke = Instance.new("UIStroke") pstroke.Thickness = 1 pstroke.Color = m.border pstroke.Parent = pagesHost
 
+tabStrip.Parent = host
+pagesHost.Parent = host
+
+local STRIP_H = 26
 local function layoutTopbar()
 	local m0 = measureRibbon()
 	if ribbon then
-		tabStrip.Position = UDim2.fromOffset(m0.x, m0.y - 26)
-		tabStrip.Size = UDim2.new(0, m0.w, 0, 26)
+		tabStrip.Position = UDim2.fromOffset(m0.x, math.max(m0.y - STRIP_H - 2, 0))
+		tabStrip.Size = UDim2.new(0, m0.w, 0, STRIP_H)
 		pagesHost.Position = UDim2.fromOffset(m0.x, m0.y)
 		pagesHost.Size = UDim2.new(0, m0.w, 0, m0.h)
 	else
-		-- sem ribbon achada: vai no topo
 		tabStrip.Position = UDim2.fromOffset(8, 64)
-		tabStrip.Size = UDim2.new(1, -16, 0, 26)
+		tabStrip.Size = UDim2.new(1, -16, 0, STRIP_H)
 		pagesHost.Position = UDim2.fromOffset(8, 92)
 		pagesHost.Size = UDim2.new(1, -16, 0, 96)
 	end
 end
-tabStrip.Parent = canvas
-pagesHost.Parent = canvas
 
--- popup de shapes do PART
+-- popup de shapes do PART — spawna REAL no servidor, na frente da CÂMERA
 local shapesPopup
 local function closeShapes()
 	if shapesPopup and shapesPopup.Parent then shapesPopup:Destroy() end
@@ -405,6 +464,15 @@ local SHAPES = {
 	{ "Wedge", "Wedge (rampa)" }, { "CornerWedge", "CornerWedge (canto)" },
 	{ "Truss", "Truss (treliça)" },
 }
+local function camSpawnPos()
+	local cam = workspace.CurrentCamera
+	if cam then
+		local cf = cam.CFrame
+		local p = cf.Position + cf.LookVector * 16
+		return math.floor(p.X + 0.5), math.max(math.floor(p.Y + 0.5), 3), math.floor(p.Z + 0.5)
+	end
+	return 0, 3, -16
+end
 local function openShapes(hostBtn)
 	closeShapes()
 	local f = Instance.new("Frame")
@@ -416,8 +484,7 @@ local function openShapes(hostBtn)
 	local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, 8) c.Parent = f
 	local st = Instance.new("UIStroke") st.Thickness = 1.5 st.Color = m.border st.Parent = f
 	local ap = hostBtn.AbsolutePosition
-	local cp = canvas.AbsolutePosition
-	f.Position = UDim2.fromOffset(ap.X - cp.X, hostBtn.AbsolutePosition.Y - cp.Y + hostBtn.AbsoluteSize.Y + 4)
+	f.Position = UDim2.fromOffset(ap.X, ap.Y + hostBtn.AbsoluteSize.Y + 4)
 	for q, spec in ipairs(SHAPES) do
 		local row = Instance.new("TextButton")
 		row.Size = UDim2.new(1, -12, 0, 24)
@@ -433,24 +500,33 @@ local function openShapes(hostBtn)
 		local rc = Instance.new("UICorner") rc.CornerRadius = UDim.new(0, 6) rc.Parent = row
 		row.MouseEnter:Connect(function() row.BackgroundColor3 = m.selected end)
 		row.MouseLeave:Connect(function() row.BackgroundColor3 = m.panel end)
-		row.Activated:Connect(function()
+		onTap(row, function()
 			closeShapes()
 			task.spawn(function()
-				local res = apiResult("QuickPart", { shape = spec[1] })
-				if res and res.msg then W("Message", { text = res.msg }) else W("Message", { text = spec[1] .. " criado." }) end
+				local x2, y2, z2 = camSpawnPos()
+				local res, err = apiResult("QuickPart", { shape = spec[1], x = x2, y = y2, z = z2 })
+				if res and res.msg then
+					W("Message", { text = res.msg })
+				elseif err then
+					W("Message", { text = "Spawn falhou: " .. tostring(err), bad = true })
+				else
+					W("Message", { text = spec[1] .. " criado na frente da câmera." })
+				end
 			end)
 		end)
 		row.Parent = f
 	end
 	shapesPopup = f
-	f.Parent = canvas
-	UIS.InputBegan:Connect(function(inp, gp)
-		if gp or not f.Parent then return end
+	f.Parent = host
+	local conn
+	conn = UIS.InputBegan:Connect(function(inp, gp)
+		if gp or not f.Parent then if conn then conn:Disconnect() end return end
 		if inp.UserInputType == Enum.UserInputType.MouseButton1 then
 			local mp = Vector2.new(inp.Position.X, inp.Position.Y)
 			local fp, fs = f.AbsolutePosition, f.AbsoluteSize
-			if not (mp.X >= fp.X and mp.Y >= fp.Y and mp.X <= fp.X + fs.X and mp.Y <= fp.Y + fs.Y) then
+			if fp.X > 0 and not (mp.X >= fp.X and mp.Y >= fp.Y and mp.X <= fp.X + fs.X and mp.Y <= fp.Y + fs.Y) then
 				closeShapes()
+				if conn then conn:Disconnect() conn = nil end
 			end
 		end
 	end)
@@ -460,6 +536,7 @@ end
 local curTab = 1
 local tabBtns = {}
 local pageFrames = {}
+local pageLayouts = {}
 
 local function activateTab(idx)
 	curTab = idx
@@ -468,18 +545,20 @@ local function activateTab(idx)
 		b.TextColor3 = (q == idx) and m.cyan or m.muted
 	end
 	local tab = TABS[idx]
+	local showPages = not tab.original
 	for q, pf in ipairs(pageFrames) do
-		pf.Visible = (q == idx) and not tab.original
+		pf.Visible = (q == idx) and showPages
 	end
-	pagesHost.Visible = not tab.original
+	pagesHost.Visible = showPages
 	rawset(_G, "ArkherTopTab", tab.name)
 	closeShapes()
+	if pageLayouts[idx] then pcall(pageLayouts[idx]) end
 end
 
 for idx, tab in ipairs(TABS) do
 	local tb = Instance.new("TextButton")
 	tb.Name = "Tab_" .. tab.name
-	tb.Size = UDim2.fromOffset(tab.method and 10 or math.max(64, #tab.name * 10 + 24), 0, 22)
+	tb.Size = UDim2.fromOffset(math.max(64, #tab.name * 9 + 26), 0, 22)
 	tb.AutoButtonColor = true
 	tb.BackgroundColor3 = m.panel
 	tb.Text = tab.name
@@ -490,14 +569,11 @@ for idx, tab in ipairs(TABS) do
 	tb.BorderSizePixel = 0
 	tb.LayoutOrder = idx
 	local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, 7) c.Parent = tb
-	tb.Activated:Connect(function() activateTab(idx) end)
-	if tab.tip then
-		tb.MouseEnter:Connect(function() end)
-	end
+	onTap(tb, function() activateTab(idx) end)
 	tb.Parent = tabStrip
 	tabBtns[idx] = tb
 
-	-- página (página HOME não é criada: ribbon original aparece)
+	-- página ORIGINAL não existe: mostramos o ribbon intacto do estúdio
 	if not tab.original then
 		local pf = Instance.new("Frame")
 		pf.Name = "Page_" .. tab.name
@@ -514,28 +590,27 @@ for idx, tab in ipairs(TABS) do
 		local gpad = Instance.new("UIPadding")
 		gpad.PaddingLeft = UDim.new(0, 8) gpad.PaddingTop = UDim.new(0, 6)
 		gpad.Parent = pf
-		-- responsivo: recalcula largura de célula pelo espaço útil
+		-- responsivo: recalcula a célula pelo espaço real da página
 		local function layoutPage()
-			local avail = math.max(tabStrip.AbsoluteSize.X, 600)
-			local hR = ribbonRect.h > 20 and ribbonRect.h or 96
-			local cellH = math.max(hR - 16, 58)
+			local avail = math.max(pagesHost.AbsoluteSize.X - 16, 400)
+			local hR = math.max(pagesHost.AbsoluteSize.Y - 10, 60)
+			local cellH = math.clamp(hR, 58, 110)
 			local cellW = 78
-			local cols = math.max(1, math.floor((avail - 16) / (cellW + 6)))
+			local cols = math.max(1, math.floor(avail / (cellW + 6)))
 			if cols > #tab.items then cols = #tab.items end
-			-- se sobrar espaço: células mais largas e confortáveis
-			local extra = avail - 16 - cols * (cellW + 6)
+			local extra = avail - cols * (cellW + 6)
 			if extra > 0 and cols > 0 then cellW = cellW + math.min(extra / cols, 40) end
 			grid.CellSize = UDim2.new(0, cellW, 0, cellH)
 		end
 		layoutPage()
-		tabStrip:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutPage)
-		pf:SetAttribute("layoutPage", true)
+		pagesHost:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutPage)
+		pageLayouts[idx] = layoutPage
 		task.spawn(function() task.wait(0.4) layoutPage() end)
 
 		for q2, it in ipairs(tab.items) do
 			local iconKind, label2, act = it[1], it[2], it[3]
 			local btn = Instance.new("TextButton")
-			btn.Name = "TopBtn_" .. iconKind
+			btn.Name = "TopBtn_" .. iconKind .. "_" .. tostring(q2)
 			btn.BackgroundColor3 = m.panel
 			btn.BackgroundTransparency = 0.12
 			btn.Text = ""
@@ -564,15 +639,21 @@ for idx, tab in ipairs(TABS) do
 			lb.TextXAlignment = Enum.TextXAlignment.Center
 			lb.ZIndex = 59
 			lb.Parent = btn
-			btn.Activated:Connect(function()
+			onTap(btn, function()
 				if act.kind == "deck" then
 					deckOpen(act.view)
 				elseif act.kind == "part" then
 					openShapes(btn)
 				elseif act.kind == "api" then
 					task.spawn(function()
-						local res = apiResult(act.action, act.payload or {})
-						if res and res.msg then W("Message", { text = res.msg }) end
+						local res, err = apiResult(act.action, act.payload or {})
+						if res and res.msg then
+							W("Message", { text = res.msg })
+						elseif res and res.error then
+							W("Message", { text = tostring(res.error), bad = true })
+						elseif err then
+							W("Message", { text = act.action .. " falhou: " .. tostring(err), bad = true })
+						end
 					end)
 				end
 			end)
@@ -586,15 +667,23 @@ end
 -- posicionamento final + listeners responsivos
 pushOriginal()
 layoutTopbar()
-task.delay(0.5, layoutTopbar)
+task.delay(0.12, layoutTopbar)
+task.delay(0.6, layoutTopbar)
+task.delay(1.6, layoutTopbar)
 if ribbon then
-	ribbon:GetPropertyChangedSignal("AbsolutePosition"):Connect(layoutTopbar)
-	ribbon:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutTopbar)
+	pcall(function()
+		ribbon:GetPropertyChangedSignal("AbsolutePosition"):Connect(layoutTopbar)
+		ribbon:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutTopbar)
+	end)
 end
 pcall(function()
-	canvas:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutTopbar)
+	uiRoot:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutTopbar)
 end)
-activateTab(1) -- HOME: ribbon original visivel
-tabStrip.Active = true
-W("Message", { text = "Topbar com ABAS pronta: HOME = ribbon original; MUNDO/NATUREZA/CRIAÇÃO/CONSTRUIR/ESTÚDIO/DEV = sistemas Arkher com ícones desenhados. Clique num botão para ATIVAR o sistema dele." })
-print("[ArkherX] 09_Topbar: 7 abas (HOME original + 6 páginas com ícones IconX) — PART com submenu de formas, ribbon original intacto")
+pcall(function()
+	local s = canvas and canvas:FindFirstChildOfClass("UIScale")
+	if s then s:GetPropertyChangedSignal("Scale"):Connect(layoutTopbar) end
+end)
+
+activateTab(1) -- HOME: botões NOVOS com ícones, na hora
+W("Message", { text = "Topbar X: HOME/MUNDO/NATUREZA/CRIAÇÃO/CONSTRUIR/ESTÚDIO/DEV com ícones desenhados · BASEPLATE + PART spawnam de verdade (na frente da câmera) · aba ORIGINAL = ribbon antigo intacto." })
+print("[ArkherX] 09_Topbar: 8 abas (HOME nova com ícones + 6 páginas X + ORIGINAL intacta) — host direto na ScreenGui, PART spawna via QuickPart server na frente da câmera")
