@@ -22,6 +22,15 @@ require = function(mod)
 end
 warn = warn or print
 if not math.clamp then math.clamp = function(v, lo, hi) return math.max(lo, math.min(hi, v)) end end
+if not math.atan2 then
+  math.atan2 = function(y, x)
+    if x > 0 then return math.atan(y / x) end
+    if x < 0 then
+      if y >= 0 then return math.atan(y / x) + math.pi else return math.atan(y / x) - math.pi end
+    end
+    if y > 0 then return math.pi / 2 elseif y < 0 then return -math.pi / 2 else return 0 end
+  end
+end
 
 -- ============ Enum ============
 local function autoenum(name)
@@ -50,6 +59,54 @@ Enum = autoenum("Enum")
 Color3 = {}
 function Color3.fromRGB(r,g,b) return { R=r/255, G=g/255, B=b/255, __t="Color3" } end
 function Color3.new(r,g,b) return { R=r or 0, G=g or 0, B=b or 0, __t="Color3" } end
+function Color3.fromHSV(h,s,v)
+  h = (h % 1 + 1) % 1
+  local c = v * s
+  local x = c * (1 - math.abs((h * 6) % 2 - 1))
+  local m = v - c
+  local r, g, b = 0, 0, 0
+  local hh = h * 6
+  if hh < 1 then r, g, b = c, x, 0
+  elseif hh < 2 then r, g, b = x, c, 0
+  elseif hh < 3 then r, g, b = 0, c, x
+  elseif hh < 4 then r, g, b = 0, x, c
+  elseif hh < 5 then r, g, b = x, 0, c
+  else r, g, b = c, 0, x end
+  return { R=r+m, G=g+m, B=b+m, __t="Color3" }
+end
+function Color3.toHSV(c)
+  local r, g, b = c.R, c.G, c.B
+  local mx = math.max(r, g, b)
+  local mn = math.min(r, g, b)
+  local d = mx - mn
+  local h = 0
+  if d ~= 0 then
+    if mx == r then h = ((g - b) / d) % 6
+    elseif mx == g then h = (b - r) / d + 2
+    else h = (r - g) / d + 4 end
+    h = h / 6
+    if h < 0 then h = h + 1 end
+  end
+  local s = (mx == 0) and 0 or (d / mx)
+  return h, s, mx
+end
+-- Paleta BrickColor oficial (só o que o CORES X usa + fallback real)
+BrickColor = {}
+local BRICK_PALETTE = {
+  ["Bright red"] = {196,40,28}, ["Bright blue"] = {13,105,172}, ["Bright green"] = {75,151,75},
+  ["Bright yellow"] = {245,205,48}, ["Bright orange"] = {218,133,65}, ["Bright violet"] = {107,50,124},
+  ["White"] = {242,243,243}, ["Black"] = {27,42,53},
+  ["Dark stone grey"] = {99,95,98}, ["Medium stone grey"] = {163,162,165}, ["Light stone grey"] = {229,228,223},
+  ["Deep orange"] = {255,176,0}, ["Navy blue"] = {0,32,96}, ["Lime green"] = {0,255,0},
+  ["Pink"] = {255,102,204}, ["Cyan"] = {4,175,236}, ["Gold"] = {239,184,56},
+  ["Really red"] = {255,0,0}, ["Really blue"] = {0,0,255}, ["Earth green"] = {39,70,45},
+  ["Brick yellow"] = {215,197,154}, ["New Yeller"] = {255,255,0}, ["Hot pink"] = {255,0,191},
+}
+function BrickColor.new(nm)
+  local rgb = BRICK_PALETTE[nm]
+  if not rgb then nm = "Medium stone grey" rgb = BRICK_PALETTE[nm] end
+  return { Name = nm, Number = 0, Color = Color3.fromRGB(rgb[1], rgb[2], rgb[3]), __t = "BrickColor" }
+end
 Vector3 = {}
 local V3MT = { __index=Vector3,
   __mul=function(a,b)
@@ -117,7 +174,7 @@ local CLASS_SUPER = {
 local AUTO_EVENTS = { "AncestryChanged","Changed","Destroying","DescendantAdded","DescendantRemoving",
   "PlayerRemoving","OnServerEvent","PlayerAdded","InputBegan","InputChanged","InputEnded","SelectionChanged",
   "Activated","MouseEnter","MouseLeave","MouseButton1Click","MouseButton2Click","TouchTap","FocusLost",
-  "ChildAdded","ChildRemoved" }
+  "ChildAdded","ChildRemoved","MessageOut" }
 local fireDescendantAdded, fireDescendantRemoving  -- forward declarations
 local MT = {}
 MT.__index = function(self,k)
@@ -162,12 +219,15 @@ MT.__newindex = function(self,k,v)
   if k=="CFrame" and type(v)=="table" and v.Position then
     rawget(self,"__props").CFrame = v
     rawget(self,"__props").Position = v.Position
+    rawget(self,"__explicit").CFrame = true
+    rawget(self,"__explicit").Position = true
     local p = rawget(self,"__props").Parent
     if p then
       for _,h in ipairs(rawget(p,"__events").DescendantAdded and rawget(p,"__events").DescendantAdded.handlers or {}) do end
     end
   else
     rawget(self,"__props")[k] = v
+    if k ~= "Parent" then rawget(self,"__explicit")[k] = true end
   end
   local ch = rawget(self,"__events").Changed
   if ch then ch:Fire(k) end
@@ -202,6 +262,7 @@ local CLASS_DEFAULTS = {
   GuiObject = { BackgroundColor3=Color3.new(0,0,0), BackgroundTransparency=0, Active=false, Rotation=0,
     AbsoluteSize=Vector2.new(0,0), AbsolutePosition=Vector2.new(0,0), AbsoluteRotation=0, ZIndex=1, LayoutOrder=0,
     BorderSizePixel=1, ZIndex=1 },
+  LayerCollector = { AbsoluteSize=Vector2.new(1568,882), AbsolutePosition=Vector2.new(0,0) },
   TextLabel = { TextColor3=Color3.new(0,0,0), TextSize=14 },
   TextButton = { TextColor3=Color3.new(1,1,1), TextSize=14, AutoButtonColor=true },
   TextBox = { TextColor3=Color3.new(1,1,1), TextSize=14, ClearTextOnFocus=true },
@@ -214,7 +275,7 @@ local function mkInstance(class)
   local o = setmetatable({
     __props={ Name=class, ClassName=class, Visible=true, Text="", Position=Vector3.new(0,0,0),
       CFrame=CFrame.new(0,0,0), Size=Vector3.new(0,0,0) },
-    __children={}, __events={}, __attrs={},
+    __children={}, __events={}, __attrs={}, __explicit={},
   },MT)
   local c = class
   while c do
@@ -241,7 +302,6 @@ end
 function METHODS:GetChildren()
   local out={}
   for _,ch in ipairs(rawget(self,"__children")) do out[#out+1]=ch end
-  table.sort(out,function(a,b) return (rawget(a,"__props").Name or "")<(rawget(b,"__props").Name or "") end)
   return out
 end
 function METHODS:GetDescendants()
@@ -307,7 +367,9 @@ function METHODS:GetFullName()
 end
 function METHODS:Clone()
   local c = mkInstance(rawget(self,"__props").ClassName)
-  for k,v in pairs(rawget(self,"__props")) do if k~="Parent" then rawget(c,"__props")[k]=v end end
+  for k,v in pairs(rawget(self,"__props")) do
+    if k~="Parent" then rawget(c,"__props")[k]=v rawget(c,"__explicit")[k]=true end
+  end
   for k,v in pairs(rawget(self,"__attrs")) do rawget(c,"__attrs")[k]=v end
   for _,ch in ipairs(rawget(self,"__children")) do local cc=ch:Clone(); cc.Parent=c end
   return c

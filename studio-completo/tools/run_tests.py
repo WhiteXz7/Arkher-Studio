@@ -10,6 +10,7 @@ TESTS = {
     "Cliente (Menus + acoes roteadas ao server)": "studio-completo/tools/test_client.lua",
     "Cliente (Paineis dos sistemas custom)": "studio-completo/tools/test_client_panels.lua",
     "Cliente ROUND12 (Ribbon X + Properties/Insert/Toolbox + menus clicaveis)": "studio-completo/tools/test_client_round12.lua",
+    "GUIX Adopt (08 adota bake sem duplicar + 05/06/07/09 wiring)": "studio-completo/tools/test_guix_adopt.lua",
 }
 ok = True
 for label, path in TESTS.items():

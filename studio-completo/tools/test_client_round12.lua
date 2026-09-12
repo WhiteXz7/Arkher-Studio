@@ -22,6 +22,12 @@ local ribbon = canvas:FindFirstChild("Ribbon")
 local tpl = Instance.new("TextButton"); tpl.Name = "Model"; tpl.Parent = ribbon
 tpl.Text = "Model"; tpl.Size = UDim2.fromOffset(64, 56); tpl.Position = UDim2.fromOffset(220, 4)
 local tic = Instance.new("Frame"); tic.Name = "Icon"; tic.Parent = tpl
+-- host X estático (GUIX real: XBar + popup de formas via guix_static)
+local host = Instance.new("Frame"); host.Name = "ArkherXDeck"; host.Parent = canvas
+local dscale = Instance.new("UIScale"); dscale.Name = "DeckScale"; dscale.Parent = host
+local GuixStatic = assert(loadstring(io.open("studio-completo/tools/guix_static.lua"):read("*a"), "[guix_static]"))()
+GuixStatic.buildXBar(host)
+GuixStatic.buildPopups(host)
 -- MenuBar com botão View (molde dos menus X do 03)
 local menuBar = canvas:FindFirstChild("MenuBar")
 local viewBtn = Instance.new("TextButton"); viewBtn.Name = "View"; viewBtn.Text = "View"; viewBtn.Parent = menuBar
@@ -126,20 +132,25 @@ if lugBtn then
   end
 end
 
-print("\n== Botões X injetados no Ribbon ==")
-local xpart = ribbon:FindFirstChild("ArkherX_Part", true)
-local xbase = ribbon:FindFirstChild("ArkherX_Base", true)
-local xunion = ribbon:FindFirstChild("ArkherX_Union", true)
-local xneg = ribbon:FindFirstChild("ArkherX_Negate", true)
-local xtool = ribbon:FindFirstChild("ArkherX_Toolbox", true)
-check(xpart and xbase and xunion and xneg and xtool, "5 botões X injetados (Part/Base/Union/Negate/Toolbox)")
+print("\n== XBar real (6 botões, GUIX) ==")
+local bar = host:FindFirstChild("ArkherXBar")
+check(bar ~= nil, "ArkherXBar existe no host")
+local xpart = bar and bar:FindFirstChild("ArkherX_Part")
+local xbase = bar and bar:FindFirstChild("ArkherX_Base")
+local xunion = bar and bar:FindFirstChild("ArkherX_Union")
+local xneg = bar and bar:FindFirstChild("ArkherX_Negate")
+local xtool = bar and bar:FindFirstChild("ArkherX_Toolbox")
+local xlaunch = bar and bar:FindFirstChild("ArkherX_Launcher")
+check(xpart and xbase and xunion and xneg and xtool and xlaunch, "6 botões X reais (Part/Base/Union/Negate/Toolbox/X)")
 check(xpart and xpart:IsA("GuiButton"), "ArkherX_Part é botão clicável")
+check(xpart and xpart:FindFirstChild("Icon") and xpart:FindFirstChild("Caption"), "botão tem Icon + Caption reais")
 
-print("\n== Submenu PART (7 formas) ==")
+print("\n== Submenu PART (7 formas reais) ==")
+local hostPopups = host:FindFirstChild("ServerEditorPopups")
 if xpart then
   xpart.Activated:Fire()
-  local sh = popups:FindFirstChild("ArkherShapesPopup")
-  check(sh ~= nil, "PART ▸ abre o popup de formas")
+  local sh = hostPopups and hostPopups:FindFirstChild("ArkherShapesPopup")
+  check(sh ~= nil and sh.Visible == true, "PART ▸ mostra o popup de formas real")
   if sh then
     local rows = {}
     for _, d in ipairs(sh:GetChildren()) do if d:IsA("GuiButton") then rows[#rows + 1] = d end end

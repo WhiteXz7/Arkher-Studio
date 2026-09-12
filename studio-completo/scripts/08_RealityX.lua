@@ -33,19 +33,26 @@ local function msgOf(res) return (type(res) == "table" and (res.msg or "")) or t
 
 -- ponte com o editor NATIVO (hierarchy/properties/criacao/publish) via ClientBus
 local studioUI = script:FindFirstAncestorOfClass("ScreenGui")
+-- 01_Nucleo cria em ArkherServerClientRuntime/ClientBus (caminho em pasta); direto só fallback
+local function findBus()
+	if not studioUI then return nil end
+	local rt = studioUI:FindFirstChild("ArkherServerClientRuntime")
+	local f = rt and rt:FindFirstChild("ClientBus") or nil
+	return f or studioUI:FindFirstChild("ClientBus")
+end
 local clientBus
 do
 	local ok, b = pcall(function()
 		if not studioUI then return nil end
-		return studioUI:WaitForChild("ClientBus", 25)
+		local rt = studioUI:WaitForChild("ArkherServerClientRuntime", 25)
+		local f = rt and rt:WaitForChild("ClientBus", 25)
+		return f or studioUI:WaitForChild("ClientBus", 2)
 	end)
 	if ok then clientBus = b end
 end
 local function bridge(action, payload)
 	if not clientBus then
-		local ok, b = pcall(function()
-			return studioUI and studioUI:FindFirstChild("ClientBus") or nil
-		end)
+		local ok, b = pcall(findBus)
 		if ok and b then clientBus = b end
 		if not clientBus then return nil, "ClientBus indisponivel (o nucleo nativo ainda nao subiu)" end
 	end
@@ -64,23 +71,24 @@ local function bridgeResult(action, payload)
 	return r
 end
 
--- ---------- ScreenGui ----------
-local gui = Instance.new("ScreenGui")
-gui.Name = "ArkherDeck"
-gui.ResetOnSpawn = false
-gui.DisplayOrder = 68
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
-
--- frame raiz para escala adaptativa (mobile/diversos dispositivos)
-local deckHost = Instance.new("Frame")
-deckHost.Name = "DeckHost"
-deckHost.Size = UDim2.fromScale(1, 1)
-deckHost.BackgroundTransparency = 1
-deckHost.Parent = gui
-local deckScale = Instance.new("UIScale")
-deckScale.Scale = 1
-deckScale.Parent = deckHost
+-- ---------- host GUIX (Canvas/ArkherXDeck — instâncias REAIS no .rbxl) ----------
+local gui = studioUI -- a UI NATIVA; o deck mora dentro do Canvas
+local canvas = studioUI and studioUI:WaitForChild("Canvas", 25)
+local deckHost = canvas and canvas:WaitForChild("ArkherXDeck", 25)
+if not deckHost then -- fallback: ambiente sem o host assado (teste isolado)
+	deckHost = Instance.new("Frame")
+	deckHost.Name = "ArkherXDeck"
+	deckHost.Size = UDim2.fromScale(1, 1)
+	deckHost.BackgroundTransparency = 1
+	deckHost.Parent = canvas
+end
+local deckScale = deckHost:FindFirstChildOfClass("UIScale")
+if not deckScale then
+	deckScale = Instance.new("UIScale")
+	deckScale.Name = "DeckScale"
+	deckScale.Scale = 1
+	deckScale.Parent = deckHost
+end
 local function updateDeckScale()
 	local vp = gui.AbsoluteSize
 	local w = vp.X
@@ -96,24 +104,67 @@ end)
 gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateDeckScale)
 
 -- ---------- base de widgets (cada painel usa, mas o LAYOUT é dele) ----------
+-- ADOÇÃO GUIX: durante o build, B() REUSA a instância estática do .rbxl
+-- (por Name, ou n-ésimo filho da classe em ordem de criação); fora do build
+-- (runtime: linhas de log, dots, popups) sempre cria novo. Texto inicial é
+-- reaplicado p/ semântica idêntica à produção; o resto já está assado.
+local BUILDING = true
+local __adoptCursor = {}
+local function __adoptFind(parent, cls, name)
+	if name then
+		local f = parent:FindFirstChild(name)
+		if f and f:IsA(cls) then return f end
+		return nil
+	end
+	local cur = __adoptCursor[parent]
+	if not cur then cur = {} __adoptCursor[parent] = cur end
+	local i = (cur[cls] or 0) + 1
+	cur[cls] = i
+	local n = 0
+	for _, ch in ipairs(parent:GetChildren()) do
+		if ch:IsA(cls) then
+			n = n + 1
+			if n == i then return ch end
+		end
+	end
+	return nil
+end
+local function __findOrNew(parent, cls)
+	local f = parent:FindFirstChildOfClass(cls)
+	if f then return f end
+	local o = Instance.new(cls)
+	o.Parent = parent
+	return o
+end
 local function B(cls, props, parent)
+	props = props or {}
+	if BUILDING and parent then
+		local f = __adoptFind(parent, cls, props.Name)
+		if f then
+			if props.Text ~= nil and (cls == "TextLabel" or cls == "TextButton" or cls == "TextBox") then
+				f.Text = props.Text
+			end
+			if props.PlaceholderText ~= nil and cls == "TextBox" then
+				f.PlaceholderText = props.PlaceholderText
+			end
+			return f
+		end
+	end
 	local o = Instance.new(cls)
 	for k, v in pairs(props) do o[k] = v end
 	o.Parent = parent
 	return o
 end
 local function H(o, r)
-	local c = Instance.new("UICorner")
+	local c = __findOrNew(o, "UICorner")
 	c.CornerRadius = UDim.new(0, r or 7)
-	c.Parent = o
 	return o
 end
 local function ST(o, th, col)
-	local s0 = Instance.new("UIStroke")
+	local s0 = __findOrNew(o, "UIStroke")
 	s0.Thickness = th or 1
 	s0.Color = col or Color3.fromRGB(52, 80, 120)
 	s0.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	s0.Parent = o
 	return o
 end
 local function makeDraggable(frame, handle)
@@ -153,7 +204,7 @@ local function mkWin(id, title, w, h, th)
 		BorderSizePixel = 0, ZIndex = 38, Active = false,
 	}, f)
 	H(shw, (th.cr or 10) + 4)
-	local cap = B("Frame", { Size = UDim2.new(1, 0, 0, 30), BackgroundColor3 = th.cap, BorderSizePixel = 0, ZIndex = 41 }, f)
+	local cap = B("Frame", { Name = "Cap", Size = UDim2.new(1, 0, 0, 30), BackgroundColor3 = th.cap, BorderSizePixel = 0, ZIndex = 41 }, f)
 	H(cap, th.cr or 10)
 	B("Frame", { Name = "CapFill", Size = UDim2.new(1, 0, 0, 15), Position = UDim2.fromOffset(0, 15),
 		BackgroundColor3 = th.cap, BorderSizePixel = 0, ZIndex = 41 }, cap)
@@ -163,17 +214,17 @@ local function mkWin(id, title, w, h, th)
 		BackgroundColor3 = th.acc, BorderSizePixel = 0, ZIndex = 43 }, cap)
 	H(grip, 2)
 	B("TextLabel", {
-		Size = UDim2.new(1, -80, 1, 0), Position = UDim2.fromOffset(18, 0),
+		Name = "Title", Size = UDim2.new(1, -80, 1, 0), Position = UDim2.fromOffset(18, 0),
 		BackgroundTransparency = 1, Text = title, Font = Enum.Font.GothamBold,
 		TextSize = 13, TextColor3 = th.text, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 42,
 	}, cap)
 	local tag = B("TextLabel", {
-		Size = UDim2.fromOffset(120, 30), Position = UDim2.new(1, -160, 0, 0),
+		Name = "Tag", Size = UDim2.fromOffset(120, 30), Position = UDim2.new(1, -160, 0, 0),
 		BackgroundTransparency = 1, Text = th.tag or "", Font = Enum.Font.Gotham,
 		TextSize = 10, TextColor3 = th.muted, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 42,
 	}, cap)
 	local cls = B("TextButton", {
-		Size = UDim2.fromOffset(22, 20), Position = UDim2.new(1, -27, 0, 5),
+		Name = "Close", Size = UDim2.fromOffset(22, 20), Position = UDim2.new(1, -27, 0, 5),
 		BackgroundColor3 = th.bg2 or th.cap, Text = "✕", Font = Enum.Font.GothamBold,
 		TextSize = 11, TextColor3 = th.muted, BorderSizePixel = 0, ZIndex = 43,
 	}, cap)
@@ -184,7 +235,7 @@ local function mkWin(id, title, w, h, th)
 	cls.Activated:Connect(function() f.Visible = false end)
 	makeDraggable(f, cap)
 	local body = B("Frame", {
-		Size = UDim2.new(1, 0, 1, -30), Position = UDim2.fromOffset(0, 30),
+		Name = "Body", Size = UDim2.new(1, 0, 1, -30), Position = UDim2.fromOffset(0, 30),
 		BackgroundTransparency = 1, ZIndex = 41,
 	}, f)
 	-- estado inicial: esconder junto
@@ -345,9 +396,8 @@ local function listCtl(parent, pos, size, th)
 	}, parent)
 	H(fr, 7)
 	ST(fr, 1, th.edge)
-	local lay = Instance.new("UIListLayout")
+	local lay = __findOrNew(fr, "UIListLayout")
 	lay.Padding = UDim.new(0, 3)
-	lay.Parent = fr
 	return fr
 end
 
@@ -1143,9 +1193,8 @@ local function buildFabricar(win)
 		BackgroundColor3 = th.bg2, BorderSizePixel = 0, ZIndex = 43,
 	}, body)
 	H(famList, 7) ST(famList, 1, th.edge)
-	local flay = Instance.new("UIListLayout")
+	local flay = __findOrNew(famList, "UIListLayout")
 	flay.Padding = UDim.new(0, 2)
-	flay.Parent = famList
 
 	B("TextLabel", {
 		Size = UDim2.fromOffset(190, 14), Position = UDim2.fromOffset(168, 8),
@@ -2190,7 +2239,7 @@ local function buildToolbox(win)
 		TextXAlignment = Enum.TextXAlignment.Left, ClearTextOnFocus = false, ZIndex = 43,
 	}, body)
 	H(searchBox, 6)
-	local pad = Instance.new("UIPadding") pad.PaddingLeft = UDim.new(0, 8) pad.Parent = searchBox
+	local pad = __findOrNew(searchBox, "UIPadding") pad.PaddingLeft = UDim.new(0, 8)
 	local kindBtn = B("TextButton", {
 		Size = UDim2.fromOffset(110, 26), Position = UDim2.new(1, -264, 0, 38),
 		BackgroundColor3 = th.bg3, Text = "modelos ▾", Font = Enum.Font.GothamBold,
@@ -2500,7 +2549,7 @@ local function buildProps(win)
 		ClearTextOnFocus = false, ZIndex = 43,
 	}, body)
 	H(filterBox, 6)
-	local padf = Instance.new("UIPadding") padf.PaddingLeft = UDim.new(0, 8) padf.Parent = filterBox
+	local padf = __findOrNew(filterBox, "UIPadding") padf.PaddingLeft = UDim.new(0, 8)
 	local refreshB = B("TextButton", {
 		Size = UDim2.fromOffset(96, 22), Position = UDim2.fromOffset(238, 30),
 		BackgroundColor3 = th.acc, Text = "ATUALIZAR", Font = Enum.Font.GothamBold,
@@ -3145,8 +3194,8 @@ local function buildComando(win)
 		ScrollBarThickness = 6, ScrollBarImageColor3 = th.acc, ZIndex = 43,
 	}, body)
 	H(outBox, 6)
-	local layO = Instance.new("UIListLayout") layO.Padding = UDim.new(0, 2) layO.Parent = outBox
-	local padO = Instance.new("UIPadding") padO.PaddingLeft = UDim.new(0, 6) padO.PaddingTop = UDim.new(0, 4) padO.Parent = outBox
+	local layO = __findOrNew(outBox, "UIListLayout") layO.Padding = UDim.new(0, 2)
+	local padO = __findOrNew(outBox, "UIPadding") padO.PaddingLeft = UDim.new(0, 6) padO.PaddingTop = UDim.new(0, 4)
 	local function sayOut(t2, col)
 		B("TextLabel", {
 			Size = UDim2.new(1, -12, 0, 16),
@@ -3178,12 +3227,12 @@ local function buildComando(win)
 		TextXAlignment = Enum.TextXAlignment.Left, ClearTextOnFocus = false, ZIndex = 43,
 	}, body)
 	H(input, 7)
-	local padI = Instance.new("UIPadding") padI.PaddingLeft = UDim.new(0, 10) padI.Parent = input
+	local padI = __findOrNew(input, "UIPadding") padI.PaddingLeft = UDim.new(0, 10)
 
 	local function repaintHist()
 		for _, c0 in ipairs(histFrame:GetChildren()) do if c0:IsA("GuiObject") then c0:Destroy() end end
 		histFrame.Size = UDim2.fromOffset(1, 24)
-		local layH = Instance.new("UIListLayout") layH.FillDirection = Enum.FillDirection.Horizontal layH.Padding = UDim.new(0, 4) layH.Parent = histFrame
+		local layH = __findOrNew(histFrame, "UIListLayout") layH.FillDirection = Enum.FillDirection.Horizontal layH.Padding = UDim.new(0, 4)
 		for i = math.max(1, #hist - 5), #hist do
 			local hstr = hist[i]
 			local btn = B("TextButton", {
@@ -3427,7 +3476,7 @@ local function buildScripts(win)
 		BorderSizePixel = 0, ZIndex = 43, RichText = false,
 	}, body)
 	H(editor, 6)
-	local padE = Instance.new("UIPadding") padE.PaddingLeft = UDim.new(0, 8) padE.PaddingTop = UDim.new(0, 6) padE.Parent = editor
+	local padE = __findOrNew(editor, "UIPadding") padE.PaddingLeft = UDim.new(0, 8) padE.PaddingTop = UDim.new(0, 6)
 
 	local infoBar = B("TextLabel", {
 		Size = UDim2.new(1, -(ED_X + 10), 0, 18), Position = UDim2.new(0, ED_X, 1, -60),
@@ -3450,7 +3499,7 @@ local function buildScripts(win)
 
 	local function repaintTabs()
 		for _, c0 in ipairs(tabsBar:GetChildren()) do if c0:IsA("GuiObject") then c0:Destroy() end end
-		local lay = Instance.new("UIListLayout") lay.FillDirection = Enum.FillDirection.Horizontal lay.Padding = UDim.new(0, 4) lay.Parent = tabsBar
+		local lay = __findOrNew(tabsBar, "UIListLayout") lay.FillDirection = Enum.FillDirection.Horizontal lay.Padding = UDim.new(0, 4)
 		for i, t2 in ipairs(tabs) do
 			local tb = B("TextButton", {
 				Size = UDim2.fromOffset(math.clamp(#t2.name * 8 + 52, 90, 190), 0, 26),
@@ -3649,8 +3698,8 @@ local function buildPy(win)
 		ScrollBarThickness = 6, ScrollBarImageColor3 = th.acc, ZIndex = 43,
 	}, body)
 	H(outScr, 6)
-	local layO = Instance.new("UIListLayout") layO.Padding = UDim.new(0, 2) layO.Parent = outScr
-	local padO = Instance.new("UIPadding") padO.PaddingLeft = UDim.new(0, 6) padO.PaddingTop = UDim.new(0, 4) padO.Parent = outScr
+	local layO = __findOrNew(outScr, "UIListLayout") layO.Padding = UDim.new(0, 2)
+	local padO = __findOrNew(outScr, "UIPadding") padO.PaddingLeft = UDim.new(0, 6) padO.PaddingTop = UDim.new(0, 4)
 	local function sayOut(t2, col)
 		B("TextLabel", {
 			Size = UDim2.new(1, -12, 0, 15), BackgroundTransparency = 1,
@@ -3693,7 +3742,7 @@ local function buildPy(win)
 			BorderSizePixel = 0, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 43,
 		}, body)
 		H(btn, 6)
-		local padB = Instance.new("UIPadding") padB.PaddingLeft = UDim.new(0, 8) padB.Parent = btn
+		local padB = __findOrNew(btn, "UIPadding") padB.PaddingLeft = UDim.new(0, 8)
 		btn.MouseButton1Click:Connect(function()
 			runTask(t2[1], t2[2])
 		end)
@@ -3706,7 +3755,7 @@ local function buildPy(win)
 		TextXAlignment = Enum.TextXAlignment.Left, ClearTextOnFocus = false, ZIndex = 43,
 	}, body)
 	H(cmdBox, 6)
-	local padC = Instance.new("UIPadding") padC.PaddingLeft = UDim.new(0, 8) padC.Parent = cmdBox
+	local padC = __findOrNew(cmdBox, "UIPadding") padC.PaddingLeft = UDim.new(0, 8)
 	cmdBox.FocusLost:Connect(function(enter)
 		if not enter or cmdBox.Text == "" then return end
 		if not conn.ok then log("⚠ pybridge offline") return end
@@ -3885,7 +3934,7 @@ local function buildGrupos(win)
 		TextXAlignment = Enum.TextXAlignment.Left, ClearTextOnFocus = false, ZIndex = 43,
 	}, body)
 	H(nmBox, 5)
-	local padn = Instance.new("UIPadding") padn.PaddingLeft = UDim.new(0, 8) padn.Parent = nmBox
+	local padn = __findOrNew(nmBox, "UIPadding") padn.PaddingLeft = UDim.new(0, 8)
 	actBtn(body, UDim2.fromOffset(196, 208), UDim2.fromOffset(104, 24), "CRIAR", th, function()
 		local res, err = bridgeResult("ColGroupCreate", { name = nmBox.Text })
 		if not res then log("⚠ " .. tostring(err)) else log(res.msg or "criado") reload() end
@@ -4049,4 +4098,5 @@ _G.ArkherDeck = {
 	end,
 	cmd = cmd,
 }
+BUILDING = false -- a partir daqui (runtime) B() sempre cria novo
 print("[ArkherX] 08_Deck: 23 painéis prontos (em diante: +SCULPT/GRUPOS/PLUGINS com backend real) — escala adaptativa p/ mobile")
