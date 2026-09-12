@@ -16,6 +16,7 @@ PyBridge externo: pybridge.py + rbxlx.py + test_rbxlx.py + README.
 2) RIBBON (abertura automática por aba; 11 abas, 11 páginas, 88 botões)
 ------------------------------------------------------------
 HOME: Play Pause Stop | Plugins Save Open | Undo Redo Palette (Cloud -> aba DATA)
+Feedback a prova de "nada aparece": todo toast (say) tambem imprime no log ([ArkherX] SAY ...); boot imprime build MOVE-CLOUD-DATA.
   Search Toolbox Settings | Status Places History
 BUILD: Select Move Rotate Scale | Part Model Folder Script | Material
   Mesh Modeler Fabricar | Insert Base Union Negate

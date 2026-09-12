@@ -36,6 +36,13 @@ local popupsBox = host:WaitForChild("ServerEditorPopups", 10)
 -- ---------- toast ----------
 local toastTok = 0
 local function say(text)
+	if not toast or not toastLbl then
+		pcall(function()
+			toast = host and host:FindFirstChild("ArkherMsg", true) or toast
+			toastLbl = toast and toast:FindFirstChild("MsgLbl", true) or toastLbl
+		end)
+	end
+	print("[ArkherX] SAY " .. tostring(text))
 	if not toast or not toastLbl then return end
 	toastTok = toastTok + 1
 	local mine = toastTok
@@ -336,6 +343,7 @@ if strip and ribbon then
 	pcall(function() top.Visible = true end)
 	selectTab("HOME")
 	print("[ArkherX] 05_Shell: abas + ribbon ligados.")
+	print("[ArkherX] 05 build 2026-09-12/MOVE-CLOUD-DATA (HOME sem cloud, DATA_Cloud=CloudQuick).")
 else
 	warn("[ArkherX] 05: TabStrip/Ribbon ausentes.")
 end
