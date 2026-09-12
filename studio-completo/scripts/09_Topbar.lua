@@ -96,8 +96,21 @@ local function findTemplate()
 end
 local template = findTemplate()
 if not template then
-	warn("[ArkherX] 09: nenhum botão-molde no Ribbon.")
-	return end
+	warn("[ArkherX] 09: ribbon sem molde — criando botões sintéticos (nunca mais 'sumir').")
+	template = Instance.new("TextButton")
+	template.Name = "_ArkherSyntheticTemplate"
+	template.Size = UDim2.fromOffset(64, 56)
+	template.BackgroundTransparency = 1
+	template.Text = ""
+	template.Visible = false
+	local ic = Instance.new("Frame")
+	ic.Name = "Icon"
+	ic.BackgroundTransparency = 1
+	ic.Size = UDim2.fromOffset(16, 16)
+	ic.Position = UDim2.new(0.5, -8, 0, 8)
+	ic.Parent = template
+	template.Parent = ribbon
+end
 
 -- ---------- mini-art 16px (mesma linguagem dos ícones do estúdio) ----------
 local function drawIcon16(kind, parent, zi)
@@ -258,7 +271,7 @@ local function injectButton(nm, caption, kind, onClick, order)
 	end
 	if not hadCaption then
 		b.Text = caption
-		b.TextSize = math.max(math.min(b.TextSize, 11), 9)
+		pcall(function() b.TextSize = math.max(math.min(b.TextSize, 11), 9) end)
 	end
 	for _, d in ipairs(b:GetDescendants()) do
 		if d:IsA("TextLabel") and d.Name:lower():find("cap") == nil and #d.Text <= 2 then

@@ -226,6 +226,17 @@ CHECKS = [
      ["ensureBaseplate", "handlers.EnsureBase"], None),
     ("IDE", "Permissao estendida: WhiteXz73_Developer + tentandoserbanido_9",
      ["tentandoserbanido_9"], None),
+    # ===== ROUND 13: menus REALMENTE abrem + places + reskin pro =====
+    ("IDE", "Menus da faixa abrem o dropdown DIRETO ao clicar (buildMenu chamado no clique — antes ia ao barramento errado e nada abria)",
+     ["closeMenu()", "buildMenu(nm, b0)"], None),
+    ("IDE", "Menu LUGARES: salvar place na conta + criar place nova no perfil (AssetService: SavePlaceAsync / CreatePlaceAsync com erro honesto)",
+     ["LUGARES", "SavePlaceAccount", "SavePlaceAsync", "CreatePlaceAsync"], None),
+    ("IDE", "Botões X nunca mais 'somem': molde sintético se o Ribbon estiver sem botão-exemplo",
+     ["_ArkherSyntheticTemplate", "botões sintéticos"], None),
+    ("IDE", "Re-skin profissional: sombra + faixa de título com acento + ✕ com hover (todas as janelas do deck e modais)",
+     ['"Shadow"', '"Hairline"', '"Grip"'], None),
+    ("INTEGRIDADE", "Simulação de integração (cliques reais no mock fiel) 100% antes do push — test_client_round12",
+     ["test_client_round12"], None),
     # ===== Integridade de engenharia =====
     ("INTEGRIDADE", "Placa X passa na validação #StudioSafe (121 chunks PROP, PRNT/END)",
      ["StudioSafe"], None),

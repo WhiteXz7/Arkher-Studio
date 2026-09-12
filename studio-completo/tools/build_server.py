@@ -1757,6 +1757,16 @@ function handlers.CreateAny(player, payload)
 	return { id = idOf[o], className = class, parent = parent:GetFullName(), msg = class .. " criado em " .. parent.Name .. " (selecionado)." }
 end
 
+function handlers.SavePlace(player, payload)
+	local okS, ret = pcall(function()
+		return game:GetService("AssetService"):SavePlaceAsync()
+	end)
+	if not okS then
+		return { error = "SavePlaceAsync recusou (jogo precisa estar PUBLICADO e ser seu): " .. tostring(ret) }
+	end
+	return { msg = "PLACE SALVA na sua conta de verdade (AssetService:SavePlaceAsync executado)." }
+end
+
 print("[ArkherProps] CLASSDB pronta: " .. tostring(#CATALOG_ITEMS) .. " classes no catálogo + PropsAll/SetAny/CreateAny ativos")
 '''
 

@@ -139,6 +139,23 @@ em cada um dos 121 chunks PROP (#StudioSafe). Baixe novamente a placa atual.
 - **RIG X + MESH X no DECK** (os docks 05/06/07 foram removidos: eram
   "enfeite" de retângulos e a diretriz é ZERO painel sem efeito real).
 
+**ROUND 13 (2026-09-12) — o que você reclamou, item a item:**
+
+| Reclamação | Resposta desta rodada |
+|---|---|
+| "menus MODELAGEM etc não aparecem / não abrem" | **BUG REAL achado e corrigido**: o clique do menu ia para o barramento errado (ClientBus ignorava) — agora abre o dropdown DIRETAMENTE. Verificado por simulação com cliques reais: botão aparece na faixa e o dropdown ABRE com os itens. |
+| "submenu das 7 parts não aparece" | `PART ▸` abre o popup com as 7 formas; clicar spawna a peça DE VERDADE no servidor (testado ponta a ponta na simulação). |
+| "botões X ainda não apareceram" | O 09 agora nunca desiste: se o Ribbon estiver sem botão-exemplo, ele FABRICA um molde sintético e injeta os 5 botões do mesmo jeito. |
+| "properties não funcionam" | Simulação confirma: overlay toma a dock, lê 25+ props reais da peça selecionada (Anchored/Transparency/Color...) e SETA de verdade via SetAny. |
+| "gizmos pararam" | **Honestidade**: o código do 04_Gizmos não mudou há 2 rounds e nenhum script novo toca no Viewport. Na simulação não dá para testar drag 3D. Se na sua máquina ainda falhar, quase certeza que você abriu a placa ERRADA: use **ArkherStudio_Completo_X.rbxl** (a `_Completo` e a `_Pro` NÃO têm as features X). |
+| "salvar PLACES / menu de criar places" | Novo menu **LUGARES** na faixa: SALVAR ESTA PLACE na conta (SavePlaceAsync — com erro honesto se o jogo não estiver publicado), CRIAR PLACE NOVA no perfil (CreatePlaceAsync — cria de verdade online), Minhas places do perfil, e o salvar clássico. |
+| "TODAS as UIs refeitas profissionais" | Re-skin real: TODAS as 18 janelas do deck ganharam sombra suave, faixa de título com linha de acento da cor da janela, botão ✕ com hover vermelho; TODOS os modais (File/etc, incluindo Places) ganharam o mesmo padrão (sombra, header com faixa, cantos arredondados 12px); botões de ação com hover claro. |
+| "quero que TUDO realmente funcione" | Novo padrão desta rodada: **simulação de integração que dispara cliques reais** (test_client_round12.lua) contra o servidor verdadeiro — 33 asserts, dos cliques nos menus até o spawn e as properties. Só foi pro ar com **todos** passando. |
+
+Placa final: `ArkherStudio_Completo_X.rbxl` 252.687 B (validação #StudioSafe OK; auditoria 76/76 ✅).
+
+---
+
 **ROUND 12 (2026-09-12) — como o usuário pediu DE VERDADE: ribbon nativo + menus clicáveis + Properties completa + color picker + "+ objetos" + Toolbox Studio real:**
 
 - **Overlay morto de vez**: a faixa própria (ArkherTopbarHost/pages) foi

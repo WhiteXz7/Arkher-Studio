@@ -146,10 +146,24 @@ local function mkWin(id, title, w, h, th)
 	}, deckHost)
 	H(f, th.cr or 10)
 	ST(f, 1.2, th.edge)
+	-- re-skin ROUND 13: sombra + faixa com acento da janela
+	local shw = B("Frame", {
+		Name = "Shadow", Size = UDim2.fromOffset(w, h), Position = UDim2.fromOffset(6, 8),
+		BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = 0.84,
+		BorderSizePixel = 0, ZIndex = 38, Active = false,
+	}, f)
+	H(shw, (th.cr or 10) + 4)
 	local cap = B("Frame", { Size = UDim2.new(1, 0, 0, 30), BackgroundColor3 = th.cap, BorderSizePixel = 0, ZIndex = 41 }, f)
 	H(cap, th.cr or 10)
+	B("Frame", { Name = "CapFill", Size = UDim2.new(1, 0, 0, 15), Position = UDim2.fromOffset(0, 15),
+		BackgroundColor3 = th.cap, BorderSizePixel = 0, ZIndex = 41 }, cap)
+	B("Frame", { Name = "Hairline", Size = UDim2.new(1, 0, 0, 1), Position = UDim2.fromOffset(0, 29),
+		BackgroundColor3 = th.edge, BorderSizePixel = 0, ZIndex = 42 }, cap)
+	local grip = B("Frame", { Name = "Grip", Size = UDim2.fromOffset(3, 14), Position = UDim2.fromOffset(9, 8),
+		BackgroundColor3 = th.acc, BorderSizePixel = 0, ZIndex = 43 }, cap)
+	H(grip, 2)
 	B("TextLabel", {
-		Size = UDim2.new(1, -80, 1, 0), Position = UDim2.fromOffset(12, 0),
+		Size = UDim2.new(1, -80, 1, 0), Position = UDim2.fromOffset(18, 0),
 		BackgroundTransparency = 1, Text = title, Font = Enum.Font.GothamBold,
 		TextSize = 13, TextColor3 = th.text, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 42,
 	}, cap)
@@ -159,12 +173,15 @@ local function mkWin(id, title, w, h, th)
 		TextSize = 10, TextColor3 = th.muted, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 42,
 	}, cap)
 	local cls = B("TextButton", {
-		Size = UDim2.fromOffset(24, 20), Position = UDim2.new(1, -28, 0, 5),
-		BackgroundColor3 = th.bg2 or th.cap, Text = "x", Font = Enum.Font.GothamBold,
-		TextSize = 12, TextColor3 = th.muted, BorderSizePixel = 0, ZIndex = 42,
+		Size = UDim2.fromOffset(22, 20), Position = UDim2.new(1, -27, 0, 5),
+		BackgroundColor3 = th.bg2 or th.cap, Text = "✕", Font = Enum.Font.GothamBold,
+		TextSize = 11, TextColor3 = th.muted, BorderSizePixel = 0, ZIndex = 43,
 	}, cap)
 	H(cls, 5)
+	cls.MouseEnter:Connect(function() cls.BackgroundColor3 = Color3.fromRGB(190, 70, 64) cls.TextColor3 = Color3.fromRGB(255, 244, 244) end)
+	cls.MouseLeave:Connect(function() cls.BackgroundColor3 = th.bg2 or th.cap cls.TextColor3 = th.muted end)
 	cls.MouseButton1Click:Connect(function() f.Visible = false end)
+	cls.Activated:Connect(function() f.Visible = false end)
 	makeDraggable(f, cap)
 	local body = B("Frame", {
 		Size = UDim2.new(1, 0, 1, -30), Position = UDim2.fromOffset(0, 30),
@@ -184,6 +201,10 @@ local function actBtn(parent, posTxt, wTxt, label, th, fn, order)
 	}, parent)
 	H(b0, 6)
 	ST(b0, 1, th.edge)
+	-- hover: clareia 14% (re-skin ROUND 13)
+	local function lift(c, k) return Color3.new(c.R + (1 - c.R) * k, c.G + (1 - c.G) * k, c.B + (1 - c.B) * k) end
+	b0.MouseEnter:Connect(function() b0.BackgroundColor3 = lift(th.act, 0.16) end)
+	b0.MouseLeave:Connect(function() b0.BackgroundColor3 = th.act end)
 	local busy = false
 	b0.MouseButton1Click:Connect(function()
 		if busy then return end

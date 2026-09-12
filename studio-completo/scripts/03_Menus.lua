@@ -362,6 +362,12 @@ actions.GameProperties = function()
 end
 
 -- ---- TOPOS ----
+actions.SavePlaceAccount = function()
+  local r, e = api("SavePlace", {})
+  if e then say("Salvar place: " .. e, true)
+  elseif r and r.result and r.result.error then say(r.result.error, true)
+  elseif r and r.result then say(r.result.msg or "Place salva na sua conta!") end
+end
 actions.PlacesProfile = function() openPlacesPanel() end
 actions.Collaborate = function()
   W("Info", { title = "Colaboração", text = "Colaboração em tempo real com convites e presença.\nEste build roda como editor local de um jogador.\nA arquitetura já isola servidor/cliente para escalar para multi-jogador." })
@@ -730,19 +736,41 @@ local function closeCurrentPanel()
 end
 local function modalDialog(title, w, h)
   closeCurrentPanel()
-  local d = frame("ArkherPanel", ad, UDim2.fromOffset(0, 0), UDim2.fromOffset(w or 640, h or 540), m.panel, 0)
+  w = w or 640 h = h or 540
+  local d = frame("ArkherPanel", ad, UDim2.fromOffset(0, 0), UDim2.fromOffset(w, h), m.panel, 0)
   d.AnchorPoint = Vector2.new(0.5, 0.5)
   d.Position = UDim2.fromScale(0.5, 0.5)
   d.ZIndex = 40
   d.Active = true
-  corner(d, 10)
+  corner(d, 12)
   stroke(d, m.border, 1.5)
-  label("Title", d, title, 20, 12, 400, 22, 22, m.text)
-  local close = button("Close", d, UDim2.new(1, -40, 0, 12), UDim2.fromOffset(30, 30), "×", m.muted)
-  close.TextSize = 26
+  -- sombra suave (re-skin ROUND 13)
+  local sh = frame("Shadow", d, UDim2.fromOffset(7, 9), UDim2.fromOffset(w, h), Color3.fromRGB(0, 0, 0), 0.82)
+  sh.ZIndex = 38
+  corner(sh, 14)
+  -- faixa de título profissional
+  local hd = frame("Header", d, UDim2.fromOffset(0, 0), UDim2.new(1, 0, 0, 44), m.section, 0.12)
+  corner(hd, 12)
+  hd.ZIndex = 41
+  frame("HeaderFill", hd, UDim2.fromOffset(0, 22), UDim2.new(1, 0, 0, 22), m.section, 0.12).ZIndex = 41
+  frame("Hairline", hd, UDim2.fromOffset(0, 43), UDim2.new(1, 0, 0, 1), m.border, 0.25).ZIndex = 42
+  local grip = frame("Grip", hd, UDim2.fromOffset(12, 13), UDim2.fromOffset(4, 18), m.cyan, 0)
+  corner(grip, 2)
+  grip.ZIndex = 42
+  local t = label("Title", hd, title, 24, 11, w - 70, 22, 17, m.text)
+  t.Font = Enum.Font.GothamBold
+  t.ZIndex = 42
+  local close = button("Close", hd, UDim2.new(1, -36, 0, 10), UDim2.fromOffset(24, 24), "✕", m.muted)
+  close.TextSize = 13
+  close.Font = Enum.Font.GothamBold
+  close.ZIndex = 43
+  corner(close, 5)
+  close.MouseEnter:Connect(function() close.BackgroundColor3 = m.error close.TextColor3 = Color3.fromRGB(20, 10, 10) end)
+  close.MouseLeave:Connect(function() close.BackgroundColor3 = m.muted close.TextColor3 = m.text end)
   close.Activated:Connect(function() closeCurrentPanel() end)
+  close.MouseButton1Click:Connect(function() closeCurrentPanel() end)
   currentPanel = d
-  local body = frame("Body", d, UDim2.fromOffset(20, 52), UDim2.new(1, -40, 1, -68), m.section, 0.55)
+  local body = frame("Body", d, UDim2.fromOffset(16, 56), UDim2.new(1, -32, 1, -72), m.section, 0.55)
   corner(body, 8)
   body.ZIndex = 41
   return d, body
@@ -1392,6 +1420,13 @@ MENUS.MUNDO = {
   { icon = "plus", label = "Gerar planeta (sócio tectônico)…", act = "XOpenTerrainGen" },
   { icon = "Data", label = "Sonda do mundo (bioma/clima/matéria)", act = "XOpenTerrainProbe" },
 }
+MENUS.LUGARES = {
+  { icon = "Save", label = "SALVAR ESTA PLACE na conta…", act = "SavePlaceAccount", tip = "AssetService:SavePlaceAsync — grava a place ATUAL na sua conta (precisa estar publicada)." },
+  { icon = "Cloud", label = "CRIAR PLACE NOVA no perfil…", act = "PlacesProfile", tip = "CreatePlaceAsync — cria um place NOVO de verdade no seu perfil (online)." },
+  { icon = "Folder", label = "Minhas places / jogos do perfil…", act = "PlacesProfile", tip = "Lista places do perfil + duplica + cria nova." },
+  { sep = true },
+  { icon = "Save", label = "Salvar & Publicar (fluxo clássico)", act = "Save", tip = "Mesmo salvar de sempre do menu File." },
+}
 MENUS.MODELAGEM = {
   { icon = "Model", label = "Modeler X (abrir, estilo Blender)", act = "XOpenModeler" },
   { sep = true },
@@ -1598,7 +1633,7 @@ actions.XCordaPonte       = function() deckOpen("cordas", "ponte") end
 
 -- ---- botoes na MenuRow da topbar ORIGINAL (clona estilo do irmao) ----
 do
-  local weekdayALvo = { "MUNDO", "AGUA", "MODELAGEM", "ANIMACAO", "ESPACO", "FABRICAR" }
+  local weekdayALvo = { "MUNDO", "AGUA", "MODELAGEM", "ANIMACAO", "ESPACO", "FABRICAR", "LUGARES" }
   local function findBtn(nm)
     for _, c in ipairs(g:GetDescendants()) do
       if c:IsA("GuiButton") and c.Name == nm then return c end
@@ -1620,7 +1655,10 @@ do
         b0.Parent = row
         pcall(function() b0.LayoutOrder = 100 + i end) -- DEPOIS do GAME
         local function fireMenu()
-          W(nm, { button = b0 })
+          -- ROUND 13: abre DIRETO (o MenusBus 'Menu' é quem mostra o dropdown;
+          -- mandar via ClientBus caía no 'return true' e nada abria — bug real)
+          closeMenu()
+          buildMenu(nm, b0)
         end
         local mLast = 0
         b0.Activated:Connect(function()
@@ -1634,7 +1672,7 @@ do
         end)
       end
     end
-    print("[ArkherX] Menus X na topbar original: MUNDO / ÁGUA / MODELAGEM / ANIMAÇÃO / ESPAÇO / FABRICAR")
+    print("[ArkherX] Menus X na topbar original: MUNDO / ÁGUA / MODELAGEM / ANIMAÇÃO / ESPAÇO / FABRICAR / LUGARES")
   else
     warn("[ArkherX] MenuRow não achada — menus X vivem só via MenusBus")
   end

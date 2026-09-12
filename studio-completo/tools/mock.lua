@@ -83,10 +83,22 @@ function Event:Connect(fn) table.insert(self.handlers,fn) return {Disconnect=fun
 function Event:Fire(...) for _,h in ipairs(self.handlers) do pcall(h,...) end end
 function Event:Wait() return nil end
 
+-- ============ task (schedulador simplificado) ============
+task = {
+  spawn = function(f, ...) if type(f) == "function" then local ok, e = pcall(f, ...) if not ok then warn("[task.spawn] " .. tostring(e)) end end end,
+  defer = function(f, ...) if type(f) == "function" then pcall(f, ...) end end,
+  delay = function(_t, f, ...) if type(f) == "function" then pcall(f, ...) end end,
+  wait = function(_t) return nil end,
+}
+
 -- ============ Instance ============
 local CLASS_SUPER = {
-  Frame="GuiObject", TextLabel="GuiObject", TextButton="GuiObject", TextBox="GuiObject",
-  ScrollingFrame="GuiObject", ScreenGui="LayerCollector", LayerCollector="Instance",
+  Frame="GuiObject", TextLabel="GuiObject", ScrollingFrame="GuiObject",
+  TextButton="GuiButton", ImageButton="GuiButton", GuiButton="GuiObject", TextBox="GuiObject",
+  ImageLabel="GuiObject", ViewportFrame="GuiObject", VideoFrame="GuiObject", CanvasGroup="GuiObject",
+  ScreenGui="LayerCollector", LayerCollector="Instance",
+  BindableFunction="Instance", BindableEvent="Instance", RemoteEvent="Instance", RemoteFunction="Instance",
+  UnreliableRemoteEvent="Instance", UIScale="Instance", WeldConstraint="Instance", Motor6D="Instance",
   UICorner="Instance", UIStroke="Instance", UIGradient="Instance", UIPadding="Instance",
   UIListLayout="Instance", UIGridLayout="Instance", UIAspectRatioConstraint="Instance", UISizeConstraint="Instance",
   Folder="Instance", Model="Instance",
@@ -104,7 +116,8 @@ local CLASS_SUPER = {
 }
 local AUTO_EVENTS = { "AncestryChanged","Changed","Destroying","DescendantAdded","DescendantRemoving",
   "PlayerRemoving","OnServerEvent","PlayerAdded","InputBegan","InputChanged","InputEnded","SelectionChanged",
-  "Activated","MouseEnter","MouseLeave","MouseButton1Click","MouseButton2Click","TouchTap","FocusLost" }
+  "Activated","MouseEnter","MouseLeave","MouseButton1Click","MouseButton2Click","TouchTap","FocusLost",
+  "ChildAdded","ChildRemoved" }
 local fireDescendantAdded, fireDescendantRemoving  -- forward declarations
 local MT = {}
 MT.__index = function(self,k)
@@ -131,12 +144,16 @@ MT.__newindex = function(self,k,v)
     if old then
       local kids = rawget(old,"__children")
       for i=#kids,1,-1 do if kids[i]==self then table.remove(kids,i) end end
-      for _,h in ipairs(rawget(self,"__events").AncestryChanged and rawget(self,"__events").AncestryChanged.handlers or {}) do pcall(h,self,old,nil) end
+      local cr = rawget(old, "__events").ChildRemoved
+      if cr then for _, h in ipairs(cr.handlers) do pcall(h, self) end end
+      for _,h in ipairs(rawget(self, "__events").AncestryChanged and rawget(self, "__events").AncestryChanged.handlers or {}) do pcall(h,self,old,nil) end
     end
     rawget(self,"__props").Parent = v
     if v then
       table.insert(rawget(v,"__children"), self)
       for _,h in ipairs(rawget(self,"__events").AncestryChanged and rawget(self,"__events").AncestryChanged.handlers or {}) do pcall(h,self,v,nil) end
+      local ca = rawget(v, "__events").ChildAdded
+      if ca then for _, h in ipairs(ca.handlers) do pcall(h, self) end end
       -- DescendantAdded no pai (recursivo)
       fireDescendantAdded(v, self)
     end
@@ -183,8 +200,12 @@ local CLASS_DEFAULTS = {
   BasePart = { Transparency=0, Color=Color3.new(1,1,1), Material=Enum.Material.Plastic, Anchored=false,
     CanCollide=true, CanTouch=true, CanQuery=true, CastShadow=true, Locked=false, Reflectance=0 },
   GuiObject = { BackgroundColor3=Color3.new(0,0,0), BackgroundTransparency=0, Active=false, Rotation=0,
+    AbsoluteSize=Vector2.new(0,0), AbsolutePosition=Vector2.new(0,0), AbsoluteRotation=0, ZIndex=1, LayoutOrder=0,
     BorderSizePixel=1, ZIndex=1 },
   TextLabel = { TextColor3=Color3.new(0,0,0), TextSize=14 },
+  TextButton = { TextColor3=Color3.new(1,1,1), TextSize=14, AutoButtonColor=true },
+  TextBox = { TextColor3=Color3.new(1,1,1), TextSize=14, ClearTextOnFocus=true },
+  ImageLabel = { BackgroundTransparency=1 },
   BaseScript = { Enabled=false, Source="" },
   Sound = { Volume=0, Looped=false, PlaybackSpeed=1, SoundId="rbxassetid://0" },
   ValueBase = { Value=nil },
@@ -229,7 +250,38 @@ function METHODS:GetDescendants()
   rec(self)
   return out
 end
-function METHODS:FindFirstChild(n) for _,ch in ipairs(rawget(self,"__children")) do if rawget(ch,"__props").Name==n then return ch end end return nil end
+function METHODS:FindFirstChild(n, recursive)
+  for _,ch in ipairs(rawget(self,"__children")) do
+    if rawget(ch,"__props").Name==n then return ch end
+  end
+  if recursive then
+    for _,ch in ipairs(rawget(self,"__children")) do
+      local r = ch:FindFirstChild(n, true)
+      if r then return r end
+    end
+  end
+  return nil
+end
+function METHODS:FindFirstChildWhichIsA(cls, recursive)
+  for _,ch in ipairs(rawget(self,"__children")) do if ch:IsA(cls) then return ch end end
+  if recursive then
+    for _,ch in ipairs(rawget(self,"__children")) do
+      local r = ch:FindFirstChildWhichIsA(cls, true)
+      if r then return r end
+    end
+  end
+  return nil
+end
+function METHODS:FindFirstAncestor(n)
+  local p = rawget(self,"__parent")
+  while p do if rawget(p,"__props").Name==n then return p end p = rawget(p,"__parent") end
+  return nil
+end
+function METHODS:FindFirstAncestorWhichIsA(cls)
+  local p = rawget(self,"__parent")
+  while p do if p:IsA(cls) then return p end p = rawget(p,"__parent") end
+  return nil
+end
 function METHODS:WaitForChild(n,t) return self:FindFirstChild(n) end
 function METHODS:FindFirstChildOfClass(c) for _,ch in ipairs(rawget(self,"__children")) do if isA(ch,c) then return ch end end return nil end
 function METHODS:FindFirstAncestorOfClass(c)
@@ -283,7 +335,9 @@ function METHODS:InvokeServer(action,payload)
 end
 function METHODS:FireClient() end
 Instance = {}
+local KNOWN_BAD = { ClasseFalsa123 = true, ClassDoesNotExist = true }
 function Instance.new(class, parent)
+  if KNOWN_BAD[class] then error("The current thread cannot create '" .. class .. "' (fake class p/ teste)") end
   local o = mkInstance(class)
   if class == "BindableFunction" then
     o.Invoke = function(self, action, payload)

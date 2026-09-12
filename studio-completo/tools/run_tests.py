@@ -9,6 +9,7 @@ TESTS = {
     "Arkher Services (cloud/publish/data/i18n/toolbox/collab)": "studio-completo/tools/test_server_services.lua",
     "Cliente (Menus + acoes roteadas ao server)": "studio-completo/tools/test_client.lua",
     "Cliente (Paineis dos sistemas custom)": "studio-completo/tools/test_client_panels.lua",
+    "Cliente ROUND12 (Ribbon X + Properties/Insert/Toolbox + menus clicaveis)": "studio-completo/tools/test_client_round12.lua",
 }
 ok = True
 for label, path in TESTS.items():
