@@ -1276,3 +1276,91 @@ do
 	end
 end
 
+-- PARTE 6B — V2_ArkherInsert (janela ASSADA): busca + alvo + paginacao + CreateAny
+do
+	local iw = host and host:FindFirstChild("V2_ArkherInsert")
+	if iw then
+		local input = iw:FindFirstChild("Input")
+		if input and not input:IsA("TextBox") then input = input:FindFirstChildOfClass("TextBox", true) end
+		local targetB = iw:FindFirstChild("Target")
+		local prevB = iw:FindFirstChild("Prev")
+		local nextB = iw:FindFirstChild("Next")
+		local goB = iw:FindFirstChild("Go")
+		local rows = {}
+		for i = 0, 7 do rows[i + 1] = iw:FindFirstChild("IRow" .. i, true) end
+		local TARGETS = { "Selecionado", "Workspace", "Lighting", "StarterGui", "StarterPack", "ReplicatedStorage", "ServerStorage", "ServerScriptService", "SoundService" }
+		local ti = 1
+		local SEL_BG = Color3.fromRGB(26, 42, 74)
+		local UNS_BG = Color3.fromRGB(7, 13, 25)
+		local items, filtered, page, picked = {}, {}, 0, nil
+		local function rtext(row)
+			if not row then return nil end
+			local first = nil
+			for _, d in ipairs(row:GetDescendants()) do
+				if d:IsA("TextLabel") then
+					if not first then first = d else pcall(function() d.Text = "" end) end
+				end
+			end
+			if first then return first end
+			if row:IsA("TextButton") or row:IsA("TextLabel") then return row end
+			return nil
+		end
+		local function paintTarget()
+			if targetB then local l = targetB:FindFirstChildOfClass("TextLabel", true) if l then l.Text = TARGETS[ti] end end
+		end
+		local function paint()
+			for i, row in ipairs(rows) do
+				local it = filtered[page * 8 + i]
+				local t = row and rtext(row)
+				if t then pcall(function()
+					t.Text = it and (tostring(it.class):sub(1, 22) .. " -- " .. tostring(it.desc or it.cat or "")):sub(1, 42) or ""
+				end) end
+				if row then pcall(function()
+					local on = it and picked == it.class
+					row.BackgroundColor3 = on and SEL_BG or UNS_BG
+					row.BackgroundTransparency = on and 0 or 0.55
+				end) end
+			end
+		end
+		local function applyFilter()
+			local q = input and string.lower(input.Text or "") or ""
+			table.clear(filtered)
+			for _, it in ipairs(items) do
+				if q == "" or string.lower(it.class):find(q, 1, true)
+					or string.lower(it.desc or ""):find(q, 1, true)
+					or string.lower(it.alias or ""):find(q, 1, true)
+					or string.lower(it.cat or ""):find(q, 1, true) then filtered[#filtered + 1] = it end
+			end
+			page = 0 picked = nil paint()
+		end
+		local function refresh()
+			if #items == 0 then local res = apiResult("ClassList", {}) if res and res.items then items = res.items end end
+			applyFilter()
+		end
+		for i, row in ipairs(rows) do if row and row:IsA("GuiButton") then onTap(row, function()
+			local it = filtered[page * 8 + i]
+			if it then picked = it.class paint() end
+		end) end end
+		if targetB then onTap(targetB, function() ti = ti % #TARGETS + 1 paintTarget() end) end
+		if prevB then onTap(prevB, function() if page > 0 then page = page - 1 paint() end end) end
+		if nextB then onTap(nextB, function()
+			local maxP = math.max(0, math.ceil(#filtered / 8) - 1)
+			if page < maxP then page = page + 1 paint() end
+		end) end
+		if goB then onTap(goB, function()
+			if not picked then say("Escolha uma classe primeiro.", true) return end
+			local payload = { class = picked }
+			if TARGETS[ti] ~= "Selecionado" then payload.parentName = TARGETS[ti]
+			else local sid = selectedId() if sid then payload.parentId = sid end end
+			local res, err = apiResult("CreateAny", payload)
+			if res and res.error then say(res.error, true)
+			elseif err then say(tostring(err), true)
+			elseif res and res.msg then say(res.msg)
+			else say(picked .. " inserido.") end
+		end) end
+		if input then pcall(function() input:GetPropertyChangedSignal("Text"):Connect(applyFilter) end) end
+		pcall(function() iw:GetPropertyChangedSignal("Visible"):Connect(function() if iw.Visible then refresh() end end) end)
+		paintTarget() paint()
+	end
+end
+

@@ -156,7 +156,6 @@ local ACTIONS = {
 	HOME_Toolbox = { "open", "V2_ArkherToolbox" },
 	HOME_Settings = { "open", "V2_ArkherSettings" },
 	HOME_Status = { "toggle", "V2_ArkherStatusBar" },
-	HOME_Account = { "open", "V2_ArkherLogin" },
 	HOME_Places = { "open", "V2_ArkherSaveOpen" },
 	HOME_History = { "open", "V2_ArkherUndoRedo" },
 	BUILD_Select = { "core", "Select" },
@@ -167,12 +166,12 @@ local ACTIONS = {
 	BUILD_Model = { "bus", "CreateAny", { class = "Model" } },
 	BUILD_Folder = { "bus", "CreateAny", { class = "Folder" } },
 	BUILD_Script = { "bus", "CreateAny", { class = "Script" } },
-	BUILD_Text = { "menus", "Insert" },
+	BUILD_Text = { "open", "V2_ArkherInsert" },
 	BUILD_Material = { "open", "V2_ArkherMaterialEditor" },
 	BUILD_Mesh = { "open", "Deck_mesh" },
 	BUILD_Modeler = { "open", "Deck_modeler" },
 	BUILD_Fabricar = { "open", "Deck_fabricar" },
-	BUILD_Insert = { "menus", "Insert" },
+	BUILD_Insert = { "open", "V2_ArkherInsert" },
 	BUILD_Base = { "bus", "EnsureBase", {} },
 	BUILD_Union = { "bus", "CsgDo", { op = "union" } },
 	BUILD_Negate = { "bus", "CsgDo", { op = "negate" } },
@@ -367,7 +366,12 @@ do
 		local pub = sv:FindFirstChild("Publish")
 		local tabS = sv:FindFirstChild("TabS")
 		local tabO = sv:FindFirstChild("TabO")
-		local rows = { sv:FindFirstChild("R_0"), sv:FindFirstChild("R_1"), sv:FindFirstChild("R_2") }
+		local rows = {}
+		do local listF = sv:FindFirstChild("List")
+			if listF then for _, ch in ipairs(listF:GetChildren()) do
+				if ch:IsA("GuiButton") and ch.Name:sub(1, 2) == "R_" then rows[#rows + 1] = ch end
+			end end
+			table.sort(rows, function(a, b) return a.Name < b.Name end) end
 		local projects, sel, mode = {}, 1, "save"
 		local SEL_BG = Color3.fromRGB(26, 42, 74)
 		local UNS_BG = Color3.fromRGB(7, 13, 25)
@@ -378,8 +382,15 @@ do
 		end
 		local function rowText(row)
 			if not row then return nil end
+			local first = nil
+			for _, d in ipairs(row:GetDescendants()) do
+				if d:IsA("TextLabel") then
+					if not first then first = d else pcall(function() d.Text = "" end) end
+				end
+			end
+			if first then return first end
 			if row:IsA("TextButton") or row:IsA("TextLabel") then return row end
-			return row:FindFirstChildOfClass("TextLabel", true) or row:FindFirstChildOfClass("TextButton", true)
+			return nil
 		end
 		local function rowBtn(row)
 			if not row then return nil end
@@ -493,13 +504,25 @@ do
 		local abrir = sv:FindFirstChild("Abrir")
 		local export = sv:FindFirstChild("Export")
 		local conta = sv:FindFirstChild("Conta")
-		local rows = { sv:FindFirstChild("R_0"), sv:FindFirstChild("R_1"), sv:FindFirstChild("R_2") }
+		local rows = {}
+		do local listF = sv:FindFirstChild("List")
+			if listF then for _, ch in ipairs(listF:GetChildren()) do
+				if ch:IsA("GuiButton") and ch.Name:sub(1, 2) == "R_" then rows[#rows + 1] = ch end
+			end end
+			table.sort(rows, function(a, b) return a.Name < b.Name end) end
 		local SEL_BG = Color3.fromRGB(26, 42, 74)
 		local UNS_BG = Color3.fromRGB(7, 13, 25)
 		local function rtext(row)
 			if not row then return nil end
+			local first = nil
+			for _, d in ipairs(row:GetDescendants()) do
+				if d:IsA("TextLabel") then
+					if not first then first = d else pcall(function() d.Text = "" end) end
+				end
+			end
+			if first then return first end
 			if row:IsA("TextButton") or row:IsA("TextLabel") then return row end
-			return row:FindFirstChildOfClass("TextLabel", true) or row:FindFirstChildOfClass("TextButton", true)
+			return nil
 		end
 		_G.ArkherSvContaPaint = function()
 			for i, row in ipairs(rows) do

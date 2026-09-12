@@ -1,7 +1,7 @@
 ================================================================
 ARKHER STUDIO — INVENTÁRIO COMPLETO (texto)
 Gerado no ciclo Fase 4 + Fase 5. Placa: ArkherStudio_Completo_GUIX.rbxl
-9548 instâncias, 35 tipos, 195 checks de teste verdes (6/6 suítes).
+9547 instâncias, 35 tipos, 203 checks de teste verdes (6/6 suítes).
 ================================================================
 
 1) SCRIPTS (tudo assado dentro do rbxl, zero criação em runtime na shell)
@@ -13,22 +13,22 @@ LocalScripts (10): Arkher_01_Nucleo, 02_Icones, 03_Menus, 04_Gizmos,
 Scripts servidor (2): ArkherEditorServer (82 handlers), ArkherEngineServer.
 PyBridge externo: pybridge.py + rbxlx.py + test_rbxlx.py + README.
 
-2) RIBBON (abertura automática por aba; 11 abas, 11 páginas, 89 botões)
+2) RIBBON (abertura automática por aba; 11 abas, 11 páginas, 88 botões)
 ------------------------------------------------------------
 HOME: Play Pause Stop | Plugins Save Open Cloud | Undo Redo Palette
-  Search Toolbox Settings | Status Account Places History
+  Search Toolbox Settings | Status Places History
 BUILD: Select Move Rotate Scale | Part Model Folder Script | Material
   Mesh Modeler Fabricar | Insert Base Union Negate
 TERRAIN: Terrain TerrainX Sculpt Water Atmos Clima
 ANIMATE: Animator AnimX Timeline Rig
 FX/VIEW/AI/WORLD/DATA/SCRIPT/CITY: partículas, shaders, VFX, câmera,
   console, UTS, mundo, dados, scripts, cidade (todos abrindo painéis).
-Auditoria tools/audit_buttons.py: 89/89 botões resolvem p/ algo real,
+Auditoria tools/audit_buttons.py: 88/88 botões resolvem p/ algo real,
 0 mortos (janela assada / handler real / cmd menus real).
 
-3) JANELAS V2 ASSADAS (40)
+3) JANELAS V2 ASSADAS (40; Login removida, Insert assada)
 ------------------------------------------------------------
-Login, SaveOpen (cloud+place+publish+conta), Palette, Settings,
+SaveOpen (cloud+place+publish+conta), Insert (busca+alvo+paginacao), Palette, Settings,
 StatusBar, Search, Docs, ScriptEditor (LU/PY/C+/C# + autocomplete),
 Console, Debugger, Profiler, Timeline, MaterialEditor, TerrainEditor,
 AnimationEditor, ParticleEditor, VFXEditor, AudioEditor, PhysicsEditor,
@@ -48,7 +48,7 @@ Popup: ArkherShapesPopup (formas reais).
 5) SERVIDOR — 82 HANDLERS REAIS (todos funcionais)
 ------------------------------------------------------------
 Sessão: Hello, Identify, Begin, End, Close, Snapshot.
-Edição: Select, Create, CreateAny, Set, SetAny, PropsAll, PropsSet,
+Edição: Select, Create, CreateAny, Set, SetAny (roundtrip testado), PropsAll (25 fields, testado), PropsSet,
   Rename, Delete, Delete_, Duplicate, Copy, Cut, Paste, Undo, Redo,
   GetHistory, QuickPart, EnsureBase, CsgDo, SculptApply, SelectedGet.
 Run: RunPlay, RunPause, RunStop (com trava de edição em Run).
@@ -92,9 +92,10 @@ Privacidade: nunca recebe player/dev; key Open Cloud só no host.
 
 8) O QUE FALTA / LIMITES HONESTOS (próximos ciclos)
 ------------------------------------------------------------
-a) Modais runtime legadas no 03_Menus (criadas via script — violam a
-   regra "tudo assado"; Save/File/OpenCloud já migradas p/ a SaveOpen):
-   Insert, OpenData, OpenToolbox, OpenLocalization, OpenPlugins,
+a) Modais runtime legadas no 03_Menus (criadas via script; SEM
+   chamadores no ribbon — mortas na prática; Save/Open/Cloud/Insert/
+   Text já migradas p/ janelas assadas):
+   File, OpenData, OpenToolbox, OpenLocalization, OpenPlugins,
    OpenProjectSettings, OpenPublish, OpenCollaboration + menus File/
    Insert/AGUA/ANIMACAO/ATMOS/AUDIO/CIDADE/CLIMA/CORDAS/ESPACO/
    FABRICAR/FX/MODELAGEM/MUNDO/VIDA. Plano: assar uma a uma no v2spec.
@@ -115,4 +116,6 @@ h) TERRA (places por região + Teleport): só após o studio pronto.
 2. Abra o GUIX no Studio > Play. 3. HOME > Places: SAVE, NEW PLACE,
    ABRIR, EXPORT, CONTA. 4. ScriptEditor: troque LU>PY>C+, rode.
 5. Toolbox: busca normal + "$castle". 6. PUBLISH = 1-clique.
-7. python3 studio-completo/tools/run_tests.py (esperado: 6/6 verdes).
+7. python3 studio-completo/tools/run_tests.py (esperado: 6/6 verdes,
+   203 checks: server 43 + services 29 + cliente 18 + paineis 27 +
+   round12 37 + adopt 49).

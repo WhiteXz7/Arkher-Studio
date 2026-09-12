@@ -1309,32 +1309,6 @@ function handlers.SelectedGet(player)
 	return { id = idOf[o], className = o.ClassName, name = o.Name, path = o:GetFullName() }
 end
 
-function handlers.PropsAll(player, payload)
-	local o = getObject(payload.id)
-	assert(o, "Objeto invalido.")
-	local write = editable(o)
-	local fields = {}
-	for _, g in ipairs(specFor(o)) do
-		local group = g[1]
-		for i = 2, #g do
-			local spec = g[i]
-			local key, kind = spec[1], spec[2]
-			local enumType = kind:match("^enum:(%w+)$")
-			local k = enumType and "enum" or kind
-			local val = readAny(o, key, k)
-			if val then
-				fields[#fields + 1] = {
-					group = group, key = key, kind = k,
-					enumType = enumType, enum = enumType and enumListFor(enumType) or nil,
-					v = val, editable = write,
-					min = spec[3], max = spec[4],
-				}
-			end
-		end
-	end
-	table.sort(fields, function(a, b) return (a.group == b.group) and (a.key < b.key) or (a.group < b.group) end)
-	return { fields = fields, className = o.ClassName, name = o.Name, writable = write }
-end
 
 function handlers.PropsSet(player, payload)
 	local o = getObject(payload.id)

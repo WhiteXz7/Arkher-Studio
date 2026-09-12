@@ -124,6 +124,40 @@ local hf = invoke("GetHistory")
 check(hf and type(hf.undo) == "table" and type(hf.redo) == "table", "GetHistory estrutura")
 check(hf and hf.canUndo == false, "apos New: historico limpo (canUndo=false)")
 
+
+print("\n== Properties (PropsAll/SetAny roundtrip) ==")
+local function invokeWait(action, payload)
+  local t0 = os.clock()
+  while os.clock() - t0 < 6 do
+    local r = invoke(action, payload)
+    if r and r.error ~= "Requisição inválida ou limite de frequência." then return r end
+    local w0 = os.clock() while os.clock() - w0 < 0.15 do end
+  end
+  return invoke(action, payload)
+end
+check(wsId ~= nil, "Props: Workspace id (inicio do teste)")
+local cp = invokeWait("Create", { parentId = wsId, class = "Part", name = "PropT" })
+check(cp and cp.ok == true and cp.node and cp.node.id, "Props: Create PropT")
+local pid = cp and cp.node and cp.node.id
+local pa = pid and invokeWait("PropsAll", { id = pid })
+check(pa and pa.fields and #pa.fields > 5, "PropsAll: " .. (pa and #pa.fields or 0) .. " fields")
+local nameF = nil
+if pa and pa.fields then for _, f in ipairs(pa.fields) do if f.name == "Name" then nameF = f end end end
+check(nameF and nameF.value == "PropT" and nameF.kind == "s", "PropsAll: field Name=s valendo PropT")
+local s1 = pid and invokeWait("SetAny", { id = pid, name = "Name", kind = "s", value = "PropT2" })
+check(s1 and s1.ok == true and s1.now == "PropT2", "SetAny: Name -> PropT2")
+local pa2 = pid and invokeWait("PropsAll", { id = pid })
+local nameF2 = nil
+if pa2 and pa2.fields then for _, f in ipairs(pa2.fields) do if f.name == "Name" then nameF2 = f end end end
+check(nameF2 and nameF2.value == "PropT2", "PropsAll roundtrip: Name agora e PropT2")
+local s2 = pid and invokeWait("SetAny", { id = pid, name = "Anchored", kind = "b", value = true })
+check(s2 and s2.ok == true, "SetAny: Anchored=true ok")
+local s3 = pid and invokeWait("SetAny", { id = pid, name = "Transparency", kind = "n", value = 0.5 })
+local pa3 = pid and invokeWait("PropsAll", { id = pid })
+local trF = nil
+if pa3 and pa3.fields then for _, f in ipairs(pa3.fields) do if f.name == "Transparency" then trF = f end end end
+check(s3 and s3.ok == true and trF and trF.value == 0.5, "SetAny: Transparency 0.5 roundtrip")
+
 print("\n================================")
 print(string.format("RESULTADO: %d passaram, %d falharam", pass, fail))
 if fail > 0 then os.exit(1) else os.exit(0) end

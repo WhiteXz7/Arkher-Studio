@@ -125,7 +125,7 @@ if ribbon then for _, pg in ipairs(ribbon:GetChildren()) do
 end end
 check(nTabs == 11, "11 abas (" .. nTabs .. ")")
 check(nPages == 11, "11 paginas (" .. nPages .. ")")
-check(nBtns == 89, "89 botoes ribbon (" .. nBtns .. ")")
+check(nBtns == 88, "88 botoes ribbon (" .. nBtns .. ")")
 local S1 = census()
 print("   census bake total=" .. total(S1))
 
