@@ -527,13 +527,361 @@ end
 '''
 BLOCK_S = BLOCK_S.replace("__MODULE__", MODULE_SRC)
 
+BLOCK_X7 = r'''
+-- ============ BLOCK_X7 (ROUND 7): propriedades EXAUSTIVAS + toolbox REAL + places ============
+-- Mapa de propriedades por IsA-chain. kind: string,number,boolean,vector,color,brick,enum,cframe,source
+local PROPSPEC = {
+	{ isa = "SpawnLocation", props = {
+		{"Transform",{"Neutral","boolean"},{"ForceField","number",0,600}},
+		{"Appearance",{"TeamColor","brick"},{"AllowTeamChangeOnTouch","boolean"}},
+	} },
+	{ isa = "TrussPart", props = { {"Behavior",{"Style","enum:TrussStyle"}} } },
+	{ isa = "CornerWedgePart", props = {} },
+	{ isa = "WedgePart", props = {} },
+	{ isa = "Terrain", props = {
+		{"Water",{"WaterColor","color"},{"WaterTransparency","number",0,1},{"WaterReflectance","number",0,1},{"WaterWaveSize","number",0,1},{"WaterWaveSpeed","number",0,100}},
+		{"Terrain",{"Decoration","boolean"}},
+	} },
+	{ isa = "Part", props = {
+		{"Shape",{"Shape","enum:PartType"}},
+		{"Surface",{"TopSurface","enum:SurfaceType"},{"BottomSurface","enum:SurfaceType"},{"LeftSurface","enum:SurfaceType"},{"RightSurface","enum:SurfaceType"},{"FrontSurface","enum:SurfaceType"},{"BackSurface","enum:SurfaceType"}},
+	} },
+	{ isa = "BasePart", props = {
+		{"Transform",{"Position","vector",-1000000,1000000},{"Orientation","vector",-360,360},{"Size","vector",0.05,2048}},
+		{"Appearance",{"Color","color"},{"Transparency","number",0,1},{"Reflectance","number",0,1},{"Material","enum:Material"},{"CastShadow","boolean"}},
+		{"Data",{"Anchored","boolean"},{"Locked","boolean"},{"Massless","boolean"}},
+		{"Collision",{"CanCollide","boolean"},{"CanTouch","boolean"},{"CanQuery","boolean"},{"CollisionGroupId","number",0,256},{"AssemblyMass","number",0,1000000}},
+		{"Physics",{"CustomPhysicalPropertiesDensity","number",0.01,100},{"Friction","number",0,2},{"Elasticity","number",0,1},{"FrictionWeight","number",0,100},{"ElasticityWeight","number",0,100}},
+	} },
+	{ isa = "Model", props = {
+		{"Data",{"PrimaryPart","string"}},
+		{"Streaming",{"LevelOfDetail","enum:ModelLevelOfDetail"}},
+	} },
+	{ isa = "Humanoid", props = {
+		{"State",{"Health","number",0,100000},{"MaxHealth","number",1,100000},{"WalkSpeed","number",0,1000},{"JumpPower","number",0,1000},{"JumpHeight","number",0,1000}},
+		{"Behavior",{"HipHeight","number",-8,100},{"MaxSlopeAngle","number",0,89},{"AutoRotate","boolean"}},
+	} },
+	{ isa = "ScreenGui", props = {
+		{"Data",{"Enabled","boolean"},{"DisplayOrder","number",0,1000},{"IgnoreGuiInset","boolean"},{"ResetOnSpawn","boolean"},{"ZIndexBehavior","enum:ZIndexBehavior"}},
+	} },
+	{ isa = "ScrollingFrame", props = {
+		{"Scroll",{"CanvasSize","udim2"},{"ScrollBarThickness","number",0,32},{"ScrollingDirection","enum:ScrollingDirection"},{"AutomaticCanvasSize","enum:AutomaticSize"}},
+	} },
+	{ isa = "TextBox", props = {
+		{"Behavior",{"ClearTextOnFocus","boolean"},{"MultiLine","boolean"},{"PlaceholderText","string"}},
+	} },
+	{ isa = "TextButton", props = { {"Behavior",{"AutoButtonColor","boolean"},{"Modal","boolean"},{"Selected","boolean"}} } },
+	{ isa = "ImageButton", props = {} },
+	{ isa = "ImageLabel", props = {
+		{"Image",{"Image","string"},{"ImageColor3","color"},{"ImageTransparency","number",0,1},{"ScaleType","enum:ScaleType"},{"TileSize","udim2"}},
+	} },
+	{ isa = "TextLabel", props = {
+		{"Text",{"Text","string"},{"TextColor3","color"},{"TextSize","number",4,96},{"Font","enum:Font"},{"TextScaled","boolean"},{"TextWrapped","boolean"},{"TextTransparency","number",0,1},{"TextStrokeTransparency","number",0,1},{"TextXAlignment","enum:TextXAlignment"},{"TextYAlignment","enum:TextYAlignment"},{"BackgroundColor3","color"},{"BackgroundTransparency","number",0,1}},
+	} },
+	{ isa = "GuiObject", props = {
+		{"Layout",{"Position","udim2"},{"Size","udim2"},{"AnchorPoint","vector2"},{"Rotation","number",-360,360},{"ZIndex","number",-999,999},{"LayoutOrder","number",-99999,99999}},
+		{"Appearance",{"BackgroundColor3","color"},{"BackgroundTransparency","number",0,1},{"BorderSizePixel","number",0,32},{"Visible","boolean"},{"ClipsDescendants","boolean"}},
+		{"Input",{"Active","boolean"},{"Selectable","boolean"}},
+	} },
+	{ isa = "UICorner", props = { {"Corner",{"CornerRadius","udim"}} } },
+	{ isa = "UIStroke", props = {
+		{"Stroke",{"Color","color"},{"Thickness","number",0,64},{"Transparency","number",0,1},{"ApplyStrokeMode","enum:ApplyStrokeMode"},{"LineJoinMode","enum:LineJoinMode"}},
+	} },
+	{ isa = "UIGradient", props = { {"Gradient",{"Rotation","number",-360,360},{"Enabled","boolean"},{"Color","string"},{"Transparency","string"}} } },
+	{ isa = "UIPadding", props = { {"Padding",{"PaddingTop","udim"},{"PaddingBottom","udim"},{"PaddingLeft","udim"},{"PaddingRight","udim"}} } },
+	{ isa = "UIListLayout", props = {
+		{"Layout",{"FillDirection","enum:FillDirection"},{"HorizontalAlignment","enum:HorizontalAlignment"},{"VerticalAlignment","enum:VerticalAlignment"},{"SortOrder","enum:SortOrder"},{"Padding","udim"}},
+	} },
+	{ isa = "UIGridLayout", props = { {"Layout",{"CellSize","udim2"},{"CellPadding","udim2"},{"FillDirection","enum:FillDirection"},{"SortOrder","enum:SortOrder"}} } },
+	{ isa = "UIAspectRatioConstraint", props = { {"Constraint",{"AspectRatio","number",0.01,100},{"AspectType","enum:AspectType"},{"DominantAxis","enum:DominantAxis"}} } },
+	{ isa = "Decal", props = { {"Texture",{"Texture","string"},{"Color3","color"},{"Transparency","number",0,1},{"Face","enum:NormalId"}} } },
+	{ isa = "Texture", props = { {"Texture",{"StudsPerTileU","number",0.05,64},{"StudsPerTileV","number",0.05,64}} } },
+	{ isa = "SurfaceLight", props = { {"Surface",{"Face","enum:NormalId"}} } },
+	{ isa = "SpotLight", props = { {"Light",{"Angle","number",1,180},{"Face","enum:NormalId"}} } },
+	{ isa = "PointLight", props = {
+		{"Light",{"Brightness","number",0,40},{"Range","number",0,60},{"Color","color"},{"Enabled","boolean"},{"Shadows","boolean"}},
+	} },
+	{ isa = "ParticleEmitter", props = {
+		{"Emission",{"Rate","number",0,50000},{"Lifetime","number",0.05,60},{"Speed","number",0,5000},{"SpreadAngle","vector2"}},
+		{"Particle",{"Color","color"},{"Size","string"},{"Transparency","number",0,1},{"Rotation","number",-360,360},{"RotSpeed","vector2"}},
+		{"Physics",{"Acceleration","vector"},{"Drag","number",0,10},{"VelocityInheritance","number",-1,1},{"LockedToPart","boolean"}},
+		{"Data",{"Enabled","boolean"},{"LightEmission","number",0,1},{"LightInfluence","number",0,1}},
+	} },
+	{ isa = "Fire", props = { {"Fire",{"Color","color"},{"SecondaryColor","color"},{"Size","number",1,60},{"Heat","number",1,25},{"Enabled","boolean"}} } },
+	{ isa = "Smoke", props = { {"Smoke",{"Color","color"},{"Size","number",0.1,100},{"Opacity","number",0,1},{"RiseVelocity","number",-25,25},{"Enabled","boolean"}} } },
+	{ isa = "Sparkles", props = { {"Sparkles",{"SparkleColor","color"},{"Enabled","boolean"}} } },
+	{ isa = "Sound", props = {
+		{"Sound",{"SoundId","string"},{"Volume","number",0,10},{"PlaybackSpeed","number",0,20},{"Looped","boolean"},{"Playing","boolean"},{"RollOffMaxDistance","number",0,100000},{"RollOffMinDistance","number",0,100000}},
+	} },
+	{ isa = "ClickDetector", props = { {"Data",{"MaxActivationDistance","number",0,64},{"MaxActivationDistance","number"}} } },
+	{ isa = "ProximityPrompt", props = {
+		{"Prompt",{"ActionText","string"},{"ObjectText","string"},{"HoldDuration","number",0,30},{"MaxActivationDistance","number",0,50},{"Enabled","boolean"},{"RequiresLineOfSight","boolean"}},
+	} },
+	{ isa = "Tool", props = { {"Tool",{"RequiresHandle","boolean"},{"Enabled","boolean"}} } },
+	{ isa = "Attachment", props = { {"Transform",{"Position","vector"},{"Orientation","vector"}} } },
+	{ isa = "BoolValue", props = { {"Value",{"Value","boolean"}} } },
+	{ isa = "IntValue", props = { {"Value",{"Value","number"}} } },
+	{ isa = "NumberValue", props = { {"Value",{"Value","number"}} } },
+	{ isa = "StringValue", props = { {"Value",{"Value","string"}} } },
+	{ isa = "Vector3Value", props = { {"Value",{"Value","vector"}} } },
+	{ isa = "Color3Value", props = { {"Value",{"Value","color"}} } },
+	{ isa = "ObjectValue", props = { {"Value",{"Value","string"}} } },
+	{ isa = "Script", props = { {"Script",{"Source","source"},{"Disabled","boolean"}} } },
+	{ isa = "LocalScript", props = { {"Script",{"Source","source"},{"Disabled","boolean"}} } },
+	{ isa = "ModuleScript", props = { {"Script",{"Source","source"}} } },
+	{ isa = "Camera", props = { {"Camera",{"FieldOfView","number",1,120},{"CameraType","enum:CameraType"}} } },
+	{ isa = "Lighting", props = {
+		{"Atmosphere",{"Ambient","color"},{"OutdoorAmbient","color"},{"Brightness","number",0,10},{"ClockTime","number",0,24},{"GeographicLatitude","number",-90,90},{"TimeOfDay","string"}},
+		{"Shadow",{"GlobalShadows","boolean"},{"FogColor","color"},{"FogStart","number",0,100000},{"FogEnd","number",0,100000}},
+	} },
+	{ isa = "Workspace", props = { {"World",{"Gravity","number",0,10000},{"GlobalWind","vector"},{"StreamingEnabled","boolean"}} } },
+	{ isa = "Folder", props = {} },
+}
+local PROPSPEC_BASE = {
+	{"Data",{"Name","string"},{"Archivable","boolean"}},
+}
+
+local function specFor(o)
+	local out = {}
+	for _, g in ipairs(PROPSPEC_BASE) do out[#out + 1] = g end
+	for _, entry in ipairs(PROPSPEC) do
+		if o:IsA(entry.isa) then
+			for _, g in ipairs(entry.props) do out[#out + 1] = g end
+		end
+	end
+	return out
+end
+
+local function readAny(o, key, kind)
+	local ok, v = pcall(function() return o[key] end)
+	if not ok or v == nil then return nil end
+	if kind == "vector" and typeof(v) == "Vector3" then return { x = v.X, y = v.Y, z = v.Z } end
+	if kind == "vector2" and typeof(v) == "Vector2" then return { x = v.X, y = v.Y } end
+	if kind == "color" and typeof(v) == "Color3" then return { r = v.R, g = v.G, b = v.B } end
+	if kind == "brick" and typeof(v) == "BrickColor" then return { brick = v.Name } end
+	if kind == "cframe" and typeof(v) == "CFrame" then local c = v:GetComponents() return { x = c[1], y = c[2], z = c[3] } end
+	if kind == "udim" and typeof(v) == "UDim" then return { scale = v.Scale, offset = v.Offset } end
+	if kind == "udim2" and typeof(v) == "UDim2" then return { xs = v.X.Scale, xo = v.X.Offset, ys = v.Y.Scale, yo = v.Y.Offset } end
+	if kind == "enum" and typeof(v) == "EnumItem" then return { enum = v.Name } end
+	if kind == "source" and type(v) == "string" then return { s = v } end
+	if type(v) == "string" then return { s = v:sub(1, 512) } end
+	if type(v) == "number" or type(v) == "boolean" then return { v = v } end
+	return nil
+end
+
+local function enumListFor(key)
+	local map = {
+		PartType = Enum.PartType, Material = Enum.Material, SurfaceType = Enum.SurfaceType,
+		TrussStyle = Enum.TrussStyle, Font = Enum.Font, NormalId = Enum.NormalId,
+		TextXAlignment = Enum.TextXAlignment, TextYAlignment = Enum.TextYAlignment,
+		ScaleType = Enum.ScaleType, FillDirection = Enum.FillDirection,
+		HorizontalAlignment = Enum.HorizontalAlignment, VerticalAlignment = Enum.VerticalAlignment,
+		SortOrder = Enum.SortOrder, ZIndexBehavior = Enum.ZIndexBehavior,
+		ScrollingDirection = Enum.ScrollingDirection, AutomaticSize = Enum.AutomaticSize,
+		ApplyStrokeMode = Enum.ApplyStrokeMode, LineJoinMode = Enum.LineJoinMode,
+		AspectType = Enum.AspectType, DominantAxis = Enum.DominantAxis,
+		ModelLevelOfDetail = Enum.ModelLevelOfDetail, CameraType = Enum.CameraType,
+	}
+	local et = map[key]
+	if not et then return nil end
+	local out = {}
+	for _, it in ipairs(et:GetEnumItems()) do out[#out + 1] = it.Name end
+	table.sort(out)
+	return out
+end
+
+function handlers.SelectedGet(player)
+	local o = selected[player]
+	if not o or not o.Parent then return { none = true, msg = "Nada selecionado — clique num objeto no EXPLORADOR." } end
+	return { id = idOf[o], className = o.ClassName, name = o.Name, path = o:GetFullName() }
+end
+
+function handlers.PropsAll(player, payload)
+	local o = getObject(payload.id)
+	assert(o, "Objeto invalido.")
+	local write = editable(o)
+	local fields = {}
+	for _, g in ipairs(specFor(o)) do
+		local group = g[1]
+		for i = 2, #g do
+			local spec = g[i]
+			local key, kind = spec[1], spec[2]
+			local enumType = kind:match("^enum:(%w+)$")
+			local k = enumType and "enum" or kind
+			local val = readAny(o, key, k)
+			if val then
+				fields[#fields + 1] = {
+					group = group, key = key, kind = k,
+					enumType = enumType, enum = enumType and enumListFor(enumType) or nil,
+					v = val, editable = write,
+					min = spec[3], max = spec[4],
+				}
+			end
+		end
+	end
+	table.sort(fields, function(a, b) return (a.group == b.group) and (a.key < b.key) or (a.group < b.group) end)
+	return { fields = fields, className = o.ClassName, name = o.Name, writable = write }
+end
+
+function handlers.PropsSet(player, payload)
+	local o = getObject(payload.id)
+	assert(editable(o), "Objeto somente leitura.")
+	assert(type(payload.key) == "string" and #payload.key < 80, "Propriedade invalida.")
+	local kind = tostring(payload.kind or "string")
+	local val
+	if kind == "number" then
+		assert(finite(payload.v), "Numero invalido.") val = payload.v
+	elseif kind == "boolean" then
+		val = payload.v == true
+	elseif kind == "string" or kind == "source" then
+		assert(type(payload.s) == "string" and #payload.s < 200000, "Texto invalido.") val = payload.s
+	elseif kind == "vector" then
+		val = Vector3.new(tonumber(payload.x) or 0, tonumber(payload.y) or 0, tonumber(payload.z) or 0)
+	elseif kind == "vector2" then
+		val = Vector2.new(tonumber(payload.x) or 0, tonumber(payload.y) or 0)
+	elseif kind == "color" then
+		val = Color3.new(math.clamp(tonumber(payload.r) or 0, 0, 1), math.clamp(tonumber(payload.g) or 0, 0, 1), math.clamp(tonumber(payload.b) or 0, 0, 1))
+	elseif kind == "brick" then
+		assert(type(payload.brick) == "string", "BrickColor invalido.")
+		local bok, bv = pcall(function() return BrickColor.new(payload.brick) end)
+		assert(bok and bv, "BrickColor desconhecido: " .. tostring(payload.brick)) val = bv
+	elseif kind == "enum" then
+		assert(type(payload.enum) == "string", "Enum invalido.")
+		local cur = o[payload.key]
+		assert(typeof(cur) == "EnumItem", "Sem enum atual para casar.")
+		local found
+		for _, it in ipairs(Enum[cur.EnumType]:GetEnumItems()) do
+			if it.Name:lower() == payload.enum:lower() then found = it break end
+		end
+		assert(found, "EnumItem invalido: " .. payload.enum) val = found
+	elseif kind == "udim" then
+		val = UDim.new(tonumber(payload.scale) or 0, tonumber(payload.offset) or 0)
+	elseif kind == "udim2" then
+		val = UDim2.new(tonumber(payload.xs) or 0, tonumber(payload.xo) or 0, tonumber(payload.ys) or 0, tonumber(payload.yo) or 0)
+	elseif kind == "cframe" then
+		local cur = o[payload.key]
+		val = CFrame.new(tonumber(payload.x) or 0, tonumber(payload.y) or 0, tonumber(payload.z) or 0) * (cur and (cur - cur.Position) or CFrame.new())
+	else
+		error("Kind desconhecido: " .. kind)
+	end
+	local old = readAny(o, payload.key, kind)
+	local ok, err = pcall(function() o[payload.key] = val end)
+	assert(ok, "Roblox recusou: " .. tostring(err))
+	local new = readAny(o, payload.key, kind)
+	if old ~= new then hSet(player, o, payload.key, old, new) end
+	return { node = record(o), ok = true, applied = payload.key }
+end
+
+function handlers.QuickPart(player, payload)
+	local shapes = { Block = "Block", Ball = "Ball", Cylinder = "Cylinder", CylinderVertical = "CylinderVertical", Wedge = "WedgePart", CornerWedge = "CornerWedgePart", Truss = "TrussPart" }
+	local shape = tostring(payload.shape or "Block")
+	assert(shapes[shape], "Forma invalida: " .. shape)
+	local cls = shapes[shape]
+	local parent = workspace
+	if payload.parentId and objects[payload.parentId] then
+		local p = objects[payload.parentId]
+		if editable(p) then parent = p end
+	end
+	local nm = tostring(payload.name or (shape .. "_ArkherStock"))
+	if cls == "WedgePart" or cls == "CornerWedgePart" or cls == "TrussPart" then
+		local inst = Instance.new(cls)
+		inst.Size = Vector3.new(4, 2, 4)
+		inst.CFrame = CFrame.new(payload.x or 0, payload.y or 3, payload.z or -16)
+		inst.Anchored = true
+		inst.Color = Color3.fromRGB(120, 160, 220)
+		inst.Parent = parent
+		inst.Name = nm
+		register(inst) created[inst] = true
+		selected[player] = inst
+		hCreate(player, inst)
+		return { id = idOf[inst], className = cls, msg = cls .. " '" .. nm .. "' criado (classe real, sempre com pivô garantido)" }
+	end
+	local p2 = Instance.new("Part")
+	p2.Shape = Enum.PartType[cls]
+	p2.Size = (cls == "Ball") and Vector3.new(4, 4, 4) or (cls:find("Cylinder") and Vector3.new(2, 4, 4) or Vector3.new(4, 2, 4))
+	p2.CFrame = CFrame.new(payload.x or 0, payload.y or 3, payload.z or -16)
+	p2.Anchored = true
+	p2.Color = Color3.fromRGB(120, 160, 220)
+	p2.Parent = parent
+	p2.Name = nm
+	register(p2) created[p2] = true
+	selected[player] = p2
+	hCreate(player, p2)
+	return { id = idOf[p2], className = "Part", shape = cls, msg = "Part " .. cls .. " '" .. nm .. "' criado (Shape real + Register do histórico)" }
+end
+
+function handlers.ToolboxSearch(player, payload)
+	local q = tostring(payload.query or ""):sub(1, 120)
+	assert(#q > 0, "Digite o que buscar na TOOLBOX (creator store real).")
+	local kindS = tostring(payload.kind or "models")
+	local page = math.clamp(tonumber(payload.page) or 0, 0, 99)
+	local ok, page2 = pcall(function()
+		local pageObj
+		if kindS == "decals" then
+			pageObj = game:GetService("InsertService"):GetFreeDecalsAsync(q, page)
+		else
+			pageObj = game:GetService("InsertService"):GetFreeModelsAsync(q, page)
+		end
+		return pageObj
+	end)
+	if not ok then
+		return { error = "Creator Store indisponível nesta sessão (Roblox recusou a busca): " .. tostring(page2) }
+	end
+	local items = {}
+	local results = page2.Results or {}
+	for i = 1, math.min(#results, 24) do
+		local it = results[i]
+		items[#items + 1] = { name = it.Name, id = it.AssetId, creator = it.Creator, icon = it.IconUrl, trusted = it.IsEndorsed }
+	end
+	return { items = items, total = page2.TotalCount or #items, page = page, kind = kindS, query = q }
+end
+
+function handlers.ToolboxAssetInsert(player, payload)
+	local id = tonumber(payload.assetId)
+	assert(id and id > 0, "AssetId invalido.")
+	local parent = workspace
+	if payload.parentId and objects[payload.parentId] then
+		local p = objects[payload.parentId]
+		if editable(p) then parent = p end
+	end
+	local ok, model = pcall(function()
+		return game:GetService("InsertService"):LoadAsset(id)
+	end)
+	assert(ok, "LoadAsset falhou (asset privado/protegido?): " .. tostring(model))
+	assert(model, "Asset vazio.")
+	local NM = #model:GetChildren()
+	model.Name = "Asset_" .. id
+	model.Parent = parent
+	register(model) created[model] = true
+	selected[player] = model
+	hCreate(player, model)
+	-- marca no ouvinte para o cliente reposicionar
+	return { id = idOf[model], nodes = NM, msg = ("Asset %d inserido (%d filhos) — Creator Store REAL"):format(id, NM) }
+end
+
+function handlers.PlaceCreate(player, payload)
+	local name = tostring(payload.name or ""):sub(1, 80)
+	assert(#name > 2, "Nome muito curto para a place.")
+	local template = tonumber(payload.template) or 9544032260 -- baseplate do Roblox
+	local desc = tostring(payload.description or "Criado com Arkher Studio") or ""
+	local ok, ret = pcall(function()
+		return game:GetService("AssetService"):CreatePlaceAsync(name, template, desc)
+	end)
+	if not ok then
+		local msg = tostring(ret)
+		return { error = "CreatePlaceAsync recusou (" .. msg .. "). Só funciona em jogo publicado online com permissão de criação de place ativa." }
+	end
+	return { placeId = ret, msg = "PLACE CRIADA no seu perfil: id " .. tostring(ret) .. "  — abra em roblox.com/games/" .. tostring(ret) }
+end
+'''
+
 
 # ================= aplicar =================
 src = ORIG
 src = replace_once(src, MARK_A, MARK_A + BLOCK_A, "A")
 src = replace_once(src, "local function getObject(id)", SER_DESER + "local function getObject(id)", "B")
 src = replace_once(src, "local handlers={}", HIST_OPS + "local handlers={}", "C")
-src = replace_once(src, "request.OnServerInvoke=function(player,action,payload)", NEW_HANDLERS + BLOCK_S + "request.OnServerInvoke=function(player,action,payload)", "D")
+src = replace_once(src, "request.OnServerInvoke=function(player,action,payload)", NEW_HANDLERS + BLOCK_S + BLOCK_X7 + "request.OnServerInvoke=function(player,action,payload)", "D")
 # Delete original -> delega para Delete_ (reusa hDelete)
 src = replace_once(
     src,

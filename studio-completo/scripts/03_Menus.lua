@@ -544,11 +544,71 @@ local TOPMENUS = {
 local openMenuFrame
 local function closeMenu()
   if openMenuFrame and openMenuFrame.Parent then openMenuFrame:Destroy() openMenuFrame = nil end
+  local cs = rawget(_G, "__arkherCloseSub")
+  if cs then pcall(cs) end
   n.menu = nil
+end
+
+local subFrame
+
+local function closeSubMenu()
+  if subFrame and subFrame.Parent then subFrame:Destroy() end
+  subFrame = nil
+end
+rawset(_G, "__arkherCloseSub", closeSubMenu)
+
+local function buildSubMenu(items2, hostRow, hostMenu)
+  closeSubMenu()
+  if not items2 or #items2 == 0 then return end
+  local rowH = 30
+  local count = 0
+  for _, it in ipairs(items2) do count = count + (it.sep and 9 or rowH) end
+  local menuH = count + 12
+  local aw2 = 220
+  local rp = hostRow.AbsolutePosition
+  local rs = hostRow.AbsoluteSize
+  local mp = hostMenu.AbsolutePosition
+  local scale = math.max(h.Scale, 0.01)
+  local ax = (mp.X + hostMenu.AbsoluteSize.X + 2) / scale
+  local ay = rp.Y / scale - 4
+  local f = frame("Sub", ad, UDim2.fromOffset(math.clamp(ax, 0, 1568 - aw2), math.clamp(ay, 0, 882 - menuH)), UDim2.fromOffset(aw2, menuH), m.panel, 0)
+  f.ZIndex = 34
+  f.Active = true
+  corner(f, 8)
+  stroke(f, m.border, 1.5)
+  subFrame = f
+  local y2 = 6
+  for _, it in ipairs(items2) do
+    if it.sep then
+      frame("Sep", f, UDim2.fromOffset(10, y2 + 4), UDim2.new(1, -20, 0, 1), m.border, 0.4)
+      y2 = y2 + 9
+    else
+      local row = button("Sub_" .. (it.act or it.label), f, UDim2.fromOffset(4, y2), UDim2.new(1, -8, 0, rowH - 4), "", m.panel)
+      row.TextXAlignment = Enum.TextXAlignment.Left
+      row.ZIndex = 35
+      row.MouseEnter:Connect(function() row.BackgroundColor3 = m.selected end)
+      row.MouseLeave:Connect(function() row.BackgroundColor3 = m.panel end)
+      if it.icon then icon(row, it.icon, 6, 5, 20) end
+      label("Lbl", row, it.label, it.icon and 34 or 12, 0, aw2 - 40, 15, m.text)
+      if it.tip then
+        row.MouseEnter:Connect(function()
+          local tipLbl = hostMenu:FindFirstChild("TipBar")
+          if tipLbl then tipLbl.Text = "ⓘ  " .. it.tip end
+        end)
+      end
+      row.Activated:Connect(function()
+        closeMenu()
+        if actions[it.act] then pcall(actions[it.act]) end
+      end)
+      y2 = y2 + rowH
+    end
+  end
+  return f
 end
 
 local function buildMenu(name, buttonRef)
   closeMenu()
+  closeSubMenu()
   local items = MENUS[name] or TOPMENUS[name]
   if not items then return end
   -- ancora: abaixo do botao
@@ -573,8 +633,12 @@ local function buildMenu(name, buttonRef)
   -- altura conforme itens
   local rowH = 34
   local count = 0
-  for _, it in ipairs(items) do count = count + (it.sep and 9 or rowH) end
-  local menuH = count + 14
+  local hasTips = false
+  for _, it in ipairs(items) do
+    count = count + (it.sep and 9 or (it.head and 18 or rowH))
+    if it.tip then hasTips = true end
+  end
+  local menuH = count + 14 + (hasTips and 22 or 0)
   local f = frame(name .. "Menu", ad, UDim2.fromOffset(math.clamp(ax, 0, 1568 - aw), math.clamp(ay, 0, 882 - menuH)), UDim2.fromOffset(aw, menuH), m.panel, 0)
   f.ZIndex = 30
   f.Active = true
@@ -582,23 +646,56 @@ local function buildMenu(name, buttonRef)
   stroke(f, m.border, 1)
   openMenuFrame = f
   n.menu = name
+  -- barra de DICA no rodape: diz O QUE cada item faz (resposta ao "nao da pra saber o que colocar")
+  if hasTips then
+    local tipBar = label("TipBar", f, "ⓘ  Passe o mouse: aqui aparece a explicacao do item", 10, menuH - 20, aw - 20, 12, m.cyan)
+    tipBar.Font = Enum.Font.GothamBold
+    tipBar.TextSize = 11
+  end
   local y = 8
   for _, it in ipairs(items) do
     if it.sep then
       local ln = frame("Sep", f, UDim2.fromOffset(10, y + 4), UDim2.new(1, -20, 0, 1), m.border, 0.4)
       y = y + 9
+    elseif it.head then
+      label("Head", f, it.head:upper(), 12, y, aw - 24, 11, m.cyan).Font = Enum.Font.GothamBold
+      y = y + 18
     else
       local row = button("Item_" .. it.act, f, UDim2.fromOffset(4, y), UDim2.new(1, -8, 0, rowH - 4), "", m.panel)
       row.TextXAlignment = Enum.TextXAlignment.Left
       row.Text = ""
       row.ZIndex = 31
       local hover = false
-      row.MouseEnter:Connect(function() hover = true row.BackgroundColor3 = m.selected end)
-      row.MouseLeave:Connect(function() hover = false row.BackgroundColor3 = m.panel end)
+      row.MouseEnter:Connect(function()
+        hover = true
+        row.BackgroundColor3 = m.selected
+        if it.tip then
+          local tipLbl = f:FindFirstChild("TipBar")
+          if tipLbl then tipLbl.Text = "ⓘ  " .. it.tip end
+        end
+        if it.sub then buildSubMenu(it.sub, row, f) end
+      end)
+      row.MouseLeave:Connect(function()
+        hover = false
+        row.BackgroundColor3 = m.panel
+        task.delay(0.25, function()
+          if subFrame and subFrame.Parent then
+            local mp = Vector2.new(UIS:GetMouseLocation().X, UIS:GetMouseLocation().Y)
+            local sp, ss = subFrame.AbsolutePosition, subFrame.AbsoluteSize
+            local overSub = mp.X >= sp.X - 4 and mp.Y >= sp.Y - 4 and mp.X <= sp.X + ss.X + 4 and mp.Y <= sp.Y + ss.Y + 4
+            local rp2, rs2 = row.AbsolutePosition, row.AbsoluteSize
+            local overRow = mp.X >= rp2.X and mp.Y >= rp2.Y and mp.X <= rp2.X + rs2.X and mp.Y <= rp2.Y + rs2.Y
+            if not overSub and not overRow then closeSubMenu() end
+          end
+        end)
+      end)
       if it.icon then icon(row, it.icon, 8, 6, 22) end
-      label("Lbl", row, it.label, it.icon and 40 or 14, 0, aw - (it.icon and 60 or 30) - 70, 16, m.text)
+      local arrow = it.sub and "▸" or ""
+      label("Lbl", row, it.label, it.icon and 40 or 14, 0, aw - (it.icon and 60 or 30) - 80, 16, m.text)
+      if it.sub and not it.key then it.key = arrow end
       if it.key then label("Key", row, it.key, 0, 0, 70, 14, m.muted).Position = UDim2.new(1, -8, 0, 4) end
       row.Activated:Connect(function()
+        if it.sub then buildSubMenu(it.sub, row, f) return end
         closeMenu()
         if actions[it.act] then pcall(actions[it.act]) end
       end)
@@ -1265,6 +1362,46 @@ MENUS.FX = {
   { icon = "plus", label = "Fogo (emitir)", act = "XFxFogo" },
   { icon = "plus", label = "Chuva (emitir)", act = "XFxChuva" },
 }
+MENUS.PART = {
+  { head = "formas basicas" },
+  { icon = "Part", label = "Spawnar ▸", key = "▸", tip = "Escolha a FORMA real (Shape do engine, nao visual), nasce em (0,3,-16) e vira selecao", sub = {
+    { icon = "Part", label = "Block (4×2×4)", act = "XSpawnBlock", tip = "Part com Shape=Block — a peca clasica do Roblox" },
+    { icon = "Part", label = "Ball (esfera)", act = "XSpawnBall", tip = "Shape=Ball: esfera perfeita para bolas, planetinhas, roda" },
+    { icon = "Part", label = "Cylinder (cilindro p/ roda)", act = "XSpawnCyl", tip = "Shape=Cylinder: cilindro de lado (Ideal rodas/eixos)" },
+    { icon = "Part", label = "CylinderVertical (em pe)", act = "XSpawnCylV", tip = "Shape=CylinderVertical: cilindro em pe (colunas/pilares)" },
+  } },
+  { head = "formas especiais (classe propria)" },
+  { icon = "Part", label = "Wedge (rampa)", act = "XSpawnWedge", tip = "WedgePart: rampa/helder o classico — sempre 1/2 do bloco" },
+  { icon = "Part", label = "CornerWedge (rampa de canto)", act = "XSpawnCorner", tip = "CornerWedgePart: rampa de 45 graus nos cantos" },
+  { icon = "Part", label = "Truss (estrutura escalavel)", act = "XSpawnTruss", tip = "TrussPart: escada trelica tipo andaime" },
+  { sep = true },
+  { icon = "plus", label = "Inserir outra classe…", act = "InsertFull", tip = "Abre o INSERIR completo (hierarchy picker) com TODAS as classes" },
+}
+MENUS.TOOLBX = {
+  { icon = "Folder", label = "TOOLBOX X (abrir loja real)", act = "XOpenToolbox", tip = "Busca na Creator Store REAL do Roblox + templates Arkher; clique INSERE no mundo" },
+  { sep = true },
+  { icon = "plus", label = "Buscar modelos…", act = "XOpenToolbox", tip = "Modelos gratuitos publicados pela comunidade Roblox" },
+  { icon = "Data", label = "Templates Arkher", act = "XToolboxArkher", tip = "Plataforma/Muralha/Ponte/Luzes/Moeda etc — inserta e automatiza pros motores X" },
+}
+MENUS.PROPS = {
+  { icon = "Settings", label = "PROPS X — TODAS (abrir)", act = "XOpenProps", tip = "TODAS as propriedades do objeto selecionado — string/numero/bool/vetor/cor/enum TODAS editaveis" },
+  { sep = true },
+  { icon = "Players", label = "Ver seleção atual", act = "XPropsTarget", tip = "Mostra o que o PROPS esta editando agora" },
+}
+MENUS.CORES = {
+  { icon = "Settings", label = "CORES X (abrir picker)", act = "XOpenCores", tip = "Color picker REAL (HSV/RGB/hex) que aplica de VERDADE na propriedade de cor do selecionado" },
+}
+MENUS.OUTPUT = {
+  { icon = "Data", label = "OUTPUT X (abrir log)", act = "XOpenOutput", tip = "O log REAL do Output (LogService) — todos os prints/warns/erros com filtros" },
+  { sep = true },
+  { icon = "Flag", label = "Limpar Output", act = "XOutputClear", tip = "Limpa a janela Output oficial (mesmo botao do Roblox Studio)" },
+}
+MENUS.COMANDO = {
+  { icon = "Flag", label = "COMANDO X (abrir barra)", act = "XOpenComando", tip = "Barra de comandos QUE EXECUTA DE VERDADE — spawn/set/cmd/math/help da Arkher" },
+  { sep = true },
+  { icon = "Data", label = "Ajuda de comandos", act = "XComandoHelp", tip = "Lista tudo que a barra sabe fazer" },
+}
+
 MENUS.CORDAS = {
   { icon = "plus", label = "CORDAS X — Verlet (abrir)", act = "XOpenCordas" },
   { sep = true },
@@ -1319,6 +1456,27 @@ actions.XOpenFx           = function() deckOpen("fx", "presets") end
 actions.XFxFogo           = function() deckCmd("fx_emit", { kind = "fogo" }) deckOpen("fx", "log") end
 actions.XFxChuva          = function() deckCmd("fx_emit", { kind = "chuva" }) deckOpen("fx", "log") end
 actions.XOpenCordas       = function() deckOpen("cordas", "demos") end
+local function spawnShape(shape)
+  local r, err = api("QuickPart", { shape = shape })
+  if err then say("Spawn " .. shape .. ": " .. err, true)
+  else say(r.result and r.result.msg or (shape .. " criado.")) end
+end
+actions.XSpawnBlock       = function() spawnShape("Block") end
+actions.XSpawnBall        = function() spawnShape("Ball") end
+actions.XSpawnCyl         = function() spawnShape("Cylinder") end
+actions.XSpawnCylV        = function() spawnShape("CylinderVertical") end
+actions.XSpawnWedge       = function() spawnShape("Wedge") end
+actions.XSpawnCorner      = function() spawnShape("CornerWedge") end
+actions.XSpawnTruss       = function() spawnShape("Truss") end
+actions.XOpenToolbox      = function() deckOpen("toolbox", "loja") end
+actions.XToolboxArkher    = function() deckOpen("toolbox", "arkher") end
+actions.XOpenProps        = function() deckOpen("props", nil) end
+actions.XPropsTarget      = function() deckOpen("props", nil) end
+actions.XOpenCores        = function() deckOpen("cores", nil) end
+actions.XOpenOutput       = function() deckOpen("output", nil) end
+actions.XOutputClear      = function() deckOpen("output", nil) say("Abra OUTPUT X e clique em LIMPAR (botão real, LogService.ClearOutput).") end
+actions.XOpenComando      = function() deckOpen("comando", nil) end
+actions.XComandoHelp      = function() deckOpen("comando", "ajuda") end
 actions.XCordaDemo        = function() deckCmd("rope_demo", {}) deckOpen("cordas", "demos") end
 actions.XCordaPonte       = function() deckOpen("cordas", "ponte") end
 
@@ -1358,26 +1516,32 @@ end
 
 
 -- =============================================================
--- X-TIER — a BARRA DE ATIVACAO dos editores X, colada na topbar
--- original. Clique ESQUERDO = abre o editor (ATIVA); clique com
--- botao DIREITO = dropdown com acoes extras. Tudo visível, sem
--- esconder nada debaixo de menu: o que existe, tem botao na barra.
+-- X-TIER v2 — a BARRA DE ATIVACAO total, colada na topbar.
+-- Clique ESQUERDO = ATIVA o editor/painel unico; direito = dropdown.
+-- UIGridLayout: WRAPA em 2-3 linhas quando a tela e estreita (mobile
+-- apertado). Largura/escala ADAPTATIVAS pelo ResponsiveScale + host.
 -- =============================================================
 do
   local XT = {
-    { "MUNDO",      "terrain"  },
-    { "ÁGUA",       "water"    },
-    { "MODELAGEM",  "modeler"  },
-    { "ANIMAÇÃO",   "animator" },
-    { "ESPAÇO",     "espaco"   },
-    { "FABRICAR",   "fabricar" },
-    { "ATMOS",      "atmos"    },
-    { "CLIMA",      "clima"    },
-    { "VIDA",       "vida"     },
-    { "CIDADE",     "cidade"   },
-    { "ÁUDIO",      "audio"    },
-    { "FX",         "fx"       },
-    { "CORDAS",     "cordas"   },
+    { "MUNDO",      "terrain",  nil, "TERRAIN X — editor de relevo real (RLayer na terra)" },
+    { "ÁGUA",       "water",    nil, "WATER X — água da VIDA REAL (física/óptica/química)" },
+    { "MODELAGEM",  "modeler",  nil, "MODELER X — primitives/CSG/mesh do motor" },
+    { "ANIMAÇÃO",   "animator", nil, "ANIMATOR X — IK FABRIK ao vivo + time-line" },
+    { "ESPAÇO",     "espaco",   nil, "ESPAÇO X — corpos celestes/órbita reais" },
+    { "FABRICAR",   "fabricar", nil, "FABRICAR X — catálogo de peças geradas pros sistemas" },
+    { "ATMOS",      "atmos",    nil, "ATMOS X — céu Kelvin real + 7 estados de tempo" },
+    { "CLIMA",      "clima",    nil, "CLIMA X — frentes H/L vivas viajando pelos mapas" },
+    { "VIDA",       "vida",     nil, "VIDA X — humanos digitais/NPCs/ecossistema/mentes" },
+    { "CIDADE",     "cidade",   nil, "CIDADE X — vila/cidade/metrópole gravam na terra" },
+    { "ÁUDIO",      "audio",    nil, "ÁUDIO X — mixer real dos 7 buses AUX" },
+    { "FX",         "fx",       nil, "FX X — 13 presets de partículas FÍSICAS (budget real)" },
+    { "CORDAS",     "cordas",   nil, "CORDAS X — Verlet íntegro (ponte/bandeira/tecidinho)" },
+    { "PART",       nil, "PART", "SPAWNAR PART — clique = Block; botão direito = submenu de FORMAS" },
+    { "TOOLBOX",    "toolbox",  "TOOLBX", "TOOLBOX X — Creator Store REAL + templates; clique INSERE no mundo" },
+    { "PROPS",      "props",    "PROPS", "PROPS X — TODAS as propriedades do objeto selecionado, editáveis" },
+    { "CORES",      "cores",    "CORES", "CORES X — color picker REAL aplicado no selecionado" },
+    { "OUTPUT",     "output",   "OUTPUT", "OUTPUT X — log REAL do jogo (LogService) com filtros" },
+    { "COMANDO",    "comando",  "COMANDO", "COMANDO X — barra de comandos que EXECUTA de verdade" },
   }
   local function findBtn(nm)
     for _, c in ipairs(g:GetDescendants()) do
@@ -1387,7 +1551,7 @@ do
   end
   local ref = findBtn("View") or findBtn("Game") or findBtn("Insert")
   local menuRow = ref and ref.Parent
-  -- se a topbar original nao aparecer, ainda crio a faixa (posicao segura)
+
   local tier = Instance.new("Frame")
   tier.Name = "ArkherXTier"
   tier.BackgroundColor3 = m.panel
@@ -1397,54 +1561,90 @@ do
   local tcor = Instance.new("UICorner")
   tcor.CornerRadius = UDim.new(0, 6)
   tcor.Parent = tier
-  local lay = Instance.new("UIListLayout")
+  local lay = Instance.new("UIGridLayout")
   lay.FillDirection = Enum.FillDirection.Horizontal
-  lay.Padding = UDim.new(0, 4)
-  lay.VerticalAlignment = Enum.VerticalAlignment.Center
+  lay.CellPadding = UDim2.new(0, 4, 0, 4)
+  lay.CellSize = UDim2.new(0, 74, 0, 18)
   lay.SortOrder = Enum.SortOrder.LayoutOrder
+  lay.HorizontalAlignment = Enum.HorizontalAlignment.Left
   lay.Parent = tier
-  local function placeTier()
+  local uiScale = Instance.new("UIScale")
+  uiScale.Scale = 1
+  uiScale.Parent = tier
+
+  local function hostWidth()
+    local w2
+    pcall(function()
+      if menuRow and menuRow.Parent and menuRow.Parent.AbsoluteSize then w2 = menuRow.Parent.AbsoluteSize.X end
+    end)
+    if not w2 or w2 <= 0 then
+      pcall(function() if g and g.AbsoluteSize then w2 = g.AbsoluteSize.X end end)
+    end
+    if not w2 or w2 <= 0 then w2 = 1366 end
+    return w2
+  end
+  local function layoutXTier()
+    local hostW = hostWidth()
+    local scale = math.max(h.Scale, 0.01)
+    local avail = math.max(320, (hostW / scale) - 12)
+    local cellW = 74
+    local cols = math.max(1, math.floor((avail - 8) / (cellW + 4)))
+    if cols > #XT then cols = #XT end
+    -- se faltar espaco: encolhe celulas ate caber tudo em <=3 linhas
+    while cols * 1 > 0 and math.ceil(#XT / cols) > 3 and cellW > 52 do
+      cellW = cellW - 4
+      cols = math.max(1, math.floor((avail - 8) / (cellW + 4)))
+      if cols > #XT then cols = #XT end
+    end
+    local rows = math.ceil(#XT / cols)
+    lay.CellSize = UDim2.new(0, cellW, 0, 18)
+    tier.Size = UDim2.new(0, cols * (cellW + 4) + 8, 0, rows * 22 + 4)
+    -- posiciona colado abaixo da faixa-menu original
     if menuRow and menuRow:IsA("GuiObject") then
       local ok, ap, asz, cap = pcall(function()
         return menuRow.AbsolutePosition, menuRow.AbsoluteSize, tier.Parent.AbsolutePosition
       end)
       if ok and asz then
-        -- X-tier colado ABAIXO da faixa do Mezzanine (mesma area da topbar)
-        tier.Position = UDim2.new(0, ap.X - cap.X, 0, ap.Y - cap.Y + asz.Y + 3)
-        tier.Size = UDim2.new(0, math.min(#XT * 74 + (#XT) * 4 + 10, 1070), 0, 24)
-        return
+        tier.Position = UDim2.new(0, math.max(0, ap.X - cap.X), 0, ap.Y - cap.Y + asz.Y + 3)
+      else
+        tier.Position = UDim2.new(0, 220, 0, 34)
       end
+    else
+      tier.Position = UDim2.new(0, 220, 0, 34)
     end
-    -- fallback: o canto esquerdo logo abaixo da faixa-menu
-    tier.Position = UDim2.new(0, 220, 0, 34)
-    tier.Size = UDim2.new(0, math.min(#XT * 74 + (#XT) * 4 + 10, 1070), 0, 24)
+    -- MOBILE: abaixo de ~700px aperta a escala pra manter botao tocavel
+    uiScale.Scale = hostW < 700 and 0.9 or 1
   end
   tier.Parent = (menuRow and menuRow.Parent) or g
-  placeTier()
+  layoutXTier()
   if menuRow then
-    menuRow:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeTier)
-    tier.Parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeTier)
+    pcall(function() menuRow:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutXTier) end)
   end
+  pcall(function() tier.Parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutXTier) end)
+  pcall(function() h:GetPropertyChangedSignal("Value"):Connect(layoutXTier) end)
 
   for i, spec in ipairs(XT) do
-    local label2, viewId = spec[1], spec[2]
+    local label2, viewId, menuAct = spec[1], spec[2], spec[3]
     local b0
     if ref then
       b0 = ref:Clone()
     else
       b0 = Instance.new("TextButton")
     end
-    b0.Name = "XT_" .. viewId
+    b0.Name = "XT_" .. (viewId or menuAct)
     b0.Text = label2
     b0.Size = UDim2.new(0, 74, 0, 18)
     pcall(function() b0.LayoutOrder = i end)
     pcall(function() b0.AutoButtonColor = true end)
-    -- ativa com clique esquerdo; dropdown com direito
     b0.Activated:Connect(function()
-      deckOpen(viewId, nil)
+      if viewId then deckOpen(viewId, nil) else
+        -- PART: clique esquerdo spawna Block na hora
+        local r, err = api("QuickPart", { shape = "Block" })
+        if err then say("Spawn: " .. err, true) else say(r.result and r.result.msg or "Part criada.") end
+      end
     end)
     b0.MouseButton2Click:Connect(function()
-      local nm = label2
+      local nm = menuAct or label2
       if nm == "ANIMACAO" or nm == "ANIMAÇÃO" then nm = "ANIMACAO" end
       if nm == "AUDIO" or nm == "ÁUDIO" then nm = "AUDIO" end
       if nm == "AGUA" or nm == "ÁGUA" then nm = "AGUA" end
@@ -1452,5 +1652,5 @@ do
     end)
     b0.Parent = tier
   end
-  print("[ArkherX] X-TIER ativador na topbar: 13 editores (clique esquerdo abre · botao direito = dropdown)")
+  print("[ArkherX] X-TIER v2: 19 ativadores na topbar (esquerda abre/aciona · direita = dropdown · wrapa em telas estreitas)")
 end

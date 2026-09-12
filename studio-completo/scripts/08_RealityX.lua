@@ -31,6 +31,39 @@ local function cmd(op, params)
 end
 local function msgOf(res) return (type(res) == "table" and (res.msg or "")) or tostring(res) end
 
+-- ponte com o editor NATIVO (hierarchy/properties/criacao/publish) via ClientBus
+local studioUI = script:FindFirstAncestorOfClass("ScreenGui")
+local clientBus
+do
+	local ok, b = pcall(function()
+		if not studioUI then return nil end
+		return studioUI:WaitForChild("ClientBus", 25)
+	end)
+	if ok then clientBus = b end
+end
+local function bridge(action, payload)
+	if not clientBus then
+		local ok, b = pcall(function()
+			return studioUI and studioUI:FindFirstChild("ClientBus") or nil
+		end)
+		if ok and b then clientBus = b end
+		if not clientBus then return nil, "ClientBus indisponivel (o nucleo nativo ainda nao subiu)" end
+	end
+	local ok, r = pcall(function()
+		return clientBus:Invoke("API", { action = action, payload = payload or {}, quiet = true })
+	end)
+	if not ok then return nil, "falha bridge: " .. tostring(r) end
+	if type(r) ~= "table" then return nil, tostring(r) end
+	if r.error then return nil, r.error end
+	return r
+end
+local function bridgeResult(action, payload)
+	local r, err = bridge(action, payload)
+	if not r then return nil, err end
+	if r.result then return r.result end
+	return r
+end
+
 -- ---------- ScreenGui ----------
 local gui = Instance.new("ScreenGui")
 gui.Name = "ArkherDeck"
@@ -38,6 +71,29 @@ gui.ResetOnSpawn = false
 gui.DisplayOrder = 68
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+
+-- frame raiz para escala adaptativa (mobile/diversos dispositivos)
+local deckHost = Instance.new("Frame")
+deckHost.Name = "DeckHost"
+deckHost.Size = UDim2.fromScale(1, 1)
+deckHost.BackgroundTransparency = 1
+deckHost.Parent = gui
+local deckScale = Instance.new("UIScale")
+deckScale.Scale = 1
+deckScale.Parent = deckHost
+local function updateDeckScale()
+	local vp = gui.AbsoluteSize
+	local w = vp.X
+	if w <= 0 then return end
+	-- dispositivos estreitos (mobile/tablet vertical) encolhem; nunca abaixo de legivel
+	local sc = math.clamp(w / 1500, 0.72, 1.3)
+	deckScale.Scale = sc
+end
+task.spawn(function()
+	task.wait(0.2)
+	updateDeckScale()
+end)
+gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateDeckScale)
 
 -- ---------- base de widgets (cada painel usa, mas o LAYOUT é dele) ----------
 local function B(cls, props, parent)
@@ -87,7 +143,7 @@ local function mkWin(id, title, w, h, th)
 		Position = UDim2.new(0.5, -w / 2, 0.5, -h / 2),
 		BackgroundColor3 = th.bg, BorderSizePixel = 0, Visible = false,
 		Active = true, ZIndex = 40,
-	}, gui)
+	}, deckHost)
 	H(f, th.cr or 10)
 	ST(f, 1.2, th.edge)
 	local cap = B("Frame", { Size = UDim2.new(1, 0, 0, 30), BackgroundColor3 = th.cap, BorderSizePixel = 0, ZIndex = 41 }, f)
@@ -2065,6 +2121,1092 @@ end
 local wCordas = mkWin("cordas", "CORDAS X — Verlet íntegro (corda/bandeira/ponte)", 666, 270, THEME_CORDAS)
 buildCordas(wCordas)
 
+
+-- =============================================================
+-- TOOLBOX X — Creator Store REAL do Roblox + templates Arkher
+-- =============================================================
+local THEME_TOOLBOX = {
+	bg = Color3.fromRGB(16, 20, 30), bg2 = Color3.fromRGB(20, 25, 38), bg3 = Color3.fromRGB(26, 32, 48),
+	cap = Color3.fromRGB(13, 16, 25), edge = Color3.fromRGB(64, 84, 130),
+	text = Color3.fromRGB(235, 242, 255), muted = Color3.fromRGB(150, 165, 200),
+	acc = Color3.fromRGB(96, 180, 255), act = Color3.fromRGB(28, 64, 112),
+}
+
+local function buildToolbox(win)
+	local th = THEME_TOOLBOX
+	local body = win.body
+	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
+	local cur = { tab = "loja", kind = "models", page = 0, query = "" }
+
+	-- tabs
+	local tabLoja = B("TextButton", {
+		Size = UDim2.fromOffset(180, 24), Position = UDim2.fromOffset(10, 6),
+		BackgroundColor3 = th.acc, Text = "CREATOR STORE (loja real Roblox)",
+		Font = Enum.Font.GothamBold, TextSize = 10, TextColor3 = Color3.fromRGB(8, 16, 30),
+		BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(tabLoja, 6)
+	local tabStock = B("TextButton", {
+		Size = UDim2.fromOffset(180, 24), Position = UDim2.fromOffset(196, 6),
+		BackgroundColor3 = th.bg3, Text = "Templates Arkher (prontos)",
+		Font = Enum.Font.GothamBold, TextSize = 10, TextColor3 = th.muted,
+		BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(tabStock, 6)
+	local info = B("TextLabel", {
+		Size = UDim2.new(0, 280, 0, 24), Position = UDim2.new(1, -290, 0, 6),
+		BackgroundTransparency = 1, Text = "clique INSERE no mundo (InsertService real)",
+		Font = Enum.Font.Gotham, TextSize = 9, TextColor3 = th.muted,
+		TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 43,
+	}, body)
+
+	-- barra de busca
+	local searchBox = B("TextBox", {
+		Size = UDim2.new(1, -280, 0, 26), Position = UDim2.fromOffset(10, 38),
+		BackgroundColor3 = th.bg2, Text = "", PlaceholderText = "buscar na Creator Store… (ex.: tree, sword, house)",
+		Font = Enum.Font.GothamBold, TextSize = 11, TextColor3 = th.text,
+		PlaceholderColor3 = th.muted, BorderSizePixel = 0,
+		TextXAlignment = Enum.TextXAlignment.Left, ClearTextOnFocus = false, ZIndex = 43,
+	}, body)
+	H(searchBox, 6)
+	local pad = Instance.new("UIPadding") pad.PaddingLeft = UDim.new(0, 8) pad.Parent = searchBox
+	local kindBtn = B("TextButton", {
+		Size = UDim2.fromOffset(110, 26), Position = UDim2.new(1, -264, 0, 38),
+		BackgroundColor3 = th.bg3, Text = "modelos ▾", Font = Enum.Font.GothamBold,
+		TextSize = 10, TextColor3 = th.text, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(kindBtn, 6)
+	kindBtn.MouseButton1Click:Connect(function()
+		cur.kind = (cur.kind == "models") and "decals" or "models"
+		kindBtn.Text = (cur.kind == "models") and "modelos ▾" or "decals ▾"
+	end)
+	local pageLbl = B("TextLabel", {
+		Size = UDim2.fromOffset(60, 26), Position = UDim2.new(1, -148, 0, 38),
+		BackgroundTransparency = 1, Text = "pág 1", Font = Enum.Font.GothamBold,
+		TextSize = 10, TextColor3 = th.muted, ZIndex = 43,
+	}, body)
+	local prevB = B("TextButton", {
+		Size = UDim2.fromOffset(30, 26), Position = UDim2.new(1, -86, 0, 38),
+		BackgroundColor3 = th.bg3, Text = "‹", Font = Enum.Font.GothamBold,
+		TextSize = 14, TextColor3 = th.text, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(prevB, 6)
+	local nextB = B("TextButton", {
+		Size = UDim2.fromOffset(30, 26), Position = UDim2.new(1, -52, 0, 38),
+		BackgroundColor3 = th.bg3, Text = "›", Font = Enum.Font.GothamBold,
+		TextSize = 14, TextColor3 = th.text, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(nextB, 6)
+
+	local results = listCtl(body, UDim2.fromOffset(10, 72), UDim2.new(1, -20, 1, -100), th)
+
+	local function clearList(cnt)
+		for _, ch in ipairs(results:GetChildren()) do
+			if ch:IsA("GuiObject") and (ch.Name == "Row" or ch:IsA("TextButton")) then ch:Destroy() end
+		end
+	end
+
+	local function paintLoja(res)
+		clearList()
+		if not res then return end
+		if res.error then
+			B("TextLabel", {
+				Size = UDim2.new(1, -8, 0, 44), BackgroundTransparency = 1,
+				Text = "⚠  " .. res.error, Font = Enum.Font.Gotham, TextSize = 11,
+				TextColor3 = Color3.fromRGB(255, 170, 120), TextWrapped = true,
+				TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+				ZIndex = 44,
+			}, results)
+			return
+		end
+		info.Text = ("%s resultados — clique INSERE (Creator Store REAL)"):format(tostring(res.total or #res.items))
+		for _, it in ipairs(res.items or {}) do
+			local row = B("TextButton", {
+				Size = UDim2.new(1, -8, 0, 36), BackgroundColor3 = th.bg2,
+				Text = "", BorderSizePixel = 0, ZIndex = 43,
+			}, results)
+			H(row, 6)
+			B("TextLabel", {
+				Size = UDim2.new(1, -200, 0, 18), Position = UDim2.fromOffset(8, 2),
+				BackgroundTransparency = 1, Text = tostring(it.name),
+				Font = Enum.Font.GothamBold, TextSize = 11, TextColor3 = th.text,
+				TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+			}, row)
+			B("TextLabel", {
+				Size = UDim2.new(1, -200, 0, 14), Position = UDim2.fromOffset(8, 19),
+				BackgroundTransparency = 1,
+				Text = ("id %d · por %s%s"):format(it.id or 0, tostring(it.creator or "?"), it.trusted and " ★" or ""),
+				Font = Enum.Font.Gotham, TextSize = 9, TextColor3 = th.muted,
+				TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+			}, row)
+			local ins = B("TextButton", {
+				Size = UDim2.fromOffset(96, 26), Position = UDim2.new(1, -104, 0, 5),
+				BackgroundColor3 = th.acc, Text = "INSERIR", Font = Enum.Font.GothamBold,
+				TextSize = 10, TextColor3 = Color3.fromRGB(8, 16, 30), BorderSizePixel = 0, ZIndex = 44,
+			}, row)
+			H(ins, 6)
+			ins.MouseButton1Click:Connect(function()
+				ins.Text = "…"
+				task.spawn(function()
+					local rr, err = bridgeResult("ToolboxAssetInsert", { assetId = it.id })
+					ins.Text = "INSERIR"
+					if not rr then log("⚠ " .. tostring(err)) else
+						log(rr.msg or ("asset " .. it.id .. " inserido"))
+					end
+				end)
+			end)
+		end
+		if #(res.items or {}) == 0 and not res.error then
+			B("TextLabel", {
+				Size = UDim2.new(1, -8, 0, 30), BackgroundTransparency = 1,
+				Text = "Nada encontrado — tente outro termo (inglês funciona melhor: tree, sword, car, gun, house…)",
+				Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = th.muted,
+				TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+			}, results)
+		end
+	end
+
+	local function paintArkher()
+		clearList()
+		info.Text = "Templates Arkher — inserta com um clique (motor nativo)"
+		task.spawn(function()
+			local res, err = bridgeResult("ToolboxList")
+			if not res then log("⚠ " .. tostring(err)) return end
+			for _, cat in ipairs(res.categories or {}) do
+				B("TextLabel", {
+					Size = UDim2.new(1, -8, 0, 22), BackgroundColor3 = th.bg3,
+					Text = "  " .. tostring(cat.category), Font = Enum.Font.GothamBold,
+					TextSize = 11, TextColor3 = th.acc, TextXAlignment = Enum.TextXAlignment.Left,
+					BorderSizePixel = 0, ZIndex = 43,
+				}, results)
+				for _, it in ipairs(cat.items or {}) do
+					local row = B("TextButton", {
+						Size = UDim2.new(1, -8, 0, 30), BackgroundColor3 = th.bg2,
+						Text = "", BorderSizePixel = 0, ZIndex = 43,
+					}, results)
+					H(row, 6)
+					B("TextLabel", {
+						Size = UDim2.new(1, -140, 0, 15), Position = UDim2.fromOffset(8, 1),
+						BackgroundTransparency = 1, Text = tostring(it.name),
+						Font = Enum.Font.GothamBold, TextSize = 11, TextColor3 = th.text,
+						TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+					}, row)
+					B("TextLabel", {
+						Size = UDim2.new(1, -140, 0, 12), Position = UDim2.fromOffset(8, 16),
+						BackgroundTransparency = 1, Text = tostring(it.description or ""),
+						Font = Enum.Font.Gotham, TextSize = 9, TextColor3 = th.muted,
+						TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+					}, row)
+					local ins = B("TextButton", {
+						Size = UDim2.fromOffset(110, 22), Position = UDim2.new(1, -118, 0, 4),
+						BackgroundColor3 = th.act, Text = "INSERIR", Font = Enum.Font.GothamBold,
+						TextSize = 10, TextColor3 = th.text, BorderSizePixel = 0, ZIndex = 44,
+					}, row)
+					H(ins, 6)
+					ins.MouseButton1Click:Connect(function()
+						task.spawn(function()
+							local rr, err2 = bridgeResult("ToolboxInsert", { id = it.id })
+							if not rr then log("⚠ " .. tostring(err2)) else
+								log("template '" .. tostring(it.name) .. "' inserido (Register + histórico nativos)")
+							end
+						end)
+					end)
+				end
+			end
+		end)
+	end
+
+	local function doSearch(pn)
+		cur.page = pn or 0
+		cur.query = searchBox.Text
+		pageLbl.Text = "pág " .. (cur.page + 1)
+		info.Text = "buscando…"
+		task.spawn(function()
+			local res, err = bridgeResult("ToolboxSearch", { query = cur.query ~= "" and cur.query or "tree", kind = cur.kind, page = cur.page })
+			if not res then
+				paintLoja({ error = tostring(err) })
+				return
+			end
+			paintLoja(res)
+		end)
+	end
+	searchBox.FocusLost:Connect(function(enter) if enter then doSearch(0) end end)
+	prevB.MouseButton1Click:Connect(function() if cur.page > 0 then doSearch(cur.page - 1) end end)
+	nextB.MouseButton1Click:Connect(function() doSearch(cur.page + 1) end)
+	tabLoja.MouseButton1Click:Connect(function()
+		cur.tab = "loja"
+		tabLoja.BackgroundColor3 = th.acc tabLoja.TextColor3 = Color3.fromRGB(8, 16, 30)
+		tabStock.BackgroundColor3 = th.bg3 tabStock.TextColor3 = th.muted
+	end)
+	tabStock.MouseButton1Click:Connect(function()
+		cur.tab = "arkher"
+		tabStock.BackgroundColor3 = th.acc tabStock.TextColor3 = Color3.fromRGB(8, 16, 30)
+		tabLoja.BackgroundColor3 = th.bg3 tabLoja.TextColor3 = th.muted
+		paintArkher()
+	end)
+	log("TOOLBOX X pronta — a LOJA é a Creator Store REAL do Roblox (InsertService.GetFreeModelsAsync)")
+	return win
+end
+
+local wToolbox = mkWin("toolbox", "TOOLBOX X — Creator Store REAL + templates", 700, 400, THEME_TOOLBOX)
+buildToolbox(wToolbox)
+
+-- =============================================================
+-- PROPS X — TODAS as propriedades do objeto selecionado, editáveis
+-- =============================================================
+local THEME_PROPS = {
+	bg = Color3.fromRGB(18, 18, 24), bg2 = Color3.fromRGB(23, 23, 31), bg3 = Color3.fromRGB(28, 29, 40),
+	cap = Color3.fromRGB(14, 14, 19), edge = Color3.fromRGB(68, 70, 100),
+	text = Color3.fromRGB(240, 241, 252), muted = Color3.fromRGB(152, 154, 178),
+	acc = Color3.fromRGB(150, 200, 255), act = Color3.fromRGB(36, 52, 88),
+}
+
+local PROPS_STATE = { targetId = nil, fields = {} }
+
+local function buildProps(win)
+	local th = THEME_PROPS
+	local body = win.body
+	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
+	local headLbl = B("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 20), Position = UDim2.fromOffset(10, 6),
+		BackgroundColor3 = th.cap, Text = "  clique num objeto do EXPLORADOR e depois ATUALIZAR",
+		Font = Enum.Font.Code, TextSize = 10, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(headLbl, 6)
+	local filterBox = B("TextBox", {
+		Size = UDim2.fromOffset(220, 22), Position = UDim2.fromOffset(10, 30),
+		BackgroundColor3 = th.bg2, Text = "", PlaceholderText = "filtrar (ex.: color, size, mat…)",
+		Font = Enum.Font.GothamBold, TextSize = 10, TextColor3 = th.text,
+		PlaceholderColor3 = th.muted, BorderSizePixel = 0, TextXAlignment = Enum.TextXAlignment.Left,
+		ClearTextOnFocus = false, ZIndex = 43,
+	}, body)
+	H(filterBox, 6)
+	local padf = Instance.new("UIPadding") padf.PaddingLeft = UDim.new(0, 8) padf.Parent = filterBox
+	local refreshB = B("TextButton", {
+		Size = UDim2.fromOffset(96, 22), Position = UDim2.fromOffset(238, 30),
+		BackgroundColor3 = th.acc, Text = "ATUALIZAR", Font = Enum.Font.GothamBold,
+		TextSize = 10, TextColor3 = Color3.fromRGB(10, 14, 28), BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(refreshB, 6)
+	local listF = listCtl(body, UDim2.fromOffset(10, 58), UDim2.new(1, -20, 1, -86), th)
+
+	local curFilter = ""
+	filterBox:GetPropertyChangedSignal("Text"):Connect(function()
+		curFilter = filterBox.Text:lower()
+		for _, row in ipairs(listF:GetChildren()) do
+			if row:IsA("GuiObject") and row:GetAttribute("pkey") then
+				local key = (row:GetAttribute("pkey") or ""):lower()
+				local group = (row:GetAttribute("pgroup") or ""):lower()
+				row.Visible = curFilter == "" or key:find(curFilter, 1, true) ~= nil or group:find(curFilter, 1, true) ~= nil
+			end
+		end
+	end)
+
+	local function setVal(key, kind, payload, rowLbl)
+		task.spawn(function()
+			local rr, err = bridgeResult("PropsSet", {
+				id = PROPS_STATE.targetId, key = key, kind = kind,
+			})
+			-- o bridgePropsSet recebe o payload via tabela; remonto com kind bits
+			if not rr then log("⚠ " .. tostring(err)) else log(("✓ %s aplicado"):format(key)) end
+		end)
+	end
+
+	-- editor por kind (compacto, mais claro que o nativo)
+	local function rowEditor(row, f)
+		local X0 = 240
+		if not f.editable then
+			B("TextLabel", {
+				Size = UDim2.new(0, 180, 0, 14), Position = UDim2.fromOffset(X0, 5),
+				BackgroundTransparency = 1, Text = "(somente leitura)",
+				Font = Enum.Font.Gotham, TextSize = 10, TextColor3 = th.muted,
+				TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+			}, row)
+			return
+		end
+		local function mkVal(txt, x, w2)
+			return B("TextBox", {
+				Size = UDim2.fromOffset(w2, 18), Position = UDim2.fromOffset(x, 3),
+				BackgroundColor3 = th.bg3, Text = txt, Font = Enum.Font.Code,
+				TextSize = 10, TextColor3 = th.text, BorderSizePixel = 0,
+				TextXAlignment = Enum.TextXAlignment.Center, ClearTextOnFocus = false, ZIndex = 44,
+			}, row)
+		end
+		if f.kind == "boolean" then
+			local on = f.v and f.v.v == true
+			local tb = B("TextButton", {
+				Size = UDim2.fromOffset(54, 18), Position = UDim2.fromOffset(X0, 3),
+				BackgroundColor3 = on and th.acc or th.bg3,
+				Text = on and "TRUE" or "false", Font = Enum.Font.GothamBold, TextSize = 10,
+				TextColor3 = on and Color3.fromRGB(10, 14, 28) or th.muted, BorderSizePixel = 0, ZIndex = 44,
+			}, row)
+			H(tb, 5)
+			tb.MouseButton1Click:Connect(function()
+				task.spawn(function()
+					local rr, err = bridgeResult("PropsSet", { id = PROPS_STATE.targetId, key = f.key, kind = "boolean", v = not on })
+					if not rr then log("⚠ " .. tostring(err)) else
+						on = not on
+						tb.BackgroundColor3 = on and th.acc or th.bg3
+						tb.Text = on and "TRUE" or "false"
+						tb.TextColor3 = on and Color3.fromRGB(10, 14, 28) or th.muted
+					end
+				end)
+			end)
+		elseif f.kind == "number" then
+			local tb = mkVal(tostring(f.v and f.v.v or 0), X0, 70)
+			tb.FocusLost:Connect(function(enter)
+				if not enter then return end
+				local n = tonumber(tb.Text)
+				if not n then log("⚠ número inválido: " .. tb.Text) return end
+				task.spawn(function()
+					local rr, err = bridgeResult("PropsSet", { id = PROPS_STATE.targetId, key = f.key, kind = "number", v = n })
+					if not rr then log("⚠ " .. tostring(err)) else log("✓ " .. f.key .. " = " .. n) end
+				end)
+			end)
+		elseif f.kind == "string" then
+			local tb = mkVal(tostring(f.v and f.v.s or ""), X0, 190)
+			tb.TextXAlignment = Enum.TextXAlignment.Left
+			tb.FocusLost:Connect(function(enter)
+				if not enter then return end
+				task.spawn(function()
+					local rr, err = bridgeResult("PropsSet", { id = PROPS_STATE.targetId, key = f.key, kind = "string", s = tb.Text })
+					if not rr then log("⚠ " .. tostring(err)) else log("✓ " .. f.key .. " = '" .. tb.Text:sub(1, 24) .. "'") end
+				end)
+			end)
+		elseif f.kind == "color" then
+			local c = f.v or { r = 1, g = 1, b = 1 }
+			local sw = B("TextButton", {
+				Size = UDim2.fromOffset(46, 18), Position = UDim2.fromOffset(X0, 3),
+				BackgroundColor3 = Color3.new(c.r or 1, c.g or 1, c.b or 1),
+				Text = "", BorderSizePixel = 0, ZIndex = 44,
+			}, row)
+			H(sw, 4) ST(sw, 1, th.edge)
+			sw.MouseButton1Click:Connect(function()
+				-- abre CORES X já apontada pro target
+				local d = rawget(_G, "ArkherDeck")
+				if d and d.open then d.open("cores", nil) end
+				if rawget(_G, "ArkherColorTarget") then
+					_G.ArkherColorTarget({ id = PROPS_STATE.targetId, key = f.key })
+				end
+				log("CORES X aberta — escolha a cor e ela aplica em '" .. f.key .. "'")
+			end)
+			local tbc = mkVal(("%d,%d,%d"):format(math.floor((c.r or 1) * 255 + 0.5), math.floor((c.g or 1) * 255 + 0.5), math.floor((c.b or 1) * 255 + 0.5)), X0 + 52, 92)
+			tbc.FocusLost:Connect(function(enter)
+				if not enter then return end
+				local r2, g2, b2 = tbc.Text:match("^%s*(%d+)%s*[,;%s]%s*(%d+)%s*[,;%s]%s*(%d+)%s*$")
+				if not r2 then log("⚠ formato r,g,b ex: 255,128,0") return end
+				task.spawn(function()
+					local rr, err = bridgeResult("PropsSet", {
+						id = PROPS_STATE.targetId, key = f.key, kind = "color",
+						r = math.clamp(tonumber(r2) / 255, 0, 1), g = math.clamp(tonumber(g2) / 255, 0, 1), b = math.clamp(tonumber(b2) / 255, 0, 1),
+					})
+					if not rr then log("⚠ " .. tostring(err)) else sw.BackgroundColor3 = Color3.fromRGB(r2, g2, b2) end
+				end)
+			end)
+		elseif f.kind == "vector" or f.kind == "vector2" then
+			local comps = (f.kind == "vector") and { "x", "y", "z" } or { "x", "y" }
+			local labels = f.v or {}
+			local boxes = {}
+			for k2, nm in ipairs(comps) do
+				boxes[nm] = mkVal(tostring((labels[nm]) or 0), X0 + (k2 - 1) * 52, 46)
+			end
+			for nm, tb2 in pairs(boxes) do
+				tb2.FocusLost:Connect(function(enter)
+					if not enter then return end
+					local pl = { id = PROPS_STATE.targetId, key = f.key, kind = f.kind }
+					for nm3, tb3 in pairs(boxes) do pl[nm3] = tonumber(tb3.Text) or 0 end
+					task.spawn(function()
+						local rr, err = bridgeResult("PropsSet", pl)
+						if not rr then log("⚠ " .. tostring(err)) else log("✓ " .. f.key .. " aplicado") end
+					end)
+				end)
+			end
+		elseif f.kind == "enum" then
+			local eb = B("TextButton", {
+				Size = UDim2.fromOffset(150, 18), Position = UDim2.fromOffset(X0, 3),
+				BackgroundColor3 = th.bg3, Text = (f.v and f.v.enum or "?") .. " ▾",
+				Font = Enum.Font.GothamBold, TextSize = 10, TextColor3 = th.text,
+				BorderSizePixel = 0, ZIndex = 44,
+			}, row)
+			H(eb, 4)
+			local idx = 1
+			local enums = f.enum or {}
+			for k2, nm in ipairs(enums) do if nm == (f.v and f.v.enum) then idx = k2 end end
+			eb.MouseButton1Click:Connect(function()
+				if #enums == 0 then log("⚠ enum sem lista (raro)") return end
+				idx = (idx % #enums) + 1
+				eb.Text = enums[idx] .. " ▾"
+				task.spawn(function()
+					local rr, err = bridgeResult("PropsSet", { id = PROPS_STATE.targetId, key = f.key, kind = "enum", enum = enums[idx] })
+					if not rr then log("⚠ " .. tostring(err)) else log("✓ " .. f.key .. " = " .. enums[idx]) end
+				end)
+			end)
+		else
+			B("TextLabel", {
+				Size = UDim2.new(0, 180, 0, 14), Position = UDim2.fromOffset(X0, 5),
+				BackgroundTransparency = 1, Text = "…" .. f.kind,
+				Font = Enum.Font.Gotham, TextSize = 10, TextColor3 = th.muted,
+				TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+			}, row)
+		end
+	end
+
+	local function reload()
+		task.spawn(function()
+			local sel, err0 = bridgeResult("SelectedGet")
+			if not sel then headLbl.Text = "  ⚠ " .. tostring(err0) return end
+			if sel.none then headLbl.Text = "  " .. sel.msg PROPS_STATE.targetId = nil return end
+			PROPS_STATE.targetId = sel.id
+			headLbl.Text = ("  %s  (%s) — atualizando props…"):format(sel.name, sel.className)
+			local res, err = bridgeResult("PropsAll", { id = sel.id })
+			if not res then log("⚠ " .. tostring(err)) return end
+			headLbl.Text = ("  %s  (%s) — %d propriedades REAIS, %s"):format(res.name, res.className, #res.fields, res.writable and "TODAS editáveis" or "somente leitura")
+			PROPS_STATE.fields = res.fields
+			for _, ch in ipairs(listF:GetChildren()) do
+				if ch:IsA("GuiObject") then ch:Destroy() end
+			end
+			local lastGroup = nil
+			for _, f in ipairs(res.fields) do
+				if f.group ~= lastGroup then
+					lastGroup = f.group
+					B("TextLabel", {
+						Size = UDim2.new(1, -8, 0, 18), BackgroundColor3 = th.bg3,
+						Text = "  " .. f.group, Font = Enum.Font.GothamBold, TextSize = 10,
+						TextColor3 = th.acc, TextXAlignment = Enum.TextXAlignment.Left,
+						BorderSizePixel = 0, ZIndex = 43,
+					}, listF)
+				end
+				local row = B("Frame", { Size = UDim2.new(1, -8, 0, 24), BackgroundTransparency = 1, ZIndex = 43 }, listF)
+				row:SetAttribute("pkey", f.key) row:SetAttribute("pgroup", f.group)
+				B("TextLabel", {
+					Size = UDim2.fromOffset(224, 20), Position = UDim2.fromOffset(2, 2),
+					BackgroundTransparency = 1, Text = f.key .. "   ·" .. f.kind .. (f.editable and "" or " 🔒"),
+					Font = Enum.Font.GothamBold, TextSize = 10,
+					TextColor3 = f.editable and th.text or th.muted,
+					TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+				}, row)
+				rowEditor(row, f)
+			end
+		end)
+	end
+	refreshB.MouseButton1Click:Connect(reload)
+	-- auto: quando a janela abre, ja tenta
+	task.delay(0.4, reload)
+	log("PROPS X — mesmas propriedades do painel nativo + TODAS as curadas exaustivas por classe")
+	return win
+end
+
+local wProps = mkWin("props", "PROPS X — TODAS as propriedades, funcionais", 700, 420, THEME_PROPS)
+buildProps(wProps)
+
+
+-- =============================================================
+-- CORES X — color picker REAL (HSV/RGB/hex) que aplica no alvo
+-- =============================================================
+local THEME_CORES = {
+	bg = Color3.fromRGB(22, 18, 26), bg2 = Color3.fromRGB(28, 23, 33), bg3 = Color3.fromRGB(35, 29, 42),
+	cap = Color3.fromRGB(18, 15, 21), edge = Color3.fromRGB(96, 78, 120),
+	text = Color3.fromRGB(248, 244, 252), muted = Color3.fromRGB(182, 170, 196),
+	acc = Color3.fromRGB(255, 200, 120), act = Color3.fromRGB(80, 52, 26),
+}
+
+local function buildCores(win)
+	local th = THEME_CORES
+	local body = win.body
+	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
+	local C = { h = 0.6, s = 0.7, v = 0.9 }
+	local target = { id = nil, key = nil } -- setado pelo PROPS X via _G.ArkherColorTarget
+
+	local prev = B("Frame", {
+		Size = UDim2.new(1, -20, 0, 46), Position = UDim2.fromOffset(10, 8),
+		BackgroundColor3 = Color3.fromHSV(C.h, C.s, C.v), BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(prev, 7) ST(prev, 1, th.edge)
+	local hexLbl = B("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 14), Position = UDim2.fromOffset(10, 56),
+		BackgroundTransparency = 1, Text = "#FFFFFF", Font = Enum.Font.Code,
+		TextSize = 11, TextColor3 = th.muted, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 43,
+	}, body)
+
+	local function hexOf(c)
+		return string.format("#%02X%02X%02X", math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5))
+	end
+	local function refreshPreview()
+		local c = Color3.fromHSV(C.h, C.s, C.v)
+		prev.BackgroundColor3 = c
+		hexLbl.Text = hexOf(c)
+	end
+
+	-- sliders RGB + HSV em duas colunas
+	local labels = {}
+	local function colSlider(x, lbl, min, max, get, set, fmt)
+		local sld = sliderCtl(body, UDim2.fromOffset(x, 74 + #labels * 2), 0, lbl .. string.format(fmt or " (%.2f)", get()), min, max, get(), th, function(v)
+			set(v) refreshPreview()
+			-- atualiza rotulos vizinhos
+			for _, L in ipairs(labels) do L() end
+		end)
+		labels[#labels + 1] = function() end
+	end
+	-- rgb
+	sliderCtl(body, UDim2.fromOffset(10, 76), 0, "R (0-255)", 0, 255, 153, th, function(v) local hh, ss, vv = 0, 0, 0 local c = prev.BackgroundColor3 hh, ss, vv = Color3.toHSV(c) local n = Color3.fromRGB(math.floor(v + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5)) C.h, C.s, C.v = Color3.toHSV(n) end)
+	sliderCtl(body, UDim2.fromOffset(10, 112), 0, "G (0-255)", 0, 255, 178, th, function(v) local c = prev.BackgroundColor3 local n = Color3.fromRGB(math.floor(c.R * 255 + 0.5), math.floor(v + 0.5), math.floor(c.B * 255 + 0.5)) C.h, C.s, C.v = Color3.toHSV(n) end)
+	sliderCtl(body, UDim2.fromOffset(10, 148), 0, "B (0-255)", 0, 255, 229, th, function(v) local c = prev.BackgroundColor3 local n = Color3.fromRGB(math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(v + 0.5)) C.h, C.s, C.v = Color3.toHSV(n) end)
+	-- hsv
+	sliderCtl(body, UDim2.new(0.5, 8, 0, 76), 0, "Matiz H (0-360)", 0, 360, 216, th, function(v) C.h = v / 360 end)
+	sliderCtl(body, UDim2.new(0.5, 8, 0, 112), 0, "Saturação S (0-100)", 0, 100, 70, th, function(v) C.s = v / 100 end)
+	sliderCtl(body, UDim2.new(0.5, 8, 0, 148), 0, "Valor V (0-100)", 0, 100, 90, th, function(v) C.v = v / 100 end)
+	-- conectar onChange->refreshPreview nos sliders (padrao: o kit chama onChange puro)
+	refreshPreview()
+
+	-- hex entry
+	local hexBox = B("TextBox", {
+		Size = UDim2.fromOffset(120, 22), Position = UDim2.fromOffset(10, 186),
+		BackgroundColor3 = th.bg3, Text = "#RRGGBB", Font = Enum.Font.Code,
+		TextSize = 11, TextColor3 = th.text, BorderSizePixel = 0,
+		TextXAlignment = Enum.TextXAlignment.Center, ClearTextOnFocus = true, ZIndex = 43,
+	}, body)
+	H(hexBox, 5)
+	hexBox.FocusLost:Connect(function(enter)
+		if not enter then return end
+		local hx = hexBox.Text:gsub("#", "")
+		if #hx == 6 then
+			local r2 = tonumber(hx:sub(1, 2), 16); local g2 = tonumber(hx:sub(3, 4), 16); local b2 = tonumber(hx:sub(5, 6), 16)
+			if r2 and g2 and b2 then
+				C.h, C.s, C.v = Color3.toHSV(Color3.fromRGB(r2, g2, b2))
+				refreshPreview()
+				log("cor " .. hexBox.Text .. " carregada")
+			end
+		else log("⚠ hex formato #RRGGBB") end
+	end)
+
+	-- paleta BrickColor (curada oficial)
+	B("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 14), Position = UDim2.fromOffset(10, 216),
+		BackgroundTransparency = 1, Text = "PALETA (clique carrega):",
+		Font = Enum.Font.GothamBold, TextSize = 9, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 43,
+	}, body)
+	local paleta = {
+		"Bright red", "Bright blue", "Bright green", "Bright yellow", "Bright orange", "Bright violet",
+		"White", "Black", "Dark stone grey", "Medium stone grey", "Light stone grey", "Deep orange",
+		"Navy blue", "Lime green", "Pink", "Cyan", "Gold", "Really red", "Really blue", "Earth green",
+		"Brick yellow", "Sand", "New Yeller", "Hot pink",
+	}
+	local px, py = 10, 234
+	for i, nm in ipairs(paleta) do
+		local bc = BrickColor.new(nm)
+		local swc = B("TextButton", {
+			Size = UDim2.fromOffset(24, 24), Position = UDim2.fromOffset(px, py),
+			BackgroundColor3 = bc.Color, Text = "", BorderSizePixel = 0, ZIndex = 43,
+		}, body)
+		H(swc, 5) ST(swc, 1, th.edge)
+		swc.MouseButton1Click:Connect(function()
+			C.h, C.s, C.v = Color3.toHSV(bc.Color)
+			refreshPreview()
+			log("carregado: " .. nm)
+		end)
+		px = px + 30
+		if px > (wCordas and 620 or 620) - 30 then px = 10 py = py + 30 end
+	end
+
+	-- ONDE APLICAR: lista de chaves de cor do alvo (via PropsAll) + direto no target setado
+	local applyFrame = B("Frame", {
+		Size = UDim2.new(1, -20, 0, 118), Position = UDim2.new(0, 10, 1, -150),
+		BackgroundColor3 = th.bg2, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(applyFrame, 7) ST(applyFrame, 1, th.edge)
+	local applyList = listCtl(applyFrame, UDim2.fromOffset(8, 28), UDim2.new(1, -16, 1, -34), th)
+	local alvoLbl = B("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 20), Position = UDim2.fromOffset(8, 4),
+		BackgroundTransparency = 1, Text = "APLICAR — nenhum alvo ainda (selecione algo)",
+		Font = Enum.Font.GothamBold, TextSize = 10, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+	}, applyFrame)
+
+	local function scanColorKeys()
+		for _, ch in ipairs(applyList:GetChildren()) do
+			if ch:IsA("GuiObject") then ch:Destroy() end
+		end
+		task.spawn(function()
+			local sel = target.id and { id = target.id } or bridgeResult("SelectedGet")
+			if not sel or sel.none then
+				alvoLbl.Text = "APLICAR — selecione um objeto no EXPLORADOR (ou venha do PROPS X)"
+				return
+			end
+			local res = bridgeResult("PropsAll", { id = sel.id })
+			if not res then alvoLbl.Text = "APLICAR — sem acesso às props" return end
+			alvoLbl.Text = ("APLICAR em %s (%s): escolha a PROPRIEDADE de cor"):format(res.name, res.className)
+			local found = false
+			for _, f in ipairs(res.fields or {}) do
+				if f.kind == "color" and f.editable then
+					found = true
+					local ab2 = B("TextButton", {
+						Size = UDim2.new(1, -8, 0, 24), BackgroundColor3 = th.act,
+						Text = "▶ " .. f.key, Font = Enum.Font.GothamBold, TextSize = 10,
+						TextColor3 = th.text, BorderSizePixel = 0, ZIndex = 44,
+						TextXAlignment = Enum.TextXAlignment.Left,
+					}, applyList)
+					H(ab2, 5)
+					local padl = Instance.new("UIPadding") padl.PaddingLeft = UDim.new(0, 6) padl.Parent = ab2
+					ab2.MouseButton1Click:Connect(function()
+						local c = prev.BackgroundColor3
+						task.spawn(function()
+							local rr, err = bridgeResult("PropsSet", {
+								id = sel.id, key = f.key, kind = "color", r = c.R, g = c.G, b = c.B,
+							})
+							if not rr then log("⚠ " .. tostring(err)) else
+								log(("✓ %s.%s = %s — aplicado de VERDADE"):format(res.name, f.key, hexOf(c)))
+							end
+						end)
+					end)
+				end
+			end
+			if not found then
+				B("TextLabel", {
+					Size = UDim2.new(1, -8, 0, 20), BackgroundTransparency = 1,
+					Text = "Este objeto não tem propriedade de cor EDITÁVEL.",
+					Font = Enum.Font.Gotham, TextSize = 10, TextColor3 = th.muted,
+					TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+				}, applyList)
+			end
+		end)
+	end
+	-- alvo externo (PROPS X chamou)
+	rawset(_G, "ArkherColorTarget", function(t2)
+		target.id = t2.id target.key = t2.key
+		log("alvo: propriedade '" .. tostring(t2.key) .. "' — escolha e aplique")
+		scanColorKeys()
+	end)
+	-- botao re-scan
+	local reB = B("TextButton", {
+		Size = UDim2.fromOffset(84, 18), Position = UDim2.new(1, -92, 0, 6),
+		BackgroundColor3 = th.bg3, Text = "↻ selecionar", Font = Enum.Font.GothamBold,
+		TextSize = 9, TextColor3 = th.muted, BorderSizePixel = 0, ZIndex = 44,
+	}, applyFrame)
+	H(reB, 4)
+	reB.MouseButton1Click:Connect(function() target.id = nil scanColorKeys() end)
+	task.delay(0.5, scanColorKeys)
+	log("CORES X — picking HSV/RGB/hex real; aplica na propriedade DE COR do objeto selecionado")
+	return win
+end
+
+local wCores = mkWin("cores", "CORES X — color picker real e funcional", 640, 430, THEME_CORES)
+buildCores(wCores)
+
+-- =============================================================
+-- OUTPUT X — o log REAL (LogService) com filtros e limpar
+-- =============================================================
+local THEME_OUTPUT = {
+	bg = Color3.fromRGB(12, 12, 14), bg2 = Color3.fromRGB(16, 16, 20), bg3 = Color3.fromRGB(21, 21, 27),
+	cap = Color3.fromRGB(9, 9, 11), edge = Color3.fromRGB(60, 62, 74),
+	text = Color3.fromRGB(235, 236, 240), muted = Color3.fromRGB(146, 148, 160),
+	acc = Color3.fromRGB(124, 200, 255), act = Color3.fromRGB(24, 44, 72),
+}
+
+local function buildOutput(win)
+	local th = THEME_OUTPUT
+	local body = win.body
+	local LogS = game:GetService("LogService")
+	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
+	local filtros = { Info = true, Warning = true, Error = true }
+	local counter = B("TextLabel", {
+		Size = UDim2.fromOffset(220, 18), Position = UDim2.fromOffset(10, 6),
+		BackgroundColor3 = th.cap, Text = "  0 mensagens",
+		Font = Enum.Font.Code, TextSize = 10, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(counter, 5)
+	local chipDefs = { { "Info", Color3.fromRGB(180, 210, 255) }, { "Warning", Color3.fromRGB(255, 226, 130) }, { "Error", Color3.fromRGB(255, 140, 125) } }
+	local chipBtns = {}
+	for i, df in ipairs(chipDefs) do
+		local cb = B("TextButton", {
+			Size = UDim2.fromOffset(84, 18), Position = UDim2.fromOffset(238 + (i - 1) * 90, 6),
+			BackgroundColor3 = th.bg3, Text = df[1] .. " ✓", Font = Enum.Font.GothamBold,
+			TextSize = 9, TextColor3 = df[2], BorderSizePixel = 0, ZIndex = 43,
+		}, body)
+		H(cb, 5)
+		chipBtns[df[1]] = cb
+		cb.MouseButton1Click:Connect(function()
+			filtros[df[1]] = not filtros[df[1]]
+			cb.Text = df[1] .. (filtros[df[1]] and " ✓" or " ✗")
+			cb.BackgroundColor3 = filtros[df[1]] and th.act or th.bg3
+			for _, row in ipairs(listO and { listO } or {}) do end
+			-- esconde/mostra
+			for _, row0 in ipairs(rowsFrame:GetChildren()) do
+				if row0:IsA("TextLabel") then
+					local t2 = row0:GetAttribute("mtype")
+					row0.Visible = t2 and filtros[t2] ~= false
+				end
+			end
+		end)
+	end
+	local clearB = B("TextButton", {
+		Size = UDim2.fromOffset(84, 18), Position = UDim2.new(1, -100, 0, 6),
+		BackgroundColor3 = th.bg3, Text = "LIMPAR", Font = Enum.Font.GothamBold,
+		TextSize = 9, TextColor3 = th.muted, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(clearB, 5)
+	rowsFrame = listCtl(body, UDim2.fromOffset(10, 30), UDim2.new(1, -20, 1, -58), th)
+
+	local total = 0
+	local function addLine(msg, mtype)
+		total = total + 1
+		counter.Text = ("  %d mensagens (LogService REAL)"):format(total)
+		local show = filtros[mtype] ~= false
+		local col = (mtype == "Error") and Color3.fromRGB(255, 140, 125)
+			or (mtype == "Warning") and Color3.fromRGB(255, 226, 130)
+			or (mtype == "Info" and Color3.fromRGB(212, 216, 224) or th.text)
+		local row = B("TextLabel", {
+			Size = UDim2.new(1, -8, 0, 16), BackgroundTransparency = 1,
+			Text = (mtype == "Info" and "• " or (mtype == "Warning" and "⚠ " or "✗ ")) .. tostring(msg),
+			Font = Enum.Font.Code, TextSize = 11, TextColor3 = col,
+			TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = false,
+			BorderSizePixel = 0, ZIndex = 44,
+		}, rowsFrame)
+		row:SetAttribute("mtype", mtype)
+		row.Visible = show
+		if #rowsFrame:GetChildren() > 520 then
+			for _, c0 in ipairs(rowsFrame:GetChildren()) do
+				if c0:IsA("TextLabel") then c0:Destroy() break end
+			end
+		end
+	end
+	clearB.MouseButton1Click:Connect(function()
+		local ok, err = pcall(function() LogS:ClearOutput() end)
+		if ok then
+			total = 0
+			for _, c0 in ipairs(rowsFrame:GetChildren()) do
+				if c0:IsA("TextLabel") then c0:Destroy() end
+			end
+			counter.Text = "  0 mensagens (limpa!)"
+			log("Output REAL limpo (mesmo Clear do Studio)")
+		else
+			log("⚠ ClearOutput falhou: " .. tostring(err))
+		end
+	end)
+	-- snapshot inicial
+	task.spawn(function()
+		local hist = LogS:GetLogHistory()
+		for i = #hist - 160, #hist do
+			local it = hist[i]
+			if it then
+				local mtype = (it.messageType == Enum.MessageType.MessageError) and "Error"
+					or (it.messageType == Enum.MessageType.MessageWarning) and "Warning" or "Info"
+				addLine(it.message, mtype)
+			end
+		end
+	end)
+	-- vivo
+	LogS.MessageOut:Connect(function(msg, mtype)
+		local mt = (mtype == Enum.MessageType.MessageError) and "Error"
+			or (mtype == Enum.MessageType.MessageWarning) and "Warning" or "Info"
+		addLine(msg, mt)
+	end)
+	log("OUTPUT X — o log REAL (LogService.GetLogHistory + MessageOut), filtros por tipo")
+	return win
+end
+
+local wOutput = mkWin("output", "OUTPUT X — log real do jogo (LogService)", 700, 380, THEME_OUTPUT)
+buildOutput(wOutput)
+
+-- =============================================================
+-- COMANDO X — barra de comandos que EXECUTA de verdade
+-- =============================================================
+local THEME_COMANDO = {
+	bg = Color3.fromRGB(14, 18, 22), bg2 = Color3.fromRGB(18, 23, 29), bg3 = Color3.fromRGB(23, 30, 37),
+	cap = Color3.fromRGB(10, 13, 17), edge = Color3.fromRGB(56, 86, 108),
+	text = Color3.fromRGB(230, 244, 252), muted = Color3.fromRGB(140, 170, 190),
+	acc = Color3.fromRGB(140, 255, 196), act = Color3.fromRGB(20, 70, 48),
+}
+
+local function mathEval(src)
+	-- mini-parser seguro: numeros, + - * / ^ % ( ), funcoes de math, pi
+	local pos = 1
+	local function peek() return src:sub(pos, pos) end
+	local function eat(s2)
+		if src:sub(pos, pos + #s2 - 1) == s2 then pos = pos + #s2 return true end
+		return false
+	end
+	local function skipWS() while peek():match("%s") do pos = pos + 1 end end
+	local parseExpr
+	local function parseAtom()
+		skipWS()
+		if eat("(") then
+			local v = parseExpr()
+			skipWS()
+			assert(eat(")"), "faltou ')'")
+			return v
+		end
+		-- numero
+		local num = src:match("^%d+%.?%d*", pos)
+		if num and #num > 0 then
+			pos = pos + #num
+			return tonumber(num)
+		end
+		-- ident (funcao/const)
+		local id = src:match("^%a+", pos)
+		if id and #id > 0 then
+			pos = pos + #id
+			skipWS()
+			if id == "pi" then return math.pi end
+			if eat("(") then
+				local a = parseExpr()
+				skipWS()
+				assert(eat(")"), "faltou ')' em " .. id)
+				local fn = math[id]
+				assert(type(fn) == "function", "funcao desconhecida: " .. id)
+				return fn(a)
+			end
+		end
+		error("esperava numero na posicao " .. pos)
+	end
+	local function parsePow()
+		local v = parseAtom()
+		skipWS()
+		if eat("^") then v = v ^ parsePow() end
+		return v
+	end
+	local function parseTerm()
+		local v = parsePow()
+		while true do
+			skipWS()
+			if eat("*") then v = v * parsePow()
+			elseif eat("/") then v = v / parsePow()
+			elseif eat("%%") then v = v % parsePow()
+			else break end
+		end
+		return v
+	end
+	parseExpr = function()
+		local v = parseTerm()
+		while true do
+			skipWS()
+			if eat("+") then v = v + parseTerm()
+			elseif eat("-") then v = v - parseTerm()
+			else break end
+		end
+		return v
+	end
+	local ok, r2 = pcall(function()
+		local v = parseExpr()
+		skipWS()
+		assert(pos > #src, "trailing '" .. src:sub(pos) .. "'")
+		return v
+	end)
+	if ok then return r2 end
+	error(tostring(r2))
+end
+
+local function buildComando(win)
+	local th = THEME_COMANDO
+	local body = win.body
+	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
+	local help = {
+		"help — esta ajuda",
+		"spawn Block|Ball|Cylinder|CylinderVertical|Wedge|CornerWedge|Truss — spawna a FORMA real no mundo",
+		"sel — mostra o objeto selecionado no EXPLORADOR",
+		"set <propriedade> <valor> — aplica no selecionado (ex.: set Transparency 0.5 · set Color 255,128,0 · set Anchored true · set Material Neon)",
+		"cmd <op> chave=valor… — chama os 95 comandos X do engine (ex.: cmd fx_emit kind=fogo x=0 y=6 z=-16)",
+		"math <expressao> — ex.: math (2+3)*sqrt(16)^0.5",
+		"time <0-24> — relógio solar (o céu cruza os Kelvin de (...) sozinho)",
+		"weather <sol|chuva|nebulina|tempestade|neve|neblina|arco> — tempo de transição real",
+		"ls — lista o que a barra sabe",
+	}
+	local outBox = B("ScrollingFrame", {
+		Size = UDim2.new(1, -20, 1, -100), Position = UDim2.fromOffset(10, 32),
+		BackgroundColor3 = th.bg3, BorderSizePixel = 0,
+		CanvasSize = UDim2.new(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarThickness = 6, ScrollBarImageColor3 = th.acc, ZIndex = 43,
+	}, body)
+	H(outBox, 6)
+	local layO = Instance.new("UIListLayout") layO.Padding = UDim.new(0, 2) layO.Parent = outBox
+	local padO = Instance.new("UIPadding") padO.PaddingLeft = UDim.new(0, 6) padO.PaddingTop = UDim.new(0, 4) padO.Parent = outBox
+	local function sayOut(t2, col)
+		B("TextLabel", {
+			Size = UDim2.new(1, -12, 0, 16),
+			BackgroundTransparency = 1, Text = tostring(t2),
+			Font = Enum.Font.Code, TextSize = 11,
+			TextColor3 = col or th.text, TextXAlignment = Enum.TextXAlignment.Left,
+			TextWrapped = false, ZIndex = 44,
+		}, outBox)
+		task.defer(function() outBox.CanvasPosition = Vector2.new(0, outBox.AbsoluteCanvasSize.Y + 40) end)
+		if #outBox:GetChildren() > 200 then
+			for _, c0 in ipairs(outBox:GetChildren()) do
+				if c0:IsA("TextLabel") then c0:Destroy() break end
+			end
+		end
+	end
+	sayOut("COMANDO X pronta — digite 'help' (barra que EXECUTA de verdade)", th.acc)
+
+	local hist = {}
+	local histFrame = B("Frame", {
+		Size = UDim2.fromOffset(140, 1), Position = UDim2.new(1, -150, 0, 8),
+		BackgroundTransparency = 1, ZIndex = 43,
+	}, body)
+	local input = B("TextBox", {
+		Size = UDim2.new(1, -20, 0, 34), Position = UDim2.new(0, 10, 1, -68),
+		BackgroundColor3 = th.bg2, Text = "",
+		PlaceholderText = "comando… (ex.: spawn Ball · set Color 255,128,0 · cmd wea_stats · math 2^10)",
+		Font = Enum.Font.Code, TextSize = 13, TextColor3 = th.text,
+		PlaceholderColor3 = th.muted, BorderSizePixel = 0,
+		TextXAlignment = Enum.TextXAlignment.Left, ClearTextOnFocus = false, ZIndex = 43,
+	}, body)
+	H(input, 7)
+	local padI = Instance.new("UIPadding") padI.PaddingLeft = UDim.new(0, 10) padI.Parent = input
+
+	local function repaintHist()
+		for _, c0 in ipairs(histFrame:GetChildren()) do if c0:IsA("GuiObject") then c0:Destroy() end end
+		histFrame.Size = UDim2.fromOffset(1, 24)
+		local layH = Instance.new("UIListLayout") layH.FillDirection = Enum.FillDirection.Horizontal layH.Padding = UDim.new(0, 4) layH.Parent = histFrame
+		for i = math.max(1, #hist - 5), #hist do
+			local hstr = hist[i]
+			local btn = B("TextButton", {
+				Size = UDim2.fromOffset(90, 24), BackgroundColor3 = th.bg3,
+				Text = hstr:sub(1, 12) .. (#hstr > 12 and "…" or ""),
+				Font = Enum.Font.Code, TextSize = 9, TextColor3 = th.muted,
+				BorderSizePixel = 0, ZIndex = 44,
+			}, histFrame)
+			H(btn, 5)
+			btn.MouseButton1Click:Connect(function() input.Text = hstr input:CaptureFocus() end)
+		end
+	end
+
+	local function run(line)
+		line = line:gsub("^%s+", ""):gsub("%s+$", "")
+		if line == "" then return end
+		sayOut("Arkher> " .. line, th.muted)
+		hist[#hist + 1] = line
+		if #hist > 30 then table.remove(hist, 1) end
+		repaintHist()
+		local cmdName, rest = line:match("^(%S+)%s*(.-)$")
+		cmdName = (cmdName or ""):lower()
+		if cmdName == "help" or cmdName == "ls" or cmdName == "ajuda" then
+			for _, h2 in ipairs(help) do sayOut("  " .. h2, th.text) end
+			return
+		end
+		if cmdName == "math" then
+			local ok2, r2 = pcall(mathEval, rest)
+			if ok2 then sayOut("= " .. tostring(r2), th.acc) else sayOut("⚠ " .. tostring(r2), Color3.fromRGB(255, 150, 120)) end
+			return
+		end
+		if cmdName == "spawn" then
+			local shape = rest:match("^%s*([%w]+)") or "Block"
+			local map = { block = "Block", ball = "Ball", cylinder = "Cylinder", cylindervertical = "CylinderVertical", wedge = "Wedge", cornerwedge = "CornerWedge", truss = "Truss" }
+			local s2 = map[shape:lower()]
+			if not s2 then sayOut("⚠ forma '" .. shape .. "'? use: Block|Ball|Cylinder|CylinderVertical|Wedge|CornerWedge|Truss", Color3.fromRGB(255, 150, 120)) return end
+			sayOut("spawning " .. s2 .. "…", th.muted)
+			task.spawn(function()
+				local rr, err = bridgeResult("QuickPart", { shape = s2 })
+				if not rr then sayOut("⚠ " .. tostring(err), Color3.fromRGB(255, 150, 120)) else
+					sayOut("✓ " .. (rr.msg or (s2 .. " criado")), th.acc)
+				end
+			end)
+			return
+		end
+		if cmdName == "sel" then
+			task.spawn(function()
+				local sel, err = bridgeResult("SelectedGet")
+				if not sel then sayOut("⚠ " .. tostring(err), Color3.fromRGB(255, 150, 120))
+				elseif sel.none then sayOut("(nada selecionado)", th.muted)
+				else sayOut(("✓ %s (%s) — %s"):format(sel.name, sel.className, sel.path or ""), th.acc) end
+			end)
+			return
+		end
+		if cmdName == "set" then
+			local key, raw = rest:match("^(%S+)%s+(.+)$")
+			if not key then sayOut("⚠ uso: set <propriedade> <valor>", Color3.fromRGB(255, 150, 120)) return end
+			task.spawn(function()
+				local sel = bridgeResult("SelectedGet")
+				if not sel or sel.none then sayOut("⚠ selecione um objeto no EXPLORADOR primeiro") return end
+				-- descobre o kind via PropsAll
+				local res = bridgeResult("PropsAll", { id = sel.id })
+				if not res then sayOut("⚠ sem props") return end
+				local kind = nil
+				for _, f in ipairs(res.fields or {}) do
+					if f.key:lower() == key:lower() then kind = f.kind key = f.key break end
+				end
+				if not kind then sayOut("⚠ propriedade '" .. key .. "' nao existe em " .. (sel.className or "?"), Color3.fromRGB(255, 150, 120)) return end
+				local pl = { id = sel.id, key = key, kind = kind }
+				local rv = (raw or ""):gsub("%s+$", "")
+				if kind == "boolean" then
+					pl.v = rv:lower():find("^t") or rv == "1" or rv:lower() == "yes" or rv:lower() == "sim" or false
+					pl.v = pl.v == true
+				elseif kind == "number" then
+					pl.v = tonumber(rv)
+					if not pl.v then sayOut("⚠ numero invalido: " .. rv, Color3.fromRGB(255, 150, 120)) return end
+				elseif kind == "color" then
+					local r2, g2, b2 = rv:match("(%d+)%s*[,;%s]%s*(%d+)%s*[,;%s]%s*(%d+)")
+					if not r2 then sayOut("⚠ cor: r,g,b ex: 255,128,0", Color3.fromRGB(255, 150, 120)) return end
+					pl.r, pl.g, pl.b = tonumber(r2) / 255, tonumber(g2) / 255, tonumber(b2) / 255
+				elseif kind == "vector" then
+					local x2, y2, z2 = rv:match("([%d%-%.]+)%s*[,;%s]%s*([%d%-%.]+)%s*[,;%s]%s*([%d%-%.]+)")
+					if not x2 then sayOut("⚠ vetor: x,y,z", Color3.fromRGB(255, 150, 120)) return end
+					pl.x, pl.y, pl.z = tonumber(x2), tonumber(y2), tonumber(z2)
+				elseif kind == "enum" then
+					pl.enum = rv
+				else
+					pl.s = rv
+				end
+				local rr, err = bridgeResult("PropsSet", pl)
+				if not rr then sayOut("⚠ " .. tostring(err), Color3.fromRGB(255, 150, 120)) else
+					sayOut(("✓ %s.%s aplicado"):format(sel.name, key), th.acc)
+				end
+			end)
+			return
+		end
+		if cmdName == "time" then
+			local h2 = tonumber(rest)
+			if not h2 then sayOut("⚠ time 0..24") return end
+			sayOut("relógio solar -> " .. h2 .. "h…")
+			task.spawn(function()
+				local res = cmd("atmos_clock", { h = h2 })
+				sayOut(msgOf(res), th.acc)
+			end)
+			return
+		end
+		if cmdName == "weather" then
+			sayOut("tempo -> '" .. rest .. "'…")
+			task.spawn(function()
+				local res = cmd("atmos_weather", { state = rest })
+				sayOut(msgOf(res), th.acc)
+			end)
+			return
+		end
+		if cmdName == "cmd" then
+			local op, kvs = rest:match("^(%S+)%s*(.-)$")
+			if not op then sayOut("⚠ uso: cmd <op> k=v k=v…", Color3.fromRGB(255, 150, 120)) return end
+			local params = {}
+			for k2, v2 in (kvs or ""):gmatch("(%w+)%s*=%s*([%w%._%-%,;]+)") do
+				local n2 = tonumber(v2)
+				params[k2] = n2 or (v2:lower() == "true" and true or (v2:lower() == "false" and false or v2))
+			end
+			sayOut("engine: " .. op .. " …", th.muted)
+			task.spawn(function()
+				local res = cmd(op, params)
+				if type(res) == "table" then
+					sayOut(res.msg and ("✓ " .. res.msg) or "✓ (ok; use stats p/ ver)", th.acc)
+				else
+					sayOut(tostring(res), th.text)
+				end
+			end)
+			return
+		end
+		sayOut(" comando desconhecido: '" .. cmdName .. "' — digite 'help'", Color3.fromRGB(255, 150, 120))
+	end
+	input.FocusLost:Connect(function(enter)
+		if not enter then return end
+		local t2 = input.Text
+		input.Text = ""
+		run(t2)
+	end)
+	log("COMANDO X — a barra QUE EXECUTA de verdade: spawn/set/sel/math/cmd/time/weather")
+	return win
+end
+
+local wComando = mkWin("comando", "COMANDO X — barra funcional (spawn · set · cmd · math)", 660, 400, THEME_COMANDO)
+buildComando(wComando)
+
 -- =============================================================
 -- registro DECK (cada menu da topbar abre SUA janela única)
 -- =============================================================
@@ -2073,6 +3215,8 @@ local windows = {
 	espaco = wEspaco, fabricar = wFabricar, water = wWater,
 	atmos = wAtmos, clima = wClima, vida = wVida, cidade = wCidade,
 	audio = wAudio, fx = wFx, cordas = wCordas,
+	toolbox = wToolbox, props = wProps, cores = wCores, output = wOutput,
+	comando = wComando,
 }
 _G.ArkherDeck = {
 	open = function(id, view)
@@ -2085,4 +3229,4 @@ _G.ArkherDeck = {
 	end,
 	cmd = cmd,
 }
-print("[ArkherX] 08_Deck: 13 editores únicos prontos (TERRAIN/WATER/MODELER/ANIMATOR/ESPAÇO/FABRICAR/ATMOS/CLIMA/VIDA/CIDADE/ÁUDIO/FX/CORDAS) — X-TIER ativador na topbar original")
+print("[ArkherX] 08_Deck: 18 painéis únicos prontos (13 editores + TOOLBOX/PROPS/CORES/OUTPUT/COMANDO) — X-TIER ativador na topbar original, escala adaptativa p/ mobile")

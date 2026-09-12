@@ -139,6 +139,42 @@ em cada um dos 121 chunks PROP (#StudioSafe). Baixe novamente a placa atual.
 - **RIG X + MESH X no DECK** (os docks 05/06/07 foram removidos: eram
   "enfeite" de retângulos e a diretriz é ZERO painel sem efeito real).
 
+**ROUND 7 (2026-09-11) — o pedido COMPLETO da pesquisa UI:** pesquisa feita
+(Roblox Studio toolbar/menus, InsertService Creator Store, LogService, AssetService).
+Entrega neste round:
+
+- **X-TIER v2**: 19 ativadores na topbar (13 editores + **PART/TOOLBOX/PROPS/CORES/
+  OUTPUT/COMANDO**). Clique esquerdo ATIVA; direito = dropdown. **UIGridLayout com
+  wrap**: em telas estreitas (mobile/tablet) os botões caem pra 2-3 linhas e a escala
+  muda — a UI se ADAPTA ao dispositivo (`hostWidth` + `updateDeckScale` 0.72–1.3).
+- **PART com submenu de formas**: clique esquerdo spawna Block; direito abre
+  submenu real (Block/Ball/Cylinder/CylinderVertical/Wedge/CornerWedge/Truss) — via
+  `handlers.QuickPart` (Shape/classe REAIS do engine + Register/histórico nativos).
+- **Submenus de verdade nos menus**: itens com `sub = {...}` abrem painel-filho ao
+  lado (hover/click), fecham junto com o menu; **tooltips por item** (barra ⓘ diz o
+  que cada coisa faz — resposta ao "não dá pra saber o que colocar") e **headers de
+  seção**. 
+- **TOOLBOX X** (deck): busca na **Creator Store REAL do Roblox** via
+  `InsertService:GetFreeModelsAsync/GetFreeDecalsAsync` + insert com
+  `LoadAsset` em **um clique** (com fallback honesto se o Roblox recusar). Aba 2:
+  templates Arkher (toolbox nativa).
+- **PROPS X — TODAS**: `handlers.PropsAll` devolve um **mapa exaustivo por IsA-chain**
+  (~35 tipos, ~200 propriedades: BasePart physics completa, GuiObject, Text/Image,
+  ParticleEmitter física, Lights, Values, Humanoid, Scripts…) e `handlers.PropsSet`
+  aplica com coerção por kind (number/string/bool/Vector2/3/Color3/BrickColor/Enum/
+  UDim/UDim2/CFrame) — **funcionais, afetam o selecionado de verdade**.
+- **CORES X**: color picker REAL (R/G/B + H/S/V + hex + paleta BrickColor oficial)
+  que varre as **chaves de cor do objeto selecionado** e aplica via PropsSet.
+- **OUTPUT X**: `LogService:GetLogHistory` + `MessageOut` ao vivo, filtros
+  Info/Warning/Error, LIMPAR real (`ClearOutput`).
+- **COMANDO X**: barra que **executa de verdade**: `spawn <forma>`, `sel`,
+  `set <prop> <valor>` (resolve o kind via PropsAll), `cmd <op motor X>`,
+  `math <expr>` (parser Pratt seguro), `time`, `weather`, `help`.
+- **Places no perfil**: `handlers.PlaceCreate` (AssetService:CreatePlaceAsync) —
+  cria place NO PERFIL quando a sessão online permite (resposta honesta caso não).
+- Backend: **7 handlers novos** no bridge nativo (bloco BLOCK_X7 do build_server):
+  SelectedGet/PropsAll/PropsSet/QuickPart/ToolboxSearch/ToolboxAssetInsert/PlaceCreate.
+
 **ROUND 6 (2026-09-11) — ativação total na topbar:** o **X-TIER** (faixa colada na
 topbar original) ativa cada editor com **um clique esquerdo** (clique direito = dropdown
 de cada um). 7 editores NOVOS com backend real: **ATMOS X** (relógio solar cruza os
