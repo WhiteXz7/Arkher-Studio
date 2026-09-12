@@ -93,8 +93,9 @@ local function updateDeckScale()
 	local vp = gui.AbsoluteSize
 	local w = vp.X
 	if w <= 0 then return end
-	-- dispositivos estreitos (mobile/tablet vertical) encolhem; nunca abaixo de legivel
-	local sc = math.clamp(w / 1500, 0.72, 1.3)
+	-- dispositivos estreitos (mobile/tablet vertical) encolhem; desktop NUNCA
+	-- passa de 1.0 (crescer quebra a topbar: ela transborda e corta botoes)
+	local sc = math.clamp(w / 1500, 0.72, 1.0)
 	deckScale.Scale = sc
 end
 task.spawn(function()
