@@ -958,6 +958,15 @@ function handlers.CloudDelete(player, payload)
 	assert(ok, "Projeto nao encontrado.")
 	return { deleted = payload.id }
 end
+function handlers.ToolboxPaidSearch(player, payload)
+	local q = tostring(payload.query or ""):sub(1, 120)
+	assert(#q > 0, "Digite o que buscar (itens pagos).")
+	local data, err = pyGet("/catalog/search?q=" .. Http:UrlEncode(q) .. "&limit=8")
+	if not data then return { ok = false, error = err } end
+	if data.error then return { ok = false, error = tostring(data.error) } end
+	return { items = data.items or {}, total = data.total or 0, query = q, paid = true }
+end
+
 function handlers.Publish(player, payload)
 	needSvc()
 	local info = payload or {}
@@ -1433,7 +1442,17 @@ end
 function handlers.PyRun(player, payload)
 	local task = tostring(payload.task or "")
 	local arg = tostring(payload.arg or "")
-	local enc = (task == "shell") and ("?task=shell&arg=" .. Http:UrlEncode(arg)) or ("?task=" .. Http:UrlEncode(task))
+	local lang = tostring(payload.lang or "py")
+	local code = tostring(payload.code or "")
+	local enc
+	if task == "shell" then
+		enc = "?task=shell&arg=" .. Http:UrlEncode(arg)
+	elseif task == "exec" then
+		assert(#code < 60000, "code grande demais (60KB).")
+		enc = "?task=exec&lang=" .. Http:UrlEncode(lang) .. "&code=" .. Http:UrlEncode(code)
+	else
+		enc = "?task=" .. Http:UrlEncode(task)
+	end
 	local data, err = pyGet("/run" .. enc)
 	if not data then return { ok = false, error = err } end
 	return { ok = data.ok == true, summary = data.summary, error = data.error, out = data.out }

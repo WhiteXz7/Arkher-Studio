@@ -986,13 +986,15 @@ wireHierarchyPlus()
 do
 	local tbW = host and host:FindFirstChild("V2_ArkherToolbox")
 	if tbW then
+		local MPS = game:GetService("MarketplaceService")
+		local plr = game:GetService("Players").LocalPlayer
 		local searchFrame = tbW:FindFirstChild("Search")
 		local searchBox = searchFrame and searchFrame:FindFirstChild("SearchBox")
 		local rows = {}
 		for _, ch in ipairs(tbW:GetChildren()) do
 			if ch:IsA("Frame") and ch.Name == "AS" then rows[#rows + 1] = ch end
 		end
-		local tb = { kind = "models", items = {}, note = false }
+		local tb = { kind = "models", items = {}, note = false, paid = false }
 		local function rowParts(row)
 			local lbl, ins, pv, thumb, ikon
 			for _, ch in ipairs(row:GetChildren()) do
@@ -1011,11 +1013,23 @@ do
 				local lbl, _, thumb, ikon = rowParts(row)
 				local it = tb.items[i]
 				pcall(function()
-					if lbl then lbl.Text = it and tostring(it.name):sub(1, 26) or "--" end
+					if lbl then local t = it and tostring(it.name):sub(1, 22) or "--" if it and tonumber(it.price or 0) and tonumber(it.price) > 0 then t = t .. " [R$" .. tostring(it.price) .. "]" end lbl.Text = t end
 					if thumb then thumb.Image = it and ("rbxthumb://type=Asset&id=" .. tostring(it.id) .. "&w=150&h=150") or "" end
 					if ikon then ikon.Visible = (it == nil) end
 				end)
 			end
+		end
+		local buyHooked = false
+		local function buyPaid(it)
+			local aid = tonumber(it.id or 0) or 0
+			if aid <= 0 then say("Item pago sem id valido.", true) return end
+			if not buyHooked then buyHooked = true
+				pcall(function() MPS.PromptPurchaseFinished:Connect(function(p, assetId, ok)
+					if ok and p == plr then say("Compra finalizada (asset " .. tostring(assetId) .. ").") end
+				end) end)
+			end
+			pcall(function() MPS:PromptPurchase(plr, aid) end)
+			say("Abrindo compra de " .. tostring(it.name):sub(1, 28) .. " [R$" .. tostring(it.price or "?") .. "]...")
 		end
 		local function insertAt(i)
 			local it = tb.items[i]
@@ -1027,6 +1041,7 @@ do
 				local pp = cf.Position + cf.LookVector * 14
 				px, py, pz = pp.X, pp.Y, pp.Z
 			end
+			if tb.paid then buyPaid(it) return end
 			local _, err = apiResult("ToolboxAssetInsert", { assetId = it.id, x = px, y = py, z = pz })
 			if err then say("Inserir: " .. tostring(err), true)
 			else say("BAG " .. tostring(it.name):sub(1, 30) .. " (de " .. tostring(it.creator or "?"):sub(1, 20) .. ") inserido.") end
@@ -1036,12 +1051,22 @@ do
 			if ins then onTap(ins, function() insertAt(i) end) end
 		end
 		local catKind = { TC_3D = "models", TC_Images = "decals", TC_Textures = "decals" }
+		local function doPaidSearch(q)
+			local res, err = apiResult("ToolboxPaidSearch", { query = q })
+			if err then say("Loja paga: " .. tostring(err), true) return end
+			tb.items = (res and res.items) or {}
+			tb.paid = true
+			paint()
+			say("$ " .. #tb.items .. " pagos p/ " .. q:sub(1, 24) .. ". INS = comprar.")
+		end
 		local function doSearch()
 			local q = searchBox and searchBox.Text or ""
-			if #q < 2 then say("Digite 2+ letras e ENTER.", true) return end
+			if #q < 2 then say("Digite 2+ letras e ENTER ($ = loja paga).", true) return end
+			if q:sub(1, 1) == "$" then local rest = q:sub(2):match("^%s*(.-)%s*$") if rest:match("^%d+$") then buyPaid({ id = rest, name = "item #" .. rest, price = "?" }) else doPaidSearch(rest) end return end
 			local res, err = apiResult("ToolboxSearch", { query = q, kind = tb.kind, page = 0 })
 			if err then say("Toolbox: " .. tostring(err), true) return end
 			tb.items = (res and res.items) or {}
+			tb.paid = false
 			paint()
 			say("BAG " .. #tb.items .. ' resultados reais para "' .. q:sub(1, 24) .. '".')
 		end
@@ -1147,6 +1172,7 @@ do
 			onTap(runB, function()
 				if not codeBox then return end
 				buffers[cur].code = codeBox.Text
+				if _G.ArkherSEBridge and _G.ArkherSEBridge(codeBox.Text, buffers[cur].name, term) then return end
 				local fn, lerr = loadstring(codeBox.Text, "=" .. buffers[cur].name)
 				if not fn then term("ERRO sintaxe: " .. tostring(lerr), true) return end
 				local out = {}
@@ -1169,3 +1195,84 @@ do
 end
 
 print("[ArkherX] 10_Studio: Properties NA DOCK ORIGINAL (todas as props + color picker) · INSERIR OBJETO (+ da Hierarchy) · TOOLBOX estilo Studio com thumbs reais")
+
+-- PARTE 6A — ScriptEditor: LANG (LU/PY/C+/C#) + exec via PyBridge + autocomplete CLASSDB
+do
+	local seW = host and host:FindFirstChild("V2_ArkherScriptEditor")
+	if seW then
+		local codeBox = seW:FindFirstChild("Code")
+		local langB = seW:FindFirstChild("LangPy")
+		local sugBox = seW:FindFirstChild("Suggest")
+		local LANGS = { "LU", "PY", "C+", "C#" }
+		local TOBR = { LU = "lua", PY = "py", ["C+"] = "cpp", ["C#"] = "csharp" }
+		local li = 1
+		local function paintLang()
+			if langB then local l = langB:FindFirstChild("Lbl") if l then l.Text = LANGS[li] end end
+		end
+		if langB then onTap(langB, function()
+			li = li % #LANGS + 1
+			paintLang()
+			say("ScriptEditor: " .. LANGS[li] .. (LANGS[li] == "LU" and " (exec local)" or " (exec PyBridge)") .. ".")
+		end) end
+		paintLang()
+		_G.ArkherSEBridge = function(code, name, termFn)
+			local lg = LANGS[li]
+			if lg == "LU" then return false end
+			if termFn then termFn("bridge " .. lg .. ": executando...", false) end
+			local res, err = apiResult("PyRun", { task = "exec", lang = TOBR[lg], code = code })
+			if err then if termFn then termFn("BRIDGE ERRO: " .. tostring(err), true) end return true end
+			local out = res and (res.out or res.summary) or ""
+			local e2 = res and res.error or ""
+			if termFn then
+				if e2 ~= "" then termFn("ERRO: " .. tostring(e2) .. (out ~= "" and (" | " .. tostring(out):sub(1, 120)) or ""), true)
+				else termFn((out ~= "" and tostring(out):sub(1, 220) or "OK (sem saida)") .. " -- " .. tostring(name)) end
+			end
+			return true
+		end
+		local sugs = {}
+		if sugBox then for i = 0, 7 do sugs[i] = sugBox:FindFirstChild("Sug" .. i) end end
+		local classes, classT, shown, lock = {}, 0, {}, false
+		local function hideSug() if sugBox then sugBox.Visible = false end end
+		local function refreshSug()
+			if lock then return end
+			if not sugBox or not codeBox then return end
+			if #classes == 0 and (os.clock() - classT) > 5 then
+				classT = os.clock()
+				local res = apiResult("ClassList", {})
+				if res and res.items then for _, it in ipairs(res.items) do classes[#classes + 1] = it.class end end
+			end
+			if #classes == 0 then hideSug() return end
+			local pos = codeBox.CursorPosition or 1
+			local pre = (codeBox.Text or ""):sub(1, math.max(0, pos - 1))
+			local word = pre:match("[%w_]+$") or ""
+			if #word < 2 then hideSug() return end
+			local lw = word:lower()
+			table.clear(shown)
+			for _, c in ipairs(classes) do
+				if type(c) == "string" and c:lower():find(lw, 1, true) == 1 then shown[#shown + 1] = c end
+				if #shown >= 8 then break end
+			end
+			if #shown == 0 then hideSug() return end
+			for i = 0, 7 do local b = sugs[i] if b then b.Text = (i < #shown) and ("  " .. shown[i + 1]) or "" b.Visible = i < #shown end end
+			sugBox.Visible = true
+		end
+		for i = 0, 7 do local b = sugs[i] if b then onTap(b, function()
+			local pick = shown[i + 1]
+			if not pick or not codeBox then hideSug() return end
+			local pos = codeBox.CursorPosition or 1
+			local txt = codeBox.Text or ""
+			local pre = txt:sub(1, math.max(0, pos - 1)):gsub("[%w_]+$", "")
+			lock = true
+			codeBox.Text = pre .. pick .. txt:sub(pos)
+				codeBox.CursorPosition = #pre + #pick + 1
+			lock = false
+			hideSug()
+			pcall(function() codeBox:CaptureFocus() end)
+		end) end end
+		if codeBox then pcall(function()
+			codeBox:GetPropertyChangedSignal("Text"):Connect(refreshSug)
+			codeBox:GetPropertyChangedSignal("CursorPosition"):Connect(refreshSug)
+		end) end
+	end
+end
+

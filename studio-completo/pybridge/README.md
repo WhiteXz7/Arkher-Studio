@@ -42,5 +42,13 @@ anônimos. Campos `userId/playerName/accountName/...` são rejeitados com 400.
 ## Roadmap
 
 - `lang=py` — funciona hoje (subprocesso com timeout).
-- `lang=cpp/csharp` — stub honesto; fase 2 instala a toolchain (g++/dotnet)
-  no host do bridge e habilita de verdade.
+- `lang=cpp` — real se `g++` instalado no host (`apt install build-essential`).
+- `lang=csharp` — real se `dotnet` SDK instalado no host.
+- Sem toolchain → erro honesto dizendo o que instalar.
+
+## Catálogo (itens pagos)
+
+- `GET /catalog/search?q=...&limit=8[&cat=...]` → busca na Creator Store
+  (proxy p/ `catalog.roblox.com`, que o jogo não alcança direto).
+- `GET /catalog/info?id=...` → nome/preço/criador (via `economy.roblox.com`).
+- A compra em si é nativa no client (`MarketplaceService:PromptPurchase`).

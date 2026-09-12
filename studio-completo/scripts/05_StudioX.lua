@@ -352,3 +352,114 @@ task.delay(1, function()
 	}
 	print("[ArkherX] 05_DIAG topbar " .. table.concat(parts, " "))
 end)
+
+-- ==== FASE 3 — V2_ArkherSaveOpen (janela ASSADA): cloud + place + publish REAIS ====
+do
+	local sv = host and host:FindFirstChild("V2_ArkherSaveOpen")
+	if sv then
+		local HS = game:GetService("HttpService")
+		local input = sv:FindFirstChild("Input")
+		if input and not input:IsA("TextBox") then input = input:FindFirstChildOfClass("TextBox", true) end
+		local go = sv:FindFirstChild("Go")
+		local go2 = sv:FindFirstChild("Go2")
+		local newP = sv:FindFirstChild("NewPlace")
+		local saveA = sv:FindFirstChild("SaveAcct")
+		local pub = sv:FindFirstChild("Publish")
+		local tabS = sv:FindFirstChild("TabS")
+		local tabO = sv:FindFirstChild("TabO")
+		local rows = { sv:FindFirstChild("R_0"), sv:FindFirstChild("R_1"), sv:FindFirstChild("R_2") }
+		local projects, sel, mode = {}, 1, "save"
+		local SEL_BG = Color3.fromRGB(26, 42, 74)
+		local UNS_BG = Color3.fromRGB(7, 13, 25)
+		local function dump(res)
+			local ok, j = pcall(function() return HS:JSONEncode(res) end)
+			if ok and type(j) == "string" then return j:sub(1, 160) end
+			return tostring(res)
+		end
+		local function rowText(row)
+			if not row then return nil end
+			if row:IsA("TextButton") or row:IsA("TextLabel") then return row end
+			return row:FindFirstChildOfClass("TextLabel", true) or row:FindFirstChildOfClass("TextButton", true)
+		end
+		local function rowBtn(row)
+			if not row then return nil end
+			if row:IsA("GuiButton") then return row end
+			return row:FindFirstChildOfClass("GuiButton", true)
+		end
+		local function paint()
+			for i, row in ipairs(rows) do
+				local p = projects[i]
+				local t = rowText(row)
+				if t then pcall(function()
+					t.Text = p and (tostring(p.name):sub(1, 24) .. "  [" .. tostring(p.nodes or 0) .. " obj]  " .. tostring(p.savedAt or "")):sub(1, 44) or ("-- slot " .. i .. " --")
+				end) end
+				if row then pcall(function()
+					row.BackgroundColor3 = (i == sel) and SEL_BG or UNS_BG
+					row.BackgroundTransparency = (i == sel) and 0 or 0.55
+				end) end
+			end
+			for _, tp in ipairs({ tabS, tabO }) do if tp then pcall(function()
+				local on = (tp == tabS and mode == "save") or (tp == tabO and mode == "open")
+				tp.BackgroundColor3 = on and SEL_BG or UNS_BG
+				tp.BackgroundTransparency = on and 0 or 0.55
+			end) end end
+		end
+		local function refresh()
+			if not sv.Visible then return end
+			local res, err = busApi("CloudList", {})
+			if err then say("Cloud: " .. tostring(err), true) return end
+			projects = (res and res.projects) or {}
+			if sel > math.max(1, #projects) then sel = 1 end
+			paint()
+		end
+		local function curName(def)
+			local t = input and input.Text or ""
+			t = t:match("^%s*(.-)%s*$")
+			if #t < 3 then return def end
+			return t
+		end
+		for i, row in ipairs(rows) do local b = rowBtn(row) if b then pcall(function()
+			b.MouseButton1Click:Connect(function() sel = i paint() end)
+			b.Activated:Connect(function() sel = i paint() end)
+		end) end end
+		local function tap(n, fn) if n and n:IsA("GuiButton") then pcall(function()
+			n.MouseButton1Click:Connect(fn) n.Activated:Connect(fn)
+		end) end end
+		tap(tabS, function() mode = "save" paint() refresh() say("Modo SALVAR (Go = salva na cloud).") end)
+		tap(tabO, function() mode = "open" paint() refresh() say("Modo ABRIR (Go2 = abre o slot selecionado).") end)
+		tap(go, function()
+			local res, err = busApi("CloudSave", { name = curName("") })
+			if err then say("Salvar: " .. tostring(err), true)
+			else local pr = res and res.project or {} say("Salvo na cloud: " .. tostring(pr.name or "?") .. " (" .. tostring(pr.nodes or 0) .. " obj).") refresh() end
+		end)
+		tap(go2, function()
+			local p = projects[sel]
+			if not p then say("Nada no slot " .. sel .. " (salve primeiro).", true) return end
+			say("Abrindo " .. tostring(p.name) .. " (viewport atual sera substituida)...")
+			local _, err = busApi("CloudOpen", { id = p.id })
+			if err then say("Abrir: " .. tostring(err), true) else say("Projeto aberto: " .. tostring(p.name) .. ".") end
+		end)
+		tap(newP, function()
+			local nm = curName("Place " .. os.date("%d/%m %H:%M"))
+			say("Criando place " .. nm .. "...")
+			local res, err = busApi("PlaceCreate", { name = nm })
+			if err then say("PlaceCreate: " .. tostring(err), true) else say("Place criada: " .. dump(res)) end
+		end)
+		tap(saveA, function()
+			local res, err = busApi("SavePlace", {})
+			if err then say("SavePlace: " .. tostring(err), true) else say("Place salva na conta: " .. dump(res)) end
+		end)
+		tap(pub, function()
+			local res, err = busApi("Publish", {})
+			if err then say("Publish: " .. tostring(err), true) else say("Publicado: " .. dump(res)) end
+		end)
+		if input and input:IsA("TextBox") then pcall(function()
+			input.FocusLost:Connect(function(enter) if enter and go then pcall(function() go:Activate() end) end end)
+		end) end
+		pcall(function()
+			sv:GetPropertyChangedSignal("Visible"):Connect(function() if sv.Visible then refresh() end end)
+		end)
+		paint()
+	end
+end
+
