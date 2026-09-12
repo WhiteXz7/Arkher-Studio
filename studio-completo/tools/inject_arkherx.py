@@ -88,6 +88,7 @@ def main():
         ("RemoteFunction", "ArkherXQ", 0, None),     # parent patched depois
         ("LocalScript", "Arkher_08_RealityX", ref_screengui, os.path.join(ROOT, "scripts", "08_RealityX.lua")),
         ("LocalScript", "Arkher_09_Topbar", ref_screengui, os.path.join(ROOT, "scripts", "09_Topbar.lua")),
+        ("LocalScript", "Arkher_10_Studio", ref_screengui, os.path.join(ROOT, "scripts", "10_Studio.lua")),
     ]
     # pais dos filhos de folder (Folder referencia ai nao conhecida ainda — resolvemos na 1a passada)
     ref_map = {}

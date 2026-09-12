@@ -1576,8 +1576,16 @@ actions.XSpawnCorner      = function() spawnShape("CornerWedge") end
 actions.XSpawnTruss       = function() spawnShape("Truss") end
 actions.XOpenToolbox      = function() deckOpen("toolbox", "loja") end
 actions.XToolboxArkher    = function() deckOpen("toolbox", "arkher") end
-actions.XOpenProps        = function() deckOpen("props", nil) end
-actions.XPropsTarget      = function() deckOpen("props", nil) end
+actions.XOpenProps        = function()
+  local d = g:FindFirstChild("PropertiesDock")
+  if d then d.Visible = true end
+  say("Propriedades estão na DOCK original (todas as props + color picker).")
+end
+actions.XPropsTarget      = function()
+  local d = g:FindFirstChild("PropertiesDock")
+  if d then d.Visible = true end
+  say("Propriedades estão na DOCK original (todas as props + color picker).")
+end
 actions.XOpenCores        = function() deckOpen("cores", nil) end
 actions.XOpenOutput       = function() deckOpen("output", nil) end
 actions.XOutputClear      = function() deckOpen("output", nil) say("Abra OUTPUT X e clique em LIMPAR (botão real, LogService.ClearOutput).") end
@@ -1611,8 +1619,18 @@ do
         b0.Text = (nm == "ANIMACAO") and "ANIMAÇÃO" or (nm == "FABRICAR" and "FABRICAR" or nm)
         b0.Parent = row
         pcall(function() b0.LayoutOrder = 100 + i end) -- DEPOIS do GAME
-        b0.Activated:Connect(function()
+        local function fireMenu()
           W(nm, { button = b0 })
+        end
+        local mLast = 0
+        b0.Activated:Connect(function()
+          mLast = os.clock()
+          fireMenu()
+        end)
+        b0.MouseButton1Click:Connect(function()
+          if os.clock() - mLast < 0.12 then return end
+          mLast = os.clock()
+          fireMenu()
         end)
       end
     end

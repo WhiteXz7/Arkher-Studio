@@ -139,6 +139,40 @@ em cada um dos 121 chunks PROP (#StudioSafe). Baixe novamente a placa atual.
 - **RIG X + MESH X no DECK** (os docks 05/06/07 foram removidos: eram
   "enfeite" de retângulos e a diretriz é ZERO painel sem efeito real).
 
+**ROUND 12 (2026-09-12) — como o usuário pediu DE VERDADE: ribbon nativo + menus clicáveis + Properties completa + color picker + "+ objetos" + Toolbox Studio real:**
+
+- **Overlay morto de vez**: a faixa própria (ArkherTopbarHost/pages) foi
+  extinta — ela cobria a linha de menus real com `Active=true` e engolia
+  os cliques de ESTÚDIO/MODELAGEM/…; era ela que deixava "as abas sem
+  reação" e os botões novos "flutuando feios fora da topbar".
+- **Botões X nativos DENTRO do Ribbon** (09 reescrito como injetor):
+  `Part ▸ / Baseplate / Union / Negate / Toolbox` clonados de um botão
+  real do ribbon (mesmo tamanho/estilo), com ícone desenhado 16px,
+  posicionados ao fim da linha (com ou sem layout automático) — e
+  os menus da faixa voltaram a abrir (echos + MouseButton1Click).
+- **Properties NA DOCK ORIGINAL (10_Studio)**: nada de janela duplicada —
+  o PROPS X saiu do deck e a dock original passa a listar TODAS as
+  propriedades do objeto (`PropsAll`: CLASSDB de ~100 classes + leitura
+  real por pcall, cadeia IsA), com filtro, contador, editors por tipo:
+  checkbox, número, texto, Vector3, dropdown de **Enum real**, **BrickColor**
+  com swatch, e **COLOR PICKER de verdade** (quadrado SV + barra de hue
+  por UIGradient, RGB/HSV/hex, aplica ao clicar no quadradinho — exatamente
+  a regra 11). Escrita via `SetAny` com coerção tipada + histórico.
+- **O "+" ao lado dos services**: abre o painel INSERIR OBJETO com o
+  catálogo gigante (`ClassList`: 120+ classes grupadas, busca, duplo
+  clique insere) → `CreateAny` faz `Instance.new` REAL por classe (pcall
+  honesto se a classe não existir) no alvo: seleção atual, Workspace,
+  Lighting, StarterGui, StarterPack, storages… Se o picker nativo do 01
+  abrir, o nosso não duplica.
+- **Toolbox estilo Roblox Studio**: busca na Creator Store REAL,
+  botões MODELOS/DECALS, grade de cards com **thumbnail real**
+  (`rbxthumb://type=Asset`), nome/criador, estrela de endorsed, página
+  anterior/próxima — clique insere no mundo **na frente da câmera**
+  (`ToolboxAssetInsert` com pivô).
+- Criar place no perfil já dava feedback vermelho — mantido; baseplate
+  local (botão/boot) segue funcionando sem depender do online.
+- Auditoria **71/71 ✅** · testes **100%** · placa **251.614 B**.
+
 **ROUND 11 (2026-09-12) — TOPBAR VISÍVEL de verdade + spawn funcionando + Baseplate + permissão:**
 
 - **Bug raiz topbar MORTO**: o 09 parentava a faixa de abas dentro de

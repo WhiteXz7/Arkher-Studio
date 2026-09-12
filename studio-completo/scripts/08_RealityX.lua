@@ -4013,7 +4013,7 @@ local windows = {
 	espaco = wEspaco, fabricar = wFabricar, water = wWater,
 	atmos = wAtmos, clima = wClima, vida = wVida, cidade = wCidade,
 	audio = wAudio, fx = wFx, cordas = wCordas,
-	toolbox = wToolbox, props = wProps, cores = wCores, output = wOutput,
+	toolbox = wToolbox, cores = wCores, output = wOutput,
 	comando = wComando, scripts = wScripts, py = wPy,
 	sculpt = wSculpt, grupos = wGrupos, plugins = wPlugins,
 }

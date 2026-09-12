@@ -1348,6 +1348,11 @@ function handlers.ToolboxAssetInsert(player, payload)
 	local NM = #model:GetChildren()
 	model.Name = "Asset_" .. id
 	model.Parent = parent
+	if payload.x or payload.y or payload.z then
+		pcall(function()
+			if model:IsA("Model") then model:PivotTo(CFrame.new(payload.x or 0, payload.y or 4, payload.z or -14)) end
+		end)
+	end
 	register(model) created[model] = true
 	selected[player] = model
 	hCreate(player, model)
@@ -1725,6 +1730,488 @@ function handlers.EnsureBase(player)
     if wasMissing then pcall(function() hCreate(player, b) end) end
     return { id = idOf[b], msg = wasMissing and "BASEPLATE criada (2048×2048, topo em Y=0) e selecionada." or "Baseplate já existia — selecionada no editor." }
 end
+
+-- ============ BLOCK_X12 (ROUND 12): CLASSDB exaustiva + PropsAll + SetAny + ClassList + CreateAny ============
+-- Formato: "Grupo|Nome|kind[:ro]" kinds: s,n,b,v,v2,c,br,e:Enum,cf,o,u2,u,r,seq,i
+local CLASSDB = {
+	Instance = "Data|Name|s:ro|Data|ClassName|s:ro|Data|Archivable|b",
+	BasePart = "Transform|Position|v|Transform|Orientation|v|Transform|Rotation|v|Transform|Size|v|Transform|CFrame|cf|Transform|PivotOffset|cf|Appearance|Color|c|Appearance|Material|e:Material|Appearance|Transparency|n|Appearance|Reflectance|n|Physics|Anchored|b|Physics|Locked|b|Physics|CanCollide|b|Physics|CanTouch|b|Physics|CanQuery|b|Physics|CastShadow|b|Physics|Massless|b|Physics|CollisionGroupId|n|Physics|CustomPhysicalPropertiesDensity|n|Physics|Friction|n|Physics|Elasticity|n|Physics|FrictionWeight|n|Physics|ElasticityWeight|n|Physics|RootPriority|n|Physics|EnableFluidForces|b|Surface|TopSurface|e:SurfaceType|Surface|BottomSurface|e:SurfaceType|Surface|LeftSurface|e:SurfaceType|Surface|RightSurface|e:SurfaceType|Surface|FrontSurface|e:SurfaceType|Surface|BackSurface|e:SurfaceType|Assembly|AssemblyMass|n:ro|Assembly|AssemblyLinearVelocity|v:ro|Assembly|AssemblyAngularVelocity|v:ro",
+	Part = "Part|Shape|e:PartType",
+	Model = "Data|PrimaryPart|o|Streaming|LevelOfDetail|e:ModelLevelOfDetail",
+	MeshPart = "Mesh|MeshId|s|Mesh|TextureID|i|Mesh|RenderFidelity|e:RenderFidelity|Mesh|DoubleSided|b|Mesh|CollisionFidelity|e:CollisionFidelity|Mesh|FluidFidelity|e:FluidFidelity",
+	UnionOperation = "Mesh|UsePartColor|b|Mesh|RenderFidelity|e:RenderFidelity|Mesh|CollisionFidelity|e:CollisionFidelity|Mesh|FluidFidelity|e:FluidFidelity",
+	SpawnLocation = "Spawn|Neutral|b|Spawn|TeamColor|br|Spawn|AllowTeamChangeOnTouch|b|Spawn|Duration|n|Spawn|Enabled|b",
+	Seat = "Seat|Disabled|b",
+	VehicleSeat = "Seat|Disabled|b|Seat|MaxSpeed|n|Seat|Torque|n|Seat|TurnSpeed|n|Seat|Throttle|n|Seat|Steer|n|Seat|AreHingesDetected|n:ro|Seat|Occupant|o:ro",
+	TrussPart = "Truss|Style|e:TrussStyle",
+	Attachment = "Attachment|Axis|v|Attachment|SecondaryAxis|v|Attachment|Position|v|Attachment|Orientation|v|Attachment|Rotation|v|Attachment|WorldPosition|v:ro|Attachment|WorldOrientation|v:ro|Attachment|Visible|b",
+	JointInstance = "Joints|Part0|o|Joints|Part1|o|Joints|C0|cf|Joints|C1|cf|Joints|Enabled|bb",
+	WeldConstraint = "Joints|Part0|o|Joints|Part1|o|Joints|Enabled|b",
+	Motor6D = "Joints|Part0|o|Joints|Part1|o|Joints|C0|cf|Joints|C1|cf|Joints|Enabled|b|Motor|Transform|cf|Motor|MaxVelocity|n",
+	Script = "Script|Enabled|b|Script|RunContext|e:RunContext|Script|Source|s:ro",
+	LocalScript = "Script|Enabled|b|Script|Source|s:ro",
+	ModuleScript = "Script|Source|s:ro",
+	Humanoid = "State|Health|n|State|MaxHealth|n|Locomotion|WalkSpeed|n|Locomotion|JumpPower|n|Locomotion|JumpHeight|n|Locomotion|HipHeight|n|Locomotion|AutoRotate|b|Locomotion|MaxSlopeAngle|n|Locomotion|WalkToPoint|v|Locomotion|WalkToPart|o|Data|RigType|n:ro|Display|DisplayDistanceType|e:HumanoidDisplayDistanceType|Display|HealthDisplayType|e:HumanoidHealthDisplayType|Display|NameDisplayDistance|n|Display|HealthDisplayDistance|n|Display|NameOcclusion|e:NameOcclusion",
+	Sound = "Audio|SoundId|i|Audio|Volume|n|Audio|PlaybackSpeed|n|Audio|Looped|b|Audio|Playing|b|Audio|IsPlaying|b:ro|Audio|IsPaused|b:ro|Audio|TimePosition|n|Audio|RollOffMaxDistance|n|Audio|RollOffMinDistance|n|Audio|RollOffMode|e:RollOffMode|Audio|EmitterSize|n|Audio|PlayOnRemove|b|Audio|SoundGroup|o",
+	ParticleEmitter = "Emitter|Enabled|b|Emitter|Texture|i|Emitter|Rate|n|Emitter|Lifetime|s|Emitter|Speed|s|Emitter|SpreadAngle|v|Emitter|Rotation|s|Emitter|RotSpeed|s|Appearance|Color|seq|Appearance|Transparency|seq|Appearance|Size|seq|Appearance|LightEmission|n|Appearance|LightInfluence|n|Emission|EmissionDirection|e:NormalId|Emission|Squash|s|Emission|Shape|e:ParticleEmitterShape|Emission|ShapeStyle|e:ParticleEmitterShapeStyle|Emission|ShapeInOut|e:ParticleEmitterShapeInOut|Emission|ShapePartial|n|Physics|Acceleration|v|Physics|Drag|n|Physics|VelocityInheritance|n|Physics|LockedToPart|b|Particles|Orientation|e:ParticleOrientation|Particles|MaxDistance|n|Particles|TimeScale|n|Particles|ZOffset|n|Particles|WindAffectsDrag|b|Particles|FlipbookLayout|e:ParticleFlipbookLayout|Particles|FlipbookMode|e:ParticleFlipbookMode|Particles|FlipbookFramerate|s|Particles|FlipbookStartRandom|s",
+	PointLight = "Light|Brightness|n|Light|Color|c|Light|Enabled|b|Light|Range|n|Light|Shadows|b",
+	SpotLight = "Light|Brightness|n|Light|Color|c|Light|Enabled|b|Light|Range|n|Light|Shadows|b|Spot|Angle|n|Spot|Face|e:NormalId",
+	SurfaceLight = "Light|Brightness|n|Light|Color|c|Light|Enabled|b|Light|Range|n|Light|Shadows|b|Surface|Angle|n|Surface|Face|e:NormalId",
+	Decal = "Appearance|Texture|i|Appearance|Color3|c|Appearance|Transparency|n|Appearance|LocalTransparencyModifier|n:ro|Surface|Face|e:NormalId|Surface|ZIndex|n",
+	Texture = "Appearance|Texture|i|Appearance|Color3|c|Appearance|Transparency|n|Surface|Face|e:NormalId|Surface|StudsPerTileU|n|Surface|StudsPerTileV|n|Surface|OffsetStudsU|n|Surface|OffsetStudsV|n|Surface|ZIndex|n",
+	SpecialMesh = "Mesh|MeshId|i|Mesh|TextureId|i|Mesh|MeshType|e:MeshType|Mesh|Offset|v|Mesh|Scale|v|Mesh|VertexColor|v",
+	BlockMesh = "Mesh|Offset|v|Mesh|Scale|v|Mesh|VertexColor|v",
+	CylinderMesh = "Mesh|Offset|v|Mesh|Scale|v|Mesh|VertexColor|v",
+	Fire = "Fire|Color|c|Fire|SecondaryColor|c|Fire|Heat|n|Fire|Size|n|Fire|Enabled|b|Fire|TimeScale|n",
+	Smoke = "Smoke|Color|c|Smoke|Opacity|n|Smoke|RiseVelocity|n|Smoke|Size|n|Smoke|Enabled|b|Smoke|TimeScale|n",
+	Sparkles = "Sparkles|SparkleColor|c|Sparkles|Enabled|b|Sparkles|TimeScale|n",
+	ForceField = "ForceField|Visible|b",
+	Explosion = "Explosion|BlastPressure|n|Explosion|BlastRadius|n|Explosion|DestroyJointRadiusPercent|n|Explosion|ExplosionType|e:ExplosionType|Explosion|Position|v|Explosion|TimeScale|n|Explosion|Visible|b",
+	Highlight = "Highlight|Adornee|o|Highlight|FillColor|c|Highlight|FillTransparency|n|Highlight|OutlineColor|c|Highlight|OutlineTransparency|n|Highlight|DepthMode|e:HighlightDepthMode|Highlight|Enabled|b",
+	SelectionBox = "Selection|Adornee|o|Selection|Color3|c|Selection|LineThickness|n|Selection|SurfaceColor3|c|Selection|SurfaceTransparency|n|Selection|Transparency|n|Selection|Visible|b",
+	Sky = "Sky|CelestialBodiesShown|b|Sky|MoonAngularSize|n|Sky|MoonTextureId|i|Sky|SkyboxBk|i|Sky|SkyboxDn|i|Sky|SkyboxFt|i|Sky|SkyboxLf|i|Sky|SkyboxRt|i|Sky|SkyboxUp|i|Sky|StarCount|n|Sky|SunAngularSize|n|Sky|SunTextureId|i",
+	Atmosphere = "Atmosphere|Color|c|Atmosphere|Decay|c|Atmosphere|Density|n|Atmosphere|Glare|n|Atmosphere|Haze|n|Atmosphere|Offset|n",
+	Clouds = "Clouds|Color|c|Clouds|Cover|n|Clouds|Density|n|Clouds|Enabled|b",
+	Trail = "Trail|Attachment0|o|Trail|Attachment1|o|Trail|Color|seq|Trail|Transparency|seq|Trail|Texture|i|Trail|TextureLength|n|Trail|TextureMode|e:TextureMode|Trail|Lifetime|n|Trail|MinLength|n|Trail|MaxLength|n|Trail|WidthScale|s|Trail|LightEmission|n|Trail|LightInfluence|n|Trail|Enabled|b|Trail|FaceCamera|b",
+	Beam = "Beam|Attachment0|o|Beam|Attachment1|o|Beam|Color|seq|Beam|Transparency|seq|Beam|Texture|i|Beam|TextureLength|n|Beam|TextureMode|e:TextureMode|Beam|TextureSpeed|n|Beam|Width0|n|Beam|Width1|n|Beam|CurveSize0|n|Beam|CurveSize1|n|Beam|Segments|n|Beam|ZOffset|n|Beam|LightEmission|n|Beam|LightInfluence|n|Beam|Brightness|n|Beam|FaceCamera|b|Beam|Enabled|b",
+	Camera = "Camera|CFrame|cf|Camera|FieldOfView|n|Camera|CameraType|e:CameraType|Camera|CameraSubject|o|Camera|Focus|cf|Camera|ViewportSize|v2:ro|Camera|HeadScale|n",
+	Tool = "Tool|RequiresHandle|b|Tool|Enabled|b|Tool|ToolTip|s|Tool|TextureId|i|Tool|CanBeDropped|b|Tool|ManualActivationOnly|b",
+	Folder = "",
+	Configuration = "",
+	BoolValue = "Value|Value|b",
+	IntValue = "Value|Value|n",
+	NumberValue = "Value|Value|n",
+	StringValue = "Value|Value|s",
+	ObjectValue = "Value|Value|o",
+	BrickColorValue = "Value|Value|br",
+	Color3Value = "Value|Value|c",
+	CFrameValue = "Value|Value|cf",
+	Vector3Value = "Value|Value|v",
+	Lighting = "Environment|Ambient|c|Environment|OutdoorAmbient|c|Environment|Brightness|n|Environment|ClockTime|n|Environment|GeographicLatitude|n|Environment|GlobalShadows|b|Environment|EnvironmentDiffuseScale|n|Environment|EnvironmentSpecularScale|n|Environment|ExposureCompensation|n|Environment|ShadowSoftness|n|Environment|Technology|e:Technology",
+	Terrain = "Water|WaterColor|c|Water|WaterTransparency|n|Water|WaterReflectance|n|Water|WaterWaveSize|n|Water|WaterWaveSpeed|n|Terrain|Decoration|b",
+	ScreenGui = "Screen|Enabled|b|Screen|DisplayOrder|n|Screen|IgnoreGuiInset|b|Screen|ResetOnSpawn|b|Screen|ZIndexBehavior|e:ZIndexBehavior|Screen|ClipToDeviceSafeArea|b|Screen|SafeAreaCompatibility|e:SafeAreaCompatibility|Screen|ScreenInsets|e:ScreenInsets",
+	BillboardGui = "Adornment|Adornee|o|Adornment|Size|u2|Adornment|ExtentsOffset|v|Adornment|ExtentsOffsetWorldSpace|v|Adornment|StudsOffset|v|Adornment|StudsOffsetWorldSpace|v|Adornment|LightInfluence|n|Adornment|MaxDistance|n|Adornment|AlwaysOnTop|b|Adornment|Brightness|n|Adornment|Enabled|b",
+	SurfaceGui = "Adornment|Adornee|o|Adornment|Face|e:NormalId|Adornment|CanvasSize|u2|Adornment|PixelsPerStud|n|Adornment|MaxDistance|n|Adornment|AlwaysOnTop|b|Adornment|LightInfluence|n|Adornment|Brightness|n|Adornment|Enabled|b",
+	GuiObject = "Data|Visible|b|Data|ZIndex|n|Data|LayoutOrder|n|Appearance|BackgroundColor3|c|Appearance|BackgroundTransparency|n|Appearance|BorderColor3|c|Appearance|BorderMode|e:BorderMode|Appearance|BorderSizePixel|n|Layout|Position|u2|Layout|Size|u2|Layout|AnchorPoint|v2|Layout|Rotation|n|Layout|ClipsDescendants|b|Layout|AutomaticSize|e:AutomaticSize|Behavior|Active|b|Behavior|Selectable|b|Behavior|SelectionOrder|n",
+	TextLabel = "Text|Text|s|Text|TextColor3|c|Text|TextSize|n|Text|Font|e:Font|Text|FontFace|s|Text|TextTransparency|n|Text|TextStrokeTransparency|n|Text|TextStrokeColor3|c|Text|TextXAlignment|e:TextXAlignment|Text|TextYAlignment|e:TextYAlignment|Text|TextWrapped|b|Text|TextScaled|b|Text|RichText|b|Text|MaxVisibleGraphemes|n|Text|LineHeight|n|Text|TextTruncate|e:TextTruncate|Text|TextDirection|e:TextDirection",
+	TextButton = "Text|Text|s|Text|TextColor3|c|Text|TextSize|n|Text|Font|e:Font|Text|FontFace|s|Text|TextTransparency|n|Text|TextStrokeTransparency|n|Text|TextStrokeColor3|c|Text|TextXAlignment|e:TextXAlignment|Text|TextYAlignment|e:TextYAlignment|Text|TextWrapped|b|Text|TextScaled|b|Text|RichText|b|Button|AutoButtonColor|b|Button|Modal|b|Button|Selected|b|Button|Style|e:ButtonStyle|Button|Interactable|b",
+	TextBox = "Text|Text|s|Text|TextColor3|c|Text|TextSize|n|Text|Font|e:Font|Text|FontFace|s|Text|TextTransparency|n|Text|TextXAlignment|e:TextXAlignment|Text|TextYAlignment|e:TextYAlignment|Text|TextWrapped|b|Text|TextScaled|b|Text|RichText|b|Box|PlaceholderText|s|Box|PlaceholderColor3|c|Box|ClearTextOnFocus|b|Box|MultiLine|b|Box|TextEditable|b",
+	ImageLabel = "Image|Image|i|Image|ImageColor3|c|Image|ImageTransparency|n|Image|ScaleType|e:ScaleType|Image|SliceCenter|r|Image|SliceScale|n|Image|TileSize|u2|Image|ResampleMode|e:ResamplerMode",
+	ImageButton = "Image|Image|i|Image|ImageColor3|c|Image|ImageTransparency|n|Image|ScaleType|e:ScaleType|Image|SliceCenter|r|Image|SliceScale|n|Image|TileSize|u2|Image|ResampleMode|e:ResamplerMode|Image|HoverImage|i|Image|PressedImage|i|Button|AutoButtonColor|b|Button|Modal|b|Button|Selected|b|Button|Style|e:ButtonStyle",
+	ScrollingFrame = "Scroll|CanvasSize|u2|Scroll|CanvasPosition|v2|Scroll|AutomaticCanvasSize|e:AutomaticSize|Scroll|ScrollBarThickness|n|Scroll|ScrollBarImageColor3|c|Scroll|ScrollBarImageTransparency|n|Scroll|ScrollingDirection|e:ScrollingDirection|Scroll|ScrollingEnabled|b|Scroll|ElasticBehavior|e:ElasticBehavior|Scroll|VerticalScrollBarInset|e:ScrollBarInset|Scroll|HorizontalScrollBarInset|e:ScrollBarInset|Scroll|VerticalScrollBarPosition|e:VerticalScrollBarPosition|Scroll|TopImage|i|Scroll|MidImage|i|Scroll|BottomImage|i",
+	ViewportFrame = "Viewport|CurrentCamera|o|Viewport|ImageColor3|c|Viewport|ImageTransparency|n|Viewport|Ambient|c|Viewport|LightColor|c|Viewport|LightDirection|v",
+	VideoFrame = "Video|Video|i|Video|Playing|b|Video|Looped|b|Video|Volume|n|Video|TimePosition|n",
+	UIStroke = "Stroke|Color|c|Stroke|Thickness|n|Stroke|Transparency|n|Stroke|ApplyStrokeMode|e:ApplyStrokeMode|Stroke|LineJoinMode|e:LineJoinMode|Stroke|Enabled|b",
+	UICorner = "Corner|CornerRadius|u",
+	UIGradient = "Gradient|Color|seq|Gradient|Transparency|seq|Gradient|Rotation|n|Gradient|Offset|v2|Gradient|Enabled|b",
+	UIPadding = "Padding|PaddingBottom|u|Padding|PaddingLeft|u|Padding|PaddingRight|u|Padding|PaddingTop|u",
+	UIListLayout = "Layout|FillDirection|e:FillDirection|Layout|HorizontalAlignment|e:HorizontalAlignment|Layout|VerticalAlignment|e:VerticalAlignment|Layout|SortOrder|e:SortOrder|Layout|Padding|u|Layout|Wraps|b|Layout|HorizontalFlex|e:UIFlexAlignment|Layout|VerticalFlex|e:UIFlexAlignment|Layout|ItemLineAlignment|e:ItemLineAlignment",
+	UIGridLayout = "Layout|FillDirection|e:FillDirection|Layout|HorizontalAlignment|e:HorizontalAlignment|Layout|VerticalAlignment|e:VerticalAlignment|Layout|SortOrder|e:SortOrder|Layout|CellPadding|u2|Layout|CellSize|u2|Layout|FillDirectionMaxCells|n|Layout|StartCorner|e:StartCorner",
+	UIPageLayout = "Layout|Animated|b|Layout|Circular|b|Layout|EasingDirection|e:EasingDirection|Layout|EasingStyle|e:EasingStyle|Layout|GamepadInputEnabled|b|Layout|Padding|u|Layout|ScrollWheelInputEnabled|b|Layout|TouchInputEnabled|b|Layout|TweenTime|n",
+	UISizeConstraint = "Constraint|MinSize|v2|Constraint|MaxSize|v2",
+	UITextSizeConstraint = "Constraint|MinTextSize|n|Constraint|MaxTextSize|n",
+	UIAspectRatioConstraint = "Constraint|AspectRatio|n|Constraint|AspectType|e:AspectType|Constraint|DominantAxis|e:DominantAxis",
+	UIScale = "Scale|Scale|n",
+	ProximityPrompt = "Prompt|ActionText|s|Prompt|ObjectText|s|Prompt|HoldDuration|n|Prompt|MaxActivationDistance|n|Prompt|RequiresLineOfSight|b|Prompt|ClickablePrompt|b|Prompt|Enabled|b|Prompt|KeyboardKeyCode|e:KeyCode|Prompt|GamepadKeyCode|e:KeyCode|Prompt|UIOffset|v2|Prompt|Style|e:ProximityPromptStyle|Prompt|Exclusivity|e:ProximityPromptExclusivity",
+	ClickDetector = "Detector|MaxActivationDistance|n|Detector|CursorImage|i",
+	AlignPosition = "Constraint|MaxForce|n|Constraint|MaxVelocity|n|Constraint|Responsiveness|n|Constraint|ApplyAtCenterOfMass|b|Constraint|MaxAxesForce|v|Constraint|Mode|e:PositionAlignmentMode|Constraint|Position|v|Constraint|RigidityEnabled|b|Constraint|ReactionForceEnabled|b|Constraint|Enabled|b|Constraint|Attachment0|o|Constraint|Attachment1|o",
+	AlignOrientation = "Constraint|MaxTorque|n|Constraint|MaxAngularVelocity|n|Constraint|Responsiveness|n|Constraint|Mode|e:OrientationAlignmentMode|Constraint|PrimaryAxisOnly|b|Constraint|RigidityEnabled|b|Constraint|ReactionTorqueEnabled|b|Constraint|Enabled|b|Constraint|Attachment0|o|Constraint|Attachment1|o|Constraint|CFrame|cf",
+	VectorForce = "Constraint|Force|v|Constraint|RelativeTo|e:ActuatorRelativeTo|Constraint|ApplyAtCenterOfMass|b|Constraint|Attachment0|o|Constraint|Enabled|b",
+	LineForce = "Constraint|InverseSquareLaw|b|Constraint|LineForce|n|Constraint|MaxForce|n|Constraint|ReactionTorqueEnabled|b|Constraint|Attachment0|o|Constraint|Attachment1|o|Constraint|Enabled|b",
+	Torque = "Constraint|Torque|v|Constraint|RelativeTo|e:ActuatorRelativeTo|Constraint|Attachment0|o|Constraint|Enabled|b",
+	RopeConstraint = "Constraint|Length|n|Constraint|Restitution|n|Constraint|Visible|b|Constraint|Thickness|n|Constraint|Color|br|Constraint|CurrentDistance|n:ro|Constraint|WinchEnabled|b|Constraint|WinchForce|n|Constraint|WinchResponsiveness|n|Constraint|WinchSpeed|n|Constraint|WinchTarget|n|Constraint|Attachment0|o|Constraint|Attachment1|o|Constraint|Enabled|b",
+	SpringConstraint = "Constraint|Damping|n|Constraint|Stiffness|n|Constraint|FreeLength|n|Constraint|LimitsEnabled|b|Constraint|MaxLength|n|Constraint|MinLength|n|Constraint|Radius|n|Constraint|Thickness|n|Constraint|Visible|b|Constraint|Attachment0|o|Constraint|Attachment1|o|Constraint|Enabled|b",
+	HingeConstraint = "Constraint|ActuatorType|e:ActuatorType|Constraint|AngularSpeed|n|Constraint|AngularResponsiveness|n|Constraint|AngularVelocity|n|Constraint|CurrentAngle|n:ro|Constraint|LimitsEnabled|b|Constraint|LowerAngle|n|Constraint|UpperAngle|n|Constraint|MotorMaxAcceleration|n|Constraint|MotorMaxTorque|n|Constraint|Radius|n|Constraint|Restitution|n|Constraint|ServoMaxTorque|n|Constraint|TargetAngle|n|Constraint|Attachment0|o|Constraint|Attachment1|o|Constraint|Enabled|b",
+	BallSocketConstraint = "Constraint|LimitsEnabled|b|Constraint|MaxFrictionTorque|n|Constraint|Radius|n|Constraint|Restitution|n|Constraint|TwistLimitsEnabled|b|Constraint|TwistLowerAngle|n|Constraint|TwistUpperAngle|n|Constraint|UpperAngle|n|Constraint|Attachment0|o|Constraint|Attachment1|o|Constraint|Enabled|b",
+	PrismaticConstraint = "Constraint|ActuatorType|e:ActuatorType|Constraint|LimitsEnabled|b|Constraint|LowerLimit|n|Constraint|UpperLimit|n|Constraint|MotorMaxForce|n|Constraint|ServoMaxForce|n|Constraint|Speed|n|Constraint|TargetPosition|n|Constraint|CurrentPosition|n:ro|Constraint|Attachment0|o|Constraint|Attachment1|o|Constraint|Enabled|b",
+	UniversalConstraint = "Constraint|LimitsEnabled|b|Constraint|MaxAngle|n|Constraint|Radius|n|Constraint|Restitution|n|Constraint|Attachment0|o|Constraint|Attachment1|o|Constraint|Enabled|b",
+	NoCollisionConstraint = "Constraint|Part0|o|Constraint|Part1|o|Constraint|Enabled|b",
+	AngularVelocity = "Constraint|AngularVelocity|v|Constraint|MaxTorque|n|Constraint|ReactionTorqueEnabled|b|Constraint|RelativeTo|e:ActuatorRelativeTo|Constraint|Attachment0|o|Constraint|Enabled|b",
+	RigidConstraint = "Constraint|Attachment0|o|Constraint|Attachment1|o|Constraint|Enabled|b",
+	CylindricalConstraint = "Constraint|ActuatorType|e:ActuatorType|Constraint|AngularActuatorType|e:ActuatorType|Constraint|CurrentAngle|n:ro|Constraint|CurrentPosition|n:ro|Constraint|InclinationAngle|n|Constraint|LimitsEnabled|b|Constraint|LowerLimit|n|Constraint|UpperLimit|n|Constraint|MotorMaxForce|n|Constraint|MotorMaxTorque|n|Constraint|ServoMaxForce|n|Constraint|ServoMaxTorque|n|Constraint|Speed|n|Constraint|TargetPosition|n|Constraint|AngularSpeed|n|Constraint|AngularResponsiveness|n|Constraint|AngularVelocity|n|Constraint|Attachment0|o|Constraint|Attachment1|o|Constraint|Enabled|b",
+	BodyColors = "Colors|HeadColor|br|Colors|LeftArmColor|br|Colors|LeftLegColor|br|Colors|RightArmColor|br|Colors|RightLegColor|br|Colors|TorsoColor|br",
+	Shirt = "Clothes|ShirtTemplate|i",
+	Pants = "Clothes|PantsTemplate|i",
+	ShirtGraphic = "Clothes|Graphic|i",
+	Animation = "Animation|AnimationId|i",
+	Bone = "Bone|Transform|cf",
+	PathfindingModifier = "Modifier|Label|s|Modifier|PassThrough|b",
+	SoundGroup = "Audio|Volume|n",
+	EchoSoundEffect = "Effect|Enabled|b|Effect|Priority|n|Echo|Delay|n|Echo|Feedback|n|Echo|DryLevel|n|Echo|WetLevel|n",
+	ReverbSoundEffect = "Effect|Enabled|b|Effect|Priority|n|Reverb|DecayTime|n|Reverb|Density|n|Reverb|Diffusion|n|Reverb|DryLevel|n|Reverb|WetLevel|n",
+	DistortionSoundEffect = "Effect|Enabled|b|Effect|Priority|n|Distortion|Level|n",
+	ChorusSoundEffect = "Effect|Enabled|b|Effect|Priority|n|Chorus|Depth|n|Chorus|Mix|n|Chorus|Rate|n",
+	CompressorSoundEffect = "Effect|Enabled|b|Effect|Priority|n|Compressor|Attack|n|Compressor|GainMakeup|n|Compressor|Ratio|n|Compressor|Release|n|Compressor|Threshold|n",
+	EqualizerSoundEffect = "Effect|Enabled|b|Effect|Priority|n|Equalizer|HighGain|n|Equalizer|LowGain|n|Equalizer|MidGain|n",
+	FlangeSoundEffect = "Effect|Enabled|b|Effect|Priority|n|Flange|Depth|n|Flange|Mix|n|Flange|Rate|n",
+	PitchShiftSoundEffect = "Effect|Enabled|b|Effect|Priority|n|Pitch|Octave|n",
+	TremoloSoundEffect = "Effect|Enabled|b|Effect|Priority|n|Tremolo|Depth|n|Tremolo|Duty|n|Tremolo|Frequency|n",
+	Message = "Text|Text|s",
+	Hint = "Text|Text|s",
+	Dialog = "Dialog|ConversationDistance|n|Dialog|GoodbyeChoiceActive|b|Dialog|GoodbyeDialog|s|Dialog|InUse|b|Dialog|InitialPrompt|s|Dialog|Purpose|e:DialogPurpose|Dialog|Tone|e:DialogTone|Dialog|TriggerOffset|n",
+	RemoteEvent = "",
+	RemoteFunction = "",
+	BindableEvent = "",
+	BindableFunction = "",
+	UnreliableRemoteEvent = "",
+	WorldModel = "",
+	Actor = "",
+}
+-- herança: filho -> pai (cadeia consultada em PropsAll)
+local CLASS_PARENT = {
+	Part = "BasePart", WedgePart = "BasePart", CornerWedgePart = "BasePart", TrussPart = "BasePart",
+	MeshPart = "BasePart", UnionOperation = "BasePart", SpawnLocation = "BasePart", Seat = "BasePart",
+	VehicleSeat = "BasePart", Model = "PVStub", WorldModel = "Model",
+	PointLight = "Stub", SpotLight = "Stub", SurfaceLight = "Stub",
+	Decal = "Stub", Texture = "Stub", SpecialMesh = "Stub", BlockMesh = "Stub", CylinderMesh = "Stub",
+	Fire = "Stub", Smoke = "Stub", Sparkles = "Stub", ForceField = "Stub", Explosion = "Stub",
+	Highlight = "Stub", SelectionBox = "Stub", Sky = "Stub", Atmosphere = "Stub", Clouds = "Stub",
+	Trail = "Stub", Beam = "Stub", Attachment = "Stub",
+	WeldConstraint = "Stub", Motor6D = "Stub", Script = "Stub", LocalScript = "Stub", ModuleScript = "Stub",
+	Humanoid = "Stub", Sound = "Stub", ParticleEmitter = "Stub", Camera = "Stub", Tool = "Stub",
+	Folder = "Stub", Configuration = "Stub", Lighting = "Stub", Terrain = "Stub",
+	BoolValue = "Stub", IntValue = "Stub", NumberValue = "Stub", StringValue = "Stub",
+	ObjectValue = "Stub", BrickColorValue = "Stub", Color3Value = "Stub", CFrameValue = "Stub",
+	Vector3Value = "Stub", Animation = "Stub", Bone = "Stub", PathfindingModifier = "Stub",
+	SoundGroup = "Stub", EchoSoundEffect = "Stub", ReverbSoundEffect = "Stub", DistortionSoundEffect = "Stub",
+	ChorusSoundEffect = "Stub", CompressorSoundEffect = "Stub", EqualizerSoundEffect = "Stub",
+	FlangeSoundEffect = "Stub", PitchShiftSoundEffect = "Stub", TremoloSoundEffect = "Stub",
+	Message = "Stub", Hint = "Stub", Dialog = "Stub",
+	RemoteEvent = "Stub", RemoteFunction = "Stub", BindableEvent = "Stub",
+	BindableFunction = "Stub", UnreliableRemoteEvent = "Stub", Actor = "Stub",
+	BodyColors = "Stub", Shirt = "Stub", Pants = "Stub", ShirtGraphic = "Stub",
+	ScreenGui = "Stub", BillboardGui = "Stub", SurfaceGui = "Stub",
+	Frame = "GuiObject", TextLabel = "GuiObject", TextButton = "GuiObject", TextBox = "GuiObject",
+	ImageLabel = "GuiObject", ImageButton = "GuiObject", ScrollingFrame = "GuiObject",
+	ViewportFrame = "GuiObject", VideoFrame = "GuiObject", CanvasGroup = "GuiObject",
+	UIStroke = "Stub", UICorner = "Stub", UIGradient = "Stub", UIPadding = "Stub",
+	UIListLayout = "Stub", UIGridLayout = "Stub", UIPageLayout = "Stub", UISizeConstraint = "Stub",
+	UITextSizeConstraint = "Stub", UIAspectRatioConstraint = "Stub", UIScale = "Stub",
+	ProximityPrompt = "Stub", ClickDetector = "Stub",
+	AlignPosition = "Stub", AlignOrientation = "Stub", VectorForce = "Stub", LineForce = "Stub",
+	Torque = "Stub", RopeConstraint = "Stub", SpringConstraint = "Stub", HingeConstraint = "Stub",
+	BallSocketConstraint = "Stub", PrismaticConstraint = "Stub", UniversalConstraint = "Stub",
+	NoCollisionConstraint = "Stub", AngularVelocity = "Stub", RigidConstraint = "Stub",
+	CylindricalConstraint = "Stub",
+	Script_ = "Stub",
+}
+CLASS_PARENT.Form = nil
+
+local function parseSpec(specStr, into)
+	if not specStr or specStr == "" then return end
+	local group, name, kind = nil, nil, nil
+	local parts = {}
+	for p2 in string.gmatch(specStr, "([^|]+)") do parts[#parts + 1] = p2 end
+	local q2 = 1
+	while q2 <= #parts do
+		group = parts[q2]; name = parts[q2 + 1]; kind = parts[q2 + 2]; q2 = q2 + 3
+		if name and kind then
+			local ro = kind:sub(-3) == ":ro"
+			if ro then kind = kind:sub(1, -4) end
+			if kind == "bb" then kind = "b" end
+			if kind == "o:ro" then ro = true kind = "o" end
+			into[#into + 1] = { group = group, name = name, kind = kind, ro = ro }
+		end
+	end
+end
+
+-- resolve cadeia IsA real primeiro; CLASSDB cobre os detalhes finos
+local function dbClassChain(o)
+	local chain, seen = {}, {}
+	local cn = o.ClassName
+	while cn and not seen[cn] do
+		seen[cn] = true
+		chain[#chain + 1] = cn
+		cn = CLASS_PARENT[cn]
+	end
+	return chain
+end
+
+function handlers.PropsAll(player, payload)
+	local o = getObject(payload.id)
+	assert(o, "Objeto sumiu.")
+	local fields, seen = {}, {}
+	local function addRow(group, name, kind, ro)
+		local key = group .. "/" .. name
+		if seen[key] then return end
+		seen[key] = true
+		local okRead, val = pcall(function() return o[name] end)
+		if not okRead then return end
+		local out = { group = group, name = name, kind = kind, ro = ro }
+		local kt = kind
+		if kt == "b" then out.value = val == true
+		elseif kt == "n" then out.value = tonumber(tostring(val)) or 0
+		elseif kt == "v" then local x, y2, z = pcall(function() return val.X, val.Y, val.Z end); if x then out.value = { x = val.X, y = val.Y, z = val.Z } else return end
+		elseif kt == "v2" then local x, y2 = pcall(function() return val.X, val.Y end); if x then out.value = { x = val.X, y = val.Y } else return end
+		elseif kt == "c" then local x = pcall(function() return val.R end); if x then out.value = { r = val.R, g = val.G, b = val.B } else return end
+		elseif kt == "br" then local x, bv = pcall(function() return tostring(val) end); out.value = x and bv or "White"
+		elseif kt:sub(1, 2) == "e:" then local x, ev = pcall(function() return val.Name end); if not x then return end; out.value = ev; out.enum = kt:sub(3)
+		elseif kt == "i" or kt == "s" then out.value = tostring(val or "")
+		elseif kt == "o" then out.value = val and val:GetFullName() or "None"; out.ro = true
+		elseif kt == "cf" or kt == "u2" or kt == "u" or kt == "r" or kt == "seq" then out.value = tostring(val)
+		else out.value = tostring(val) out.ro = true
+		end
+		fields[#fields + 1] = out
+	end
+	-- 1) CLASSDB (cadeia)
+	for _, cn in ipairs(dbClassChain(o)) do
+		local spec = CLASSDB[cn]
+		if spec then
+			local rows = {}
+			parseSpec(spec, rows)
+			for _, rp in ipairs(rows) do addRow(rp.group, rp.name, rp.kind, rp.ro) end
+		end
+	end
+	addRow("Data", "Name", "s", false)
+	-- 2) extra tipos comuns por IsA (segurança caso a cadeia falhe)
+	if o:IsA("BasePart") and not o:IsA("Terrain") and not o:IsA("FormFactorPart") then
+		-- já coberto por chain quando CLASSNAME conhecido; classes custom (UnionOperation etc) caem aqui
+		local spec = CLASSDB.BasePart
+		local rows = {}
+		parseSpec(spec, rows)
+		for _, rp in ipairs(rows) do addRow(rp.group, rp.name, rp.kind, rp.ro) end
+	end
+	if o:IsA("GuiObject") then
+		local rows = {}
+		parseSpec(CLASSDB.GuiObject, rows)
+		for _, rp in ipairs(rows) do addRow(rp.group, rp.name, rp.kind, rp.ro) end
+	end
+	table.sort(fields, function(a, b) if a.group == b.group then return a.name < b.name end return a.group < b.group end)
+	return { id = payload.id, name = o.Name, className = o.ClassName, fields = fields, count = #fields }
+end
+
+local function coerceProp(o, name, kind, v)
+	if kind == "b" then return v == true or v == "true"
+	elseif kind == "n" then
+		local n2 = tonumber(v)
+		assert(n2 and n2 == n2 and math.abs(n2) ~= math.huge, "Número inválido.")
+		return n2
+	elseif kind == "v" then
+		assert(type(v) == "table", "Vector esperado.")
+		return Vector3.new(tonumber(v.x) or 0, tonumber(v.y) or 0, tonumber(v.z) or 0)
+	elseif kind == "v2" then
+		assert(type(v) == "table", "Vector2 esperado.")
+		return Vector2.new(tonumber(v.x) or 0, tonumber(v.y) or 0)
+	elseif kind == "c" then
+		assert(type(v) == "table", "Color esperado.")
+		return Color3.new(math.clamp(tonumber(v.r) or 0, 0, 1), math.clamp(tonumber(v.g) or 0, 0, 1), math.clamp(tonumber(v.b) or 0, 0, 1))
+	elseif kind == "br" then
+		return BrickColor.new(tostring(v))
+	elseif kind:sub(1, 2) == "e:" then
+		local et = kind:sub(3)
+		local ev = Enum[et]
+		assert(ev, "Enum desconhecido: " .. et)
+		local item = ev[tostring(v)]
+		assert(item, "Valor de enum inválido: " .. tostring(v))
+		return item
+	elseif kind == "u2" then
+		assert(type(v) == "table", "UDim2 esperado.")
+		return UDim2.new(tonumber(v.sx) or 0, tonumber(v.ox) or 0, tonumber(v.sy) or 0, tonumber(v.oy) or 0)
+	elseif kind == "u" then
+		assert(type(v) == "table", "UDim esperado.")
+		return UDim.new(tonumber(v.s) or 0, tonumber(v.o) or 0)
+	elseif kind == "s" or kind == "i" then
+		local t2 = tostring(v)
+		assert(#t2 < 4096, "Texto longo demais.")
+		return t2
+	end
+	error("Tipo não editável: " .. tostring(kind))
+end
+
+function handlers.SetAny(player, payload)
+	local o = getObject(payload.id)
+	assert(o, "Objeto sumiu.")
+	assert(editable(o), "Objeto protegido.")
+	local name = tostring(payload.name or "")
+	assert(#name > 0 and #name < 60, "Prop inválida.")
+	local kind = tostring(payload.kind or "s")
+	local val = coerceProp(o, name, kind, payload.value)
+	local okOld, old = pcall(function() return o[name] end)
+	if not okOld then return { error = "Propriedade não existe: " .. name } end
+	local okSet, errSet = pcall(function() o[name] = val end)
+	if not okSet then return { error = "Roblox recusou " .. name .. ": " .. tostring(errSet) } end
+	local okNew, new0 = pcall(function() return o[name] end)
+	if okOld and okNew and tostring(old) ~= tostring(new0) then
+		pcall(function() hSet(player, o, name, tostring(old), tostring(new0)) end)
+	end
+	pcall(function() queueObject(o) end)
+	return { ok = true, applied = name, now = tostring(new0) }
+end
+
+-- catálogo GIGANTE de classes (+ grupos) pro menu "+" (+1k objetos feel)
+local CLASS_CATALOG = {
+	{ "Part", "3D", "geometry", "Bloco básico (4x1x2).", "bloco" }, { "WedgePart", "3D", "geometry", "Rampa.", "rampa" },
+	{ "CornerWedgePart", "3D", "geometry", "Canto de rampa.", "canto" }, { "TrussPart", "3D", "geometry", "Treliça escalável.", "" },
+	{ "SpawnLocation", "3D", "geometry", "Ponto de spawn.", "spawn" }, { "Seat", "3D", "geometry", "Assento.", "assento" },
+	{ "VehicleSeat", "3D", "geometry", "Assento de veículo (dirigível).", "" }, { "SkateboardPlatform", "3D", "geometry", "Plataforma de skate.", "" },
+	{ "MeshPart", "3D", "geometry", "Peça de malha (sem mesh até atribuir MeshId no Studio).", "" },
+	{ "UnionOperation", "3D", "geometry", "Peça union (via CSG).", "uniao" },
+	{ "Model", "Containers", "container", "Agrupa objetos.", "grupo" }, { "WorldModel", "Containers", "container", "Model físico pra ViewportFrame.", "" },
+	{ "Folder", "Containers", "container", "Pasta.", "pasta" }, { "Configuration", "Containers", "container", "Pasta de configuração.", "" },
+	{ "Actor", "Containers", "container", "Contêiner paralelo (actors).", "" },
+	{ "Attachment", "3D", "attachment", "Ponto de referência.", "anexo" }, { "Bone", "3D", "attachment", "Osso de skinned mesh.", "" },
+	{ "Script", "Scripts", "script", "Script de servidor (vazio, desativado).", "codigo" }, { "LocalScript", "Scripts", "script", "LocalScript (vazio, desativado).", "" },
+	{ "ModuleScript", "Scripts", "script", "ModuleScript (Source editável no Studio).", "modulo" },
+	{ "ScreenGui", "UI", "screen", "Tela de UI (pai: StarterGui).", "tela" },
+	{ "Frame", "UI", "gui", "Painel retangular.", "" }, { "CanvasGroup", "UI", "gui", "Grupo de canvas com transparência de grupo.", "" },
+	{ "TextLabel", "UI", "gui", "Texto estático.", "texto" }, { "TextButton", "UI", "gui", "Botão de texto.", "botao" },
+	{ "TextBox", "UI", "gui", "Caixa de texto editável.", "" }, { "ImageLabel", "UI", "gui", "Imagem estática.", "imagem" },
+	{ "ImageButton", "UI", "gui", "Botão de imagem.", "" }, { "ScrollingFrame", "UI", "gui", "Área rolável.", "lista" },
+	{ "ViewportFrame", "UI", "gui", "Render 3D dentro da UI.", "" }, { "VideoFrame", "UI", "gui", "Player de vídeo.", "video" },
+	{ "UICorner", "UI", "component", "Cantos arredondados.", "" }, { "UIStroke", "UI", "component", "Contorno.", "borda" },
+	{ "UIGradient", "UI", "component", "Gradiente de cor.", "" }, { "UIPadding", "UI", "component", "Espaçamento interno.", "" },
+	{ "UIListLayout", "UI", "component", "Layout em lista.", "" }, { "UIGridLayout", "UI", "component", "Layout em grade.", "" },
+	{ "UIPageLayout", "UI", "component", "Layout em páginas.", "" }, { "UISizeConstraint", "UI", "component", "Limita tamanho.", "" },
+	{ "UITextSizeConstraint", "UI", "component", "Limita tamanho do texto.", "" }, { "UIAspectRatioConstraint", "UI", "component", "Trava proporção.", "" },
+	{ "UIScale", "UI", "component", "Escala a UI.", "" },
+	{ "BillboardGui", "Adorners", "surface", "UI flutuante no mundo (acima da peça).", "" }, { "SurfaceGui", "Adorners", "surface", "UI na face da peça.", "" },
+	{ "SunRaysEffect", "PostFX", "postfx", "Raios de sol (Lighting).", "" }, { "BloomEffect", "PostFX", "postfx", "Brilho exagerado das luzes.", "" },
+	{ "BlurEffect", "PostFX", "postfx", "Desfoque de tela.", "" }, { "ColorCorrectionEffect", "PostFX", "postfx", "Correção de cor/brilho/contraste.", "" },
+	{ "DepthOfFieldEffect", "PostFX", "postfx", "Desfoque por distância.", "" },
+	{ "Sky", "Ambiente", "sky", "Céu/sol/lua/estrelas (Lighting).", "ceu" }, { "Atmosphere", "Ambiente", "sky", "Atmosfera real (neblina física).", "" },
+	{ "Clouds", "Ambiente", "sky", "Nuvens volumétricas.", "nuvens" },
+	{ "PointLight", "Efeitos", "effect", "Luz pontual.", "luz" }, { "SpotLight", "Efeitos", "effect", "Holofote.", "" }, { "SurfaceLight", "Efeitos", "effect", "Luz de superfície.", "" },
+	{ "ParticleEmitter", "Efeitos", "effect", "Partículas customizáveis.", "particula" }, { "Trail", "Efeitos", "effect", "Rastro entre attachments.", "" },
+	{ "Beam", "Efeitos", "effect", "Feixe entre attachments.", "" }, { "Fire", "Efeitos", "effect", "Fogo clássico.", "fogo" },
+	{ "Smoke", "Efeitos", "effect", "Fumaça clássica.", "fumaca" }, { "Sparkles", "Efeitos", "effect", "Faíscas clássicas.", "" },
+	{ "Explosion", "Efeitos", "effect", "Explosão física.", "explosao" }, { "ForceField", "Efeitos", "effect", "Campo de força.", "" },
+	{ "Highlight", "Efeitos", "effectmodel", "Contorno/preenchimento de destaque (pai: Model/peça).", "" }, { "SelectionBox", "Efeitos", "effectmodel", "Caixa de seleção visual.", "" },
+	{ "FireEffect", "Efeitos", "effectmodel", "Fogo entre attachments (MaterialVariant era).", "" },
+	{ "Decal", "Aparência", "surface", "Imagem numa face.", "adesivo" }, { "Texture", "Aparência", "surface", "Textura repetida.", "" },
+	{ "SpecialMesh", "Aparência", "mesh", "Malha especial na peça.", "" }, { "BlockMesh", "Aparência", "mesh", "Malha bloco (escala não-uniforme).", "" },
+	{ "CylinderMesh", "Aparência", "mesh", "Malha cilindro.", "" }, { "MaterialVariant", "Aparência", "material", "Variação de material (MaterialService).", "" },
+	{ "Sound", "Áudio", "sound", "Áudio.", "som" }, { "SoundGroup", "Áudio", "sound", "Grupo de volume.", "" },
+	{ "EchoSoundEffect", "Áudio", "soundfx", "Eco.", "" }, { "ReverbSoundEffect", "Áudio", "soundfx", "Reverberação.", "" },
+	{ "DistortionSoundEffect", "Áudio", "soundfx", "Distorção.", "" }, { "ChorusSoundEffect", "Áudio", "soundfx", "Coro.", "" },
+	{ "CompressorSoundEffect", "Áudio", "soundfx", "Compressor.", "" }, { "EqualizerSoundEffect", "Áudio", "soundfx", "Equalizador.", "" },
+	{ "FlangeSoundEffect", "Áudio", "soundfx", "Flanger.", "" }, { "PitchShiftSoundEffect", "Áudio", "soundfx", "Pitch.", "" },
+	{ "TremoloSoundEffect", "Áudio", "soundfx", "Tremolo.", "" },
+	{ "Humanoid", "Personagem", "characterobj", "Humanoide (vida, andar, pular).", "" }, { "Animator", "Personagem", "characterobj", "Toca animações.", "" },
+	{ "AnimationController", "Personagem", "characterobj", "Controlador sem humanoid.", "" }, { "Animation", "Personagem", "characterobj", "Clip de animação (id).", "" },
+	{ "BodyColors", "Personagem", "characterobj", "Cores do corpo R6.", "" }, { "Shirt", "Personagem", "characterobj", "Camisa.", "roupa" },
+	{ "Pants", "Personagem", "characterobj", "Calça.", "" }, { "ShirtGraphic", "Personagem", "characterobj", "Camiseta (graphic).", "" },
+	{ "Accessory", "Personagem", "characterobj", "Acessório (hat etc).", "chapeu" }, { "Hat", "Personagem", "characterobj", "Chapéu clássico.", "" },
+	{ "CharacterMesh", "Personagem", "characterobj", "Malha de personagem.", "" },
+	{ "WeldConstraint", "Física", "constraint", "Solda duas peças.", "solda" }, { "Weld", "Física", "constraint", "Junta clássica.", "" },
+	{ "Snap", "Física", "constraint", "Snap clássico.", "" }, { "Glue", "Física", "constraint", "Cola clássica.", "" },
+	{ "Motor6D", "Física", "constraint", "Junta animável (Transform).", "" }, { "Motor", "Física", "constraint", "Motor clássico.", "" },
+	{ "NoCollisionConstraint", "Física", "constraint", "Anula colisão entre duas peças.", "" }, { "RigidConstraint", "Física", "constraint", "Ligação rígida por attachments.", "" },
+	{ "HingeConstraint", "Física", "constraint", "Dobradiça/motor.", "motor" }, { "BallSocketConstraint", "Física", "constraint", "Junta esférica.", "" },
+	{ "PrismaticConstraint", "Física", "constraint", "Deslizante linear.", "" }, { "CylindricalConstraint", "Física", "constraint", "Cilíndrica (desliza+gira).", "" },
+	{ "UniversalConstraint", "Física", "constraint", "Universal.", "" }, { "SpringConstraint", "Física", "constraint", "Mola.", "mola" },
+	{ "RopeConstraint", "Física", "constraint", "Corda.", "corda" }, { "AlignPosition", "Física", "constraint", "Alinha posição.", "" },
+	{ "AlignOrientation", "Física", "constraint", "Alinha rotação.", "" }, { "VectorForce", "Física", "constraint", "Força vetorial.", "" },
+	{ "LineForce", "Física", "constraint", "Força em linha (ímã).", "" }, { "Torque", "Física", "constraint", "Torque.", "" },
+	{ "AngularVelocity", "Física", "constraint", "Velocidade angular.", "" }, { "LinearVelocity", "Física", "constraint", "Velocidade linear.", "" },
+	{ "BodyVelocity", "Física", "legacyphys", "Velocidade (legacy).", "" }, { "BodyGyro", "Física", "legacyphys", "Giroscópio (legacy).", "" },
+	{ "BodyPosition", "Física", "legacyphys", "Posição (legacy).", "" }, { "BodyForce", "Física", "legacyphys", "Força (legacy).", "" },
+	{ "BodyThrust", "Física", "legacyphys", "Empuxo (legacy).", "" }, { "BodyAngularVelocity", "Física", "legacyphys", "Vel. angular (legacy).", "" },
+	{ "RocketPropulsion", "Física", "legacyphys", "Propulsão foguete (legacy).", "" },
+	{ "ProximityPrompt", "Gameplay", "prompt", "Interação de proximidade.", "interagir" }, { "ClickDetector", "Gameplay", "detector", "Detector de clique.", "clique" },
+	{ "Tool", "Gameplay", "tool", "Ferramenta de mão.", "ferramenta" }, { "HopperBin", "Gameplay", "tool", "HopperBin clássico.", "" },
+	{ "Dialog", "Gameplay", "detector", "Diálogo NPC.", "" }, { "DialogChoice", "Gameplay", "prompt", "Opção de diálogo.", "" },
+	{ "ForceField", "Gameplay", "effectmodel", "Campo de força no personagem.", "" },
+	{ "RemoteEvent", "Rede", "net", "Evento cliente-servidor.", "" }, { "RemoteFunction", "Rede", "net", "Requisição c/s com retorno.", "" },
+	{ "BindableEvent", "Rede", "net", "Evento interno.", "" }, { "BindableFunction", "Rede", "net", "Função interna.", "" },
+	{ "UnreliableRemoteEvent", "Rede", "net", "Evento rede não-confiável (rápido).", "" },
+	{ "BoolValue", "Valores", "value", "Armazena bool.", "" }, { "IntValue", "Valores", "value", "Armazena int.", "" },
+	{ "NumberValue", "Valores", "value", "Armazena número.", "" }, { "StringValue", "Valores", "value", "Armazena texto.", "" },
+	{ "ObjectValue", "Valores", "value", "Referencia objeto.", "" }, { "BrickColorValue", "Valores", "value", "Armazena BrickColor.", "" },
+	{ "Color3Value", "Valores", "value", "Armazena Color3.", "cor" }, { "CFrameValue", "Valores", "value", "Armazena CFrame.", "" },
+	{ "Vector3Value", "Valores", "value", "Armazena Vector3.", "" },
+	{ "Camera", "Render", "cameraobj", "Câmera.", "" }, { "PathfindingModifier", "Nav", "geometry2", "Modifica navmesh.", "" },
+	{ "Message", "Legado", "legacy", "Mensagem na tela (antiga).", "" }, { "Hint", "Legado", "legacy", "Dica na tela (antiga).", "" },
+	{ "StarterGear", "Legado", "legacy", "Item inicial.", "" },
+	{ "Sky", "Ambiente", "sky2", "Céu ( Lighting ).", "" }, { "Decal", "Aparência", "surface", "Decal em face.", "" },
+	{ "StyleSheet", "UI", "component2", "Folha de estilo (UI).", "" },
+}
+-- dedupe + registro por classe
+local CATALOG_BYCLASS, CATALOG_SEEN = {}, {}
+local CATALOG_ITEMS = {}
+for _, row in ipairs(CLASS_CATALOG) do
+	if not CATALOG_SEEN[row[1]] then
+		CATALOG_SEEN[row[1]] = true
+		CATALOG_ITEMS[#CATALOG_ITEMS + 1] = { class = row[1], cat = row[2], group = row[3], desc = row[4], alias = row[5] }
+		CATALOG_BYCLASS[row[1]] = row[3]
+	end
+end
+
+function handlers.ClassList(player, payload)
+	return { items = CATALOG_ITEMS, count = #CATALOG_ITEMS }
+end
+
+local function defaultParentFor(class, player)
+	-- ScreenGui -> StarterGui, Lighting children -> Lighting, valores/remote -> ReplicatedStorage
+	local Lighting = game:GetService("Lighting")
+	if class == "ScreenGui" then return game:GetService("StarterGui") end
+	if CATALOG_BYCLASS[class] == "sky" or CATALOG_BYCLASS[class] == "postfx" or CATALOG_BYCLASS[class] == "sky2" then return Lighting end
+	if class == "MaterialVariant" then return game:GetService("MaterialService") end
+	if class == "SoundEffect" then return game:GetService("SoundService") end
+	return nil
+end
+
+function handlers.CreateAny(player, payload)
+	local class = tostring(payload.class or "")
+	assert(#class > 0 and class:match("^%a[%w]*$"), "Classe inválida.")
+	local parent = nil
+	if payload.parentId and objects[payload.parentId] then
+		parent = objects[payload.parentId]
+	elseif CATALOG_BYCLASS[class] then
+		parent = defaultParentFor(class, player)
+	end
+	if not parent then
+		local sel2 = selected[player]
+		if sel2 and sel2.Parent and editable(sel2) then parent = sel2 else parent = workspace end
+	end
+	assert(editable(parent) or parent == workspace, "Pai protegido.")
+	-- pcall REAL: deixa o motor decidir se a classe existe/é instanciável
+	local okNew, o = pcall(function() return Instance.new(class) end)
+	if not okNew then
+		return { error = "Classe '" .. class .. "' não é instanciável nesta versão do Roblox: " .. tostring(o) }
+	end
+	-- defaults seguros antes do parent (ordem do ORIG)
+	local okDef = pcall(function()
+		local base = type(payload.name) == "string" and #payload.name > 0 and payload.name or class
+		local unique, ix = base, 1
+		while parent:FindFirstChild(unique) do unique = base .. ix; ix = ix + 1 end
+		o.Name = unique
+		if o:IsA("BasePart") then
+			o.Anchored = true
+			o.Size = Vector3.new(4, 1, 2)
+			o.Color = Color3.fromRGB(129, 184, 242)
+			if parent:IsA("BasePart") then o.CFrame = parent.CFrame * CFrame.new(0, parent.Size.Y / 2 + 1, 0)
+			elseif parent.ClassName == "Model" then o.CFrame = parent:GetPivot() * CFrame.new(0, 3, 0)
+			else o.CFrame = CFrame.new(0, 5, 0) end
+		elseif o:IsA("BaseScript") then o.Enabled = false
+		elseif o:IsA("ScreenGui") then o.ResetOnSpawn = false
+		elseif o:IsA("GuiObject") then
+			o.Size = UDim2.fromOffset(200, 60)
+			o.Position = UDim2.fromOffset(24, 24)
+			o.BackgroundColor3 = Color3.fromRGB(20, 45, 80)
+			if o:IsA("TextLabel") or o:IsA("TextButton") or o:IsA("TextBox") then
+				o.Text = class; o.TextColor3 = Color3.new(1, 1, 1); o.TextSize = 20
+			end
+		elseif o:IsA("Tool") then o.RequiresHandle = false end
+		o.Parent = parent
+	end)
+	if not okDef then
+		local errP = o:GetFullName()
+		o:Destroy()
+		return { error = "Roblox recusou '" .. class .. "' em " .. parent:GetFullName() .. " (parent inválido p/ essa classe)." }
+	end
+	if not o.Parent then
+		o:Destroy()
+		return { error = "Roblox recusou '" .. class .. "' em " .. parent:GetFullName() .. " (parent inválido p/ essa classe)." }
+	end
+	register(o)
+	created[o] = true
+	selected[player] = o
+	pcall(function() queueObject(parent) end)
+	pcall(function() hCreate(player, o) end)
+	return { id = idOf[o], className = class, parent = parent:GetFullName(), msg = class .. " criado em " .. parent.Name .. " (selecionado)." }
+end
+
+print("[ArkherProps] CLASSDB pronta: " .. tostring(#CATALOG_ITEMS) .. " classes no catálogo + PropsAll/SetAny/CreateAny ativos")
 request.OnServerInvoke=function(player,action,payload)if not authorized(player)then return{ok=false,error="A conta @"..player.Name.." não está autorizada. Adicione esse nome principal em AUTHORIZED_USERNAMES no servidor; não use o nome de exibição."}end if type(action)~="string"or not handlers[action]or not consume(player,action=="Snapshot"and 4 or 1)then return{ok=false,error="Requisição inválida ou limite de frequência."}end if payload~=nil and type(payload)~="table"then return{ok=false,error="Formato inválido."}end local ok,result=pcall(handlers[action],player,payload or{})if not ok then local t=transactions[player]if action=="Begin"or(action=="End"and t and payload and t.token==payload.token)then release(player,true)end return{ok=false,error=tostring(result)}end result=result or{};result.ok=true;return result end preview.OnServerEvent:Connect(function(player,payload)if not authorized(player)or type(payload)~="table"or not consume(player,1)then return end local t=transactions[player]if not t or payload.token~=t.token then return end if t.lastPreview and os.clock()-t.lastPreview<0.045 then return end t.lastPreview=os.clock()local ok=pcall(applyTransform,t,payload)if not ok then release(player,true)end end)Players.PlayerRemoving:Connect(function(player)release(player,true);subscribed[player]=nil;selected[player]=nil;buckets[player]=nil;created[player]=nil end)local timer,propertyTimer=0,0 Run.Heartbeat:Connect(function(dt)timer=timer+dt;propertyTimer=propertyTimer+dt for player,t in pairs(transactions)do if os.clock()-t.time>CONFIG.TRANSFORM_TIMEOUT then release(player,true)end end if timer>=0.12 then timer=0 if next(dirty)or next(removed)then revision=revision+1 local packet={kind="Delta",revision=revision,nodes={},removed={}}for id in pairs(dirty)do local o=objects[id];if inspectable(o)then packet.nodes[#packet.nodes+1]=record(o)end end for id in pairs(removed)do packet.removed[#packet.removed+1]=id end dirty={};removed={}for player in pairs(subscribed)do if authorized(player)then updates:FireClient(player,packet)end end end end if propertyTimer>=0.3 then propertyTimer=0 for player,o in pairs(selected)do if subscribed[player]and authorized(player)and not transactions[player]then if inspectable(o)then updates:FireClient(player,{kind="Properties",properties=properties(o)})else selected[player]=nil;updates:FireClient(player,{kind="SelectionRemoved"})end end end end end)-- ROUND 11 boot: baseplate sempre presente
 pcall(function()
 	local b0 = workspace:FindFirstChild("Baseplate")

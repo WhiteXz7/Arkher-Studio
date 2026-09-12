@@ -1,33 +1,26 @@
 -- =============================================================
--- Arkher_09_Topbar — A TOPBAR DE VERDADE: ABAS estilo Roblox.
+-- Arkher_09_Topbar (ROUND 12) — SEM overlay. Botões X vivem
+-- DENTRO do Ribbon ORIGINAL, clonados de um botão real dele
+-- (mesmo tamanho/estilo/cor — cara nativa, z-order nativo).
 --
--- ROUND 11 (correção cirúrgica dos bugs vistos no Play):
---  * BUG #1 (topbar invisível / cliques sem efeito): o script
---    parentava a faixa em `i` — o FOLDER ArkherServerClientRuntime.
---    GuiObject debaixo de Folder NÃO renderiza. Agora TUDO mora em
---    host próprio filho DIRETO da ScreenGui, medido em pixels de
---    tela contra a Ribbon REAL (Canvas/Ribbon), sem escala suspeita.
---  * BUG #2 (aba inicial só tinha botões antigos): HOME era "só o
---    ribbon original". Agora HOME é uma PÁGINA de botões novos com
---    ícone desenhado (BASEPLATE / PART / TOOLBOX / PROPS / CORES /
---    OUTPUT / COMANDO / SCRIPTS). O ribbon original sobrou na aba
---    ORIGINAL (última), intacto e acessível num clique.
---  * BUG #3 (spawn/insert morto): PART ▸ agora realmente abre o
---    submenu de formas e spawna via QuickPart NO SERVIDOR, na frente
---    da CÂMERA. BASEPLATE garante o chão (EnsureBase + boot server).
---  * Cliques: Activated + MouseButton1Click (dedupe 0.12s) em TUDO.
+-- Por que a versão antiga morreu: ela criava uma faixa própria
+-- cobrindo a linha de menus real (Active=true engolia os cliques
+-- de ESTÚDIO/MODELAGEM/...) e flutuava fora do lugar. Agora:
+--  * ZERO frames novos por cima do canvas.
+--  * Botões: PART ▸ (7 formas, spawn server na frente da câmera),
+--    BASEPLATE (garante chão), UNION / NEGATE (CSG real) e
+--    TOOLBOX (dock estilo Roblox, do 10_Studio).
+--  * Os menus da faixa de menus (MUNDO/MODELAGEM/…) são do 03 e
+--    voltam a funcionar porque não existe mais overlay.
 -- =============================================================
 
 local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
 local client = Players.LocalPlayer
-local playerGui = client:WaitForChild("PlayerGui")
 
--- espera o núcleo da UI (mesmo contrato do 03/02/04)
 local uiRoot = script:FindFirstAncestorOfClass("ScreenGui")
-if not uiRoot then warn("[ArkherX] 09_Topbar precisa estar dentro de ArkherStudioUI") return end
+if not uiRoot then warn("[ArkherX] 09_RibbonX precisa estar dentro de ArkherStudioUI") return end
 local i = uiRoot:WaitForChild("ArkherServerClientRuntime", 20)
-if not i then warn("[ArkherX] 09: núcleo (01_Nucleo) não achado.") return end
+if not i then warn("[ArkherX] 09: núcleo não achado.") return end
 local j = i:WaitForChild("ClientBus", 20)
 local k = i:WaitForChild("CoreReady", 20)
 if not j or not k then warn("[ArkherX] 09: núcleo incompleto.") return end
@@ -50,7 +43,7 @@ end
 local function deckOpen(v)
 	local d = rawget(_G, "ArkherDeck")
 	if d and d.open then return d.open(v, nil) end
-	W("Message", { text = "Deck X ainda carregando…", bad = true })
+	W("Message", { text = "UI X ainda carregando…", bad = true })
 end
 
 -- clique à prova de bala: Activated + MouseButton1Click com dedupe
@@ -66,404 +59,120 @@ local function onTap(btn, fn)
 		local ok, err = pcall(fn, ...)
 		if not ok then warn("[ArkherX] 09 clique: " .. tostring(err)) end
 	end
-	pcall(function() btn.Activated:Connect(function(...) fire("Activated", ...) end) end)
-	pcall(function() btn.MouseButton1Click:Connect(function(...) fire("MouseButton1Click", ...) end) end)
+	pcall(function() btn.Activated:Connect(function(...) fire("A", ...) end) end)
+	pcall(function() btn.MouseButton1Click:Connect(function(...) fire("M", ...) end) end)
 	btn.Active = true
 	btn.Selectable = true
+	btn.Visible = true
 end
 
--- ---------- estrutura ORIGINAL medida (SEM parentar nada nela) ----------
-local canvas = uiRoot:FindFirstChild("Canvas")
-local ribbon = canvas and canvas:FindFirstChild("Ribbon") or nil
-
--- ---------- paleta ----------
 local m = {
 	bg = Color3.fromRGB(7, 16, 32), panel = Color3.fromRGB(9, 23, 44), section = Color3.fromRGB(20, 42, 75),
 	border = Color3.fromRGB(52, 80, 120), text = Color3.fromRGB(228, 240, 255), muted = Color3.fromRGB(146, 170, 202),
 	blue = Color3.fromRGB(35, 139, 230), selected = Color3.fromRGB(17, 76, 139), cyan = Color3.fromRGB(43, 203, 243),
 	purple = Color3.fromRGB(166, 117, 240), gold = Color3.fromRGB(240, 185, 70), error = Color3.fromRGB(255, 164, 143),
-	ribbonBg = Color3.fromRGB(10, 22, 42),
 }
 
--- =============================================================
--- IconX — desenhador de ícones 32x32 (procedural, rico em cor)
--- =============================================================
-local function drawIcon(kind, parent, size)
-	size = size or 28
+-- ---------- localizar Canvas/Ribbon e um BOTÃO-MOLDE nativo ----------
+local canvas = uiRoot:FindFirstChild("Canvas")
+local ribbon = canvas and canvas:FindFirstChild("Ribbon") or nil
+if not ribbon then
+	warn("[ArkherX] 09: Ribbon não achada — botões X não injetados.")
+	return end
+local popups = canvas:FindFirstChild("ServerEditorPopups")
+local uiscale = canvas:FindFirstChild("ResponsiveScale")
+
+local function findTemplate()
+	for _, d in ipairs(ribbon:GetDescendants()) do
+		if d:IsA("GuiButton") and d:FindFirstChild("Icon") and d.Parent and d.Parent:IsA("GuiObject") then
+			return d
+		end
+	end
+	-- fallback: qualquer GuiButton do ribbon
+	for _, d in ipairs(ribbon:GetDescendants()) do
+		if d:IsA("GuiButton") then return d end
+	end
+	return nil
+end
+local template = findTemplate()
+if not template then
+	warn("[ArkherX] 09: nenhum botão-molde no Ribbon.")
+	return end
+
+-- ---------- mini-art 16px (mesma linguagem dos ícones do estúdio) ----------
+local function drawIcon16(kind, parent, zi)
+	local old = parent:FindFirstChild("Icon")
+	local pos, size
+	if old then pos, size = old.Position, old.Size; old:Destroy() end
 	local g2 = Instance.new("Frame")
-	g2.Name = "Icon_" .. kind
-	g2.Size = UDim2.fromOffset(size, size)
+	g2.Name = "Icon"
 	g2.BackgroundTransparency = 1
-	g2.BorderSizePixel = 0
+	if pos then g2.Position = pos else g2.Position = UDim2.new(0.5, -8, 0.5, -8) end
+	if size then g2.Size = size else g2.Size = UDim2.fromOffset(16, 16) end
 	g2.Parent = parent
-	local ag = size / 32
+	local ZI = zi or (parent.ZIndex + 1)
+	local ag = (g2.AbsoluteSize.X > 0 and g2.AbsoluteSize.X or 16) / 16
+	ag = math.max(ag, 16 / 16)
 	local function box(x, y, w2, h2, color, round, transp)
 		local f = Instance.new("Frame")
-		f.Position = UDim2.fromOffset(x * ag, y * ag)
-		f.Size = UDim2.fromOffset(math.max(w2 * ag, 1), math.max(h2 * ag, 1))
+		f.Position = UDim2.fromOffset(x, y)
+		f.Size = UDim2.fromOffset(math.max(w2, 1), math.max(h2, 1))
 		f.BackgroundColor3 = color
 		f.BackgroundTransparency = transp or 0
 		f.BorderSizePixel = 0
-		f.ZIndex = (parent and parent.ZIndex or 44) + 1
-		if round then
-			local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, round * ag) c.Parent = f
-		end
+		f.ZIndex = ZI
+		if round then local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, round) c.Parent = f end
 		f.Parent = g2
 		return f
 	end
 	local function line(x1, y1, x2, y2, color, thick)
-		local dx, dy = (x2 - x1) * ag, (y2 - y1) * ag
-		local th = math.max((thick or 2.2) * ag, 1)
+		local dx, dy = (x2 - x1), (y2 - y1)
+		local th = math.max(thick or 2, 1)
 		local f = Instance.new("Frame")
 		f.AnchorPoint = Vector2.new(0.5, 0.5)
-		f.Position = UDim2.fromOffset((x1 + x2) / 2 * ag, (y1 + y2) / 2 * ag)
+		f.Position = UDim2.fromOffset((x1 + x2) / 2, (y1 + y2) / 2)
 		f.Size = UDim2.fromOffset(math.sqrt(dx * dx + dy * dy) + th, th)
 		f.Rotation = math.deg(math.atan2(dy, dx))
 		f.BackgroundColor3 = color
 		f.BorderSizePixel = 0
-		f.ZIndex = (parent and parent.ZIndex or 44) + 1
+		f.ZIndex = ZI
 		local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0.5, 0) c.Parent = f
 		f.Parent = g2
 		return f
 	end
-	local function circ(x, y, r, color, thick, transp)
-		local f = box(x - r, y - r, 2 * r, 2 * r, color, r, transp)
-		if thick then
-			local st = Instance.new("UIStroke") st.Thickness = math.max(thick * ag, 1) st.Color = color
-			st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border st.Parent = f
-			f.BackgroundTransparency = 1
-		end
-		return f
-	end
-	local function arc(cx, cy, r, a1, a2, color, thick)
-		local last
-		for A = 0, 24 do
-			local a = math.rad(a1 + (a2 - a1) * A / 24)
-			local p2 = { cx + r * math.cos(a), cy + r * math.sin(a) }
-			if last then line(last[1], last[2], p2[1], p2[2], color, thick or 2.2) end
-			last = p2
-		end
-	end
-	local function poly(pts, color, thick)
-		for q = 1, #pts - 1 do line(pts[q][1], pts[q][2], pts[q + 1][1], pts[q + 1][2], color, thick or 2.4) end
-	end
-
-	local P = m
-	if kind == "HOME" then
-		line(6, 17, 16, 7, P.cyan, 3) line(16, 7, 26, 17, P.cyan, 3)
-		box(9, 16, 14, 11, P.section, 2) box(14, 21, 4, 6, P.cyan, 1)
-	elseif kind == "TERRAIN" then
-		line(2, 25, 12, 10, Color3.fromRGB(154, 208, 104), 3)
-		line(12, 10, 18, 19, Color3.fromRGB(154, 208, 104), 3)
-		line(18, 19, 23, 14, Color3.fromRGB(190, 160, 110), 3)
-		line(23, 14, 30, 25, Color3.fromRGB(190, 160, 110), 3)
-		circ(24, 7, 3.2, P.gold)
-		line(2, 28, 30, 28, Color3.fromRGB(120, 96, 66), 2)
-	elseif kind == "WATER" then
-		for q = 0, 2 do
-			arc(8 + q * 8, 13, 4, 180, 360, Color3.fromRGB(64, 150, 255), 2.4)
-			arc(8 + q * 8, 22, 4, 180, 360, Color3.fromRGB(40, 110, 220), 2.4)
-		end
-	elseif kind == "MODELER" then
-		line(16, 4, 28, 11, m.cyan, 2.2) line(28, 11, 28, 23, m.cyan, 2.2)
-		line(28, 23, 16, 30, m.cyan, 2.2) line(16, 30, 4, 23, m.cyan, 2.2)
-		line(4, 23, 4, 11, m.cyan, 2.2) line(4, 11, 16, 4, m.cyan, 2.2)
-		line(4, 11, 16, 18, m.blue, 2) line(28, 11, 16, 18, m.blue, 2) line(16, 18, 16, 30, m.blue, 2)
-	elseif kind == "ANIMATOR" then
-		circ(11, 7, 3, P.text) line(11, 10, 11, 20, P.text, 2.6) line(11, 14, 4, 18, P.text, 2.2)
-		line(11, 14, 18, 18, P.text, 2.2) line(11, 20, 6, 29, P.text, 2.2) line(11, 20, 16, 29, P.text, 2.2)
-		arc(21, 9, 6, -40, 140, P.gold, 2) line(25, 3.6, 27, 8, P.gold, 2)
-	elseif kind == "SPACE" then
-		circ(16, 16, 8, Color3.fromRGB(90, 140, 255), nil, 0.85)
-		arc(16, 16, 13, 150, 390, Color3.fromRGB(220, 200, 120), 2)
-		circ(26, 6, 1.6, P.gold) circ(5, 25, 1.3, P.text) circ(28, 24, 1.1, P.text)
-	elseif kind == "FABRICAR" then
-		box(5, 12, 22, 16, P.section, 2)
-		line(5, 18, 27, 18, P.muted, 1.6)
-		box(13, 6, 6, 6, Color3.fromRGB(190, 130, 70), 1)
-		line(21, 8, 25, 4, P.gold, 2.4) line(7, 8, 11, 4, P.gold, 2.4)
-		line(12, 23, 20, 23, P.cyan, 1.8)
-	elseif kind == "ATMOS" then
-		circ(12, 12, 5, P.gold)
-		for A = 0, 7 do
-			local a = math.rad(A * 45)
-			line(12 + 8 * math.cos(a), 12 + 8 * math.sin(a), 12 + 11 * math.cos(a), 12 + 11 * math.sin(a), P.gold, 2)
-		end
-		box(8, 22, 18, 5, Color3.fromRGB(180, 190, 210), 3) box(14, 19, 12, 5, Color3.fromRGB(160, 170, 195), 3)
-	elseif kind == "CLIMA" then
-		arc(11, 13, 6, 45, 315, Color3.fromRGB(96, 160, 255), 2.6) circ(16, 6, 2.4, Color3.fromRGB(96, 160, 255))
-		arc(22, 22, 6, -135, 135, Color3.fromRGB(255, 110, 100), 2.6) circ(16, 24, 2.4, Color3.fromRGB(255, 110, 100))
-		line(20, 9, 17, 15, Color3.fromRGB(96, 160, 255), 2) line(12, 23, 15, 17, Color3.fromRGB(255, 110, 100), 2)
-	elseif kind == "VIDA" then
-		circ(16, 12, 4, Color3.fromRGB(255, 120, 140))
-		circ(10, 9, 3, Color3.fromRGB(130, 230, 150)) circ(10, 15, 3, Color3.fromRGB(130, 230, 150))
-		circ(22, 9, 3, Color3.fromRGB(130, 230, 150)) circ(22, 15, 3, Color3.fromRGB(130, 230, 150))
-		line(16, 16, 16, 28, Color3.fromRGB(255, 120, 140), 2.4) line(16, 28, 10, 30, P.text, 2) line(16, 28, 22, 30, P.text, 2)
-	elseif kind == "CIDADE" then
-		box(4, 14, 8, 15, P.section) box(5.5, 16.5, 5, 3, P.cyan) box(5.5, 22, 5, 3, P.cyan)
-		box(13, 7, 9, 22, m.blue) box(14.5, 10, 6, 4, P.text) box(14.5, 17, 6, 4, P.text) box(14.5, 24, 6, 4, P.text)
-		box(23, 12, 6, 17, P.gold) box(24.5, 14.5, 3, 3, P.text) box(24.5, 20.5, 3, 3, P.text)
-		line(2, 29, 30, 29, P.muted, 1.8)
-	elseif kind == "AUDIO" then
-		box(4, 12, 7, 9, P.cyan, 1) line(11, 12, 17, 6, P.cyan, 2.6) line(17, 6, 17, 27, P.cyan, 2.6) line(17, 27, 11, 21, P.cyan, 2.6)
-		arc(17, 16.5, 7, -55, 55, P.text, 2) arc(17, 16.5, 11, -50, 50, P.muted, 2)
-	elseif kind == "FX" then
-		line(16, 4, 16, 24, P.gold, 2.6) line(8, 10, 24, 24, P.gold, 2.2) line(24, 10, 8, 24, P.gold, 2.2)
-		circ(16, 18, 4.5, Color3.fromRGB(255, 120, 60)) circ(16, 18, 2, Color3.fromRGB(255, 220, 130))
-		circ(27, 26, 1.6, Color3.fromRGB(255, 154, 61)) circ(5, 26, 1.6, Color3.fromRGB(255, 154, 61))
-	elseif kind == "CORDAS" then
-		local last
-		for q = 0, 20 do
-			local x2 = 3 + q * 1.3
-			local y2 = 12 + math.sin(q / 20 * math.pi) * 8
-			if last then line(last[1], last[2], x2, y2, Color3.fromRGB(216, 162, 90), 2.4) end
-			last = { x2, y2 }
-		end
-		circ(3, 12, 2, P.text) circ(29, 12, 2, P.text)
-		line(16, 20, 16, 28, P.cyan, 2) circ(16, 29, 1.6, P.cyan)
-	elseif kind == "PART" then
-		box(6, 8, 20, 20, m.blue, 3) box(9, 11, 14, 5, Color3.fromRGB(90, 170, 255), 2)
-		line(6, 24, 26, 30, m.cyan, 2)
+	if kind == "PART" then
+		box(3, 3, 10, 10, m.blue, 3)
+		box(5, 5, 6, 3, Color3.fromRGB(90, 170, 255), 2)
 	elseif kind == "BASEPLATE" then
-		box(3, 20, 26, 8, Color3.fromRGB(100, 104, 118), 2)
-		box(3, 16, 26, 5, Color3.fromRGB(125, 130, 146), 2)
-		for q = 0, 3 do line(6 + q * 6, 16, 6 + q * 6, 28, Color3.fromRGB(84, 88, 100), 1.2) end
-		circ(8, 8, 3, P.cyan) line(8, 11, 8, 15, P.cyan, 2)
-		circ(24, 7, 2, P.gold)
-	elseif kind == "ORIGINAL" then
-		box(4, 5, 24, 5, P.muted, 2) box(4, 13, 24, 5, P.section, 2) box(4, 21, 24, 5, P.section, 2)
-		circ(7, 16, 1.6, P.cyan) circ(7, 24, 1.6, P.gold) circ(7, 8, 1.6, P.text)
-	elseif kind == "TOOLBOX" then
-		box(4, 10, 24, 18, Color3.fromRGB(190, 140, 60), 3)
-		box(11, 6, 10, 5, Color3.fromRGB(150, 108, 44), 3)
-		box(4, 16, 24, 3, Color3.fromRGB(150, 108, 44), 1)
-		circ(13, 17.5, 3.4, P.gold, 1.6)
-		line(21.5, 21, 25.5, 25, P.text, 2) line(25.5, 21, 21.5, 25, P.text, 2)
-	elseif kind == "PROPS" then
-		for q = 0, 2 do
-			local y2 = 9 + q * 7
-			line(5, y2, 27, y2, P.muted, 2)
-			circ(9 + (q % 2) * 12 + q * 2, y2, 3, P.cyan, 1.8)
-		end
-	elseif kind == "CORES" then
-		for A = 0, 11 do
-			local a = math.rad(A * 30)
-			circ(16 + 10 * math.cos(a), 16 + 10 * math.sin(a), 2.6, Color3.fromHSV(A / 12, 0.9, 1))
-		end
-		circ(16, 16, 4.4, Color3.fromRGB(255, 255, 255), 1.6)
-	elseif kind == "OUTPUT" then
-		box(4, 6, 24, 20, P.section, 3)
-		line(8, 11, 14, 15, P.cyan, 2.6) line(14, 15, 8, 19, P.cyan, 2.6)
-		line(16, 20, 25, 20, P.text, 2)
-	elseif kind == "COMANDO" then
-		box(4, 7, 24, 18, Color3.fromRGB(16, 26, 38), 3)
-		line(8, 12, 13, 15, P.gold, 2.2) line(13, 15, 8, 18, P.gold, 2.2)
-		line(15, 18, 24, 18, P.text, 1.8)
-		line(8, 9, 24, 9, P.muted, 1.4)
-	elseif kind == "SCRIPTS" then
-		box(8, 3, 17, 26, P.cyan, 2, 1)
-		line(11, 9, 22, 9, P.cyan, 2) line(11, 14, 19, 14, P.cyan, 2) line(11, 19, 22, 19, P.cyan, 2) line(11, 24, 17, 24, P.cyan, 2)
-		box(4, 8, 4, 16, m.purple, 2)
-	elseif kind == "PY" then
-		line(9, 6, 20, 6, m.blue, 3) line(20, 6, 20, 14, m.blue, 3) line(20, 14, 12, 14, m.blue, 3)
-		line(12, 14, 12, 22, P.gold, 3) line(12, 22, 23, 22, P.gold, 3) line(23, 22, 23, 30, P.gold, 3)
-		circ(11.5, 8.5, 1.3, P.text) circ(20.5, 24.5, 1.3, P.text)
-	elseif kind == "SCULPT" then
-		line(3, 26, 11, 14, Color3.fromRGB(240, 170, 80), 3)
-		line(11, 14, 16, 21, Color3.fromRGB(240, 170, 80), 3)
-		line(16, 21, 22, 15, Color3.fromRGB(240, 170, 80), 3)
-		line(22, 15, 29, 26, Color3.fromRGB(240, 170, 80), 3)
-		circ(24, 9, 4, P.section, 1.6)
-		line(24, 13, 24, 17, P.muted, 2)
-	elseif kind == "PLUGINS" then
-		box(5, 7, 14, 14, P.cyan, 3)
-		box(17, 17, 11, 11, m.purple, 3)
-		circ(12, 7, 3, P.cyan) circ(17, 17, 3, m.purple)
-		line(15, 15, 19, 19, P.text, 2)
-	elseif kind == "GRUPOS" then
-		box(4, 6, 17, 17, P.cyan, 3, 0.25)
-		box(11, 12, 17, 17, P.gold, 3, 0.35)
-		circ(16, 14.5, 4, P.text, 1.6)
+		box(1, 9, 14, 6, Color3.fromRGB(100, 104, 118), 2)
+		box(1, 7, 14, 3, Color3.fromRGB(125, 130, 146), 2)
+		box(5, 1, 5, 5, m.cyan, 3)
 	elseif kind == "UNION" then
-		circ(12, 16, 9, P.cyan, 2.4) circ(20, 16, 9, P.gold, 2.4)
-		arc(16, 16, 9, -40, 40, P.text, 2) arc(16, 16, 9, 140, 220, P.text, 2)
+		box(1, 3, 10, 10, Color3.fromRGB(43, 203, 243), 7, 0.55)
+		box(6, 3, 10, 10, Color3.fromRGB(240, 185, 70), 7, 0.55)
 	elseif kind == "NEGATE" then
-		circ(14, 16, 10, P.cyan, 2.4)
-		circ(24, 16, 7, P.error, 2.4)
-		circ(25.5, 16, 5.6, m.ribbonBg)
-	else
-		circ(16, 16, 10, P.muted, 2)
+		box(1, 3, 10, 10, Color3.fromRGB(43, 203, 243), 7, 0.55)
+		box(7, 4, 8, 8, Color3.fromRGB(255, 143, 117), 6, 0.15)
+	elseif kind == "TOOLBOX" then
+		box(1, 5, 14, 10, Color3.fromRGB(190, 140, 60), 3)
+		box(5, 2, 6, 3, Color3.fromRGB(150, 108, 44), 3)
+		box(1, 8, 14, 2, Color3.fromRGB(150, 108, 44), 1)
 	end
 	return g2
 end
 
--- =============================================================
--- Estrutura de ABAS + páginas (botões com ícone em cima)
--- =============================================================
-local TABS = {
-	{ name = "HOME", items = {
-		{ "BASEPLATE", "Baseplate", { kind = "api", action = "EnsureBase", payload = {} } },
-		{ "PART", "Part ▸", { kind = "part" } },
-		{ "TOOLBOX", "Toolbox", { kind = "deck", view = "toolbox" } },
-		{ "PROPS", "Propriedades", { kind = "deck", view = "props" } },
-		{ "CORES", "Cores", { kind = "deck", view = "cores" } },
-		{ "OUTPUT", "Output", { kind = "deck", view = "output" } },
-		{ "COMANDO", "Comando", { kind = "deck", view = "comando" } },
-		{ "SCRIPTS", "Scripts", { kind = "deck", view = "scripts" } },
-	} },
-	{ name = "MUNDO", items = {
-		{ "TERRAIN", "Terrain", { kind = "deck", view = "terrain" } },
-		{ "SCULPT", "Sculpt", { kind = "deck", view = "sculpt" } },
-		{ "WATER", "Água X", { kind = "deck", view = "water" } },
-		{ "SPACE", "Espaço", { kind = "deck", view = "espaco" } },
-		{ "ATMOS", "Atmosfera", { kind = "deck", view = "atmos" } },
-		{ "CLIMA", "Clima", { kind = "deck", view = "clima" } },
-		{ "CIDADE", "Cidade", { kind = "deck", view = "cidade" } },
-	} },
-	{ name = "NATUREZA", items = {
-		{ "VIDA", "Vida", { kind = "deck", view = "vida" } },
-		{ "CORDAS", "Cordas", { kind = "deck", view = "cordas" } },
-		{ "FX", "Partículas", { kind = "deck", view = "fx" } },
-		{ "AUDIO", "Áudio", { kind = "deck", view = "audio" } },
-	} },
-	{ name = "CRIAÇÃO", items = {
-		{ "MODELER", "Modeler", { kind = "deck", view = "modeler" } },
-		{ "FABRICAR", "Fabricar", { kind = "deck", view = "fabricar" } },
-		{ "ANIMATOR", "Animator", { kind = "deck", view = "animator" } },
-	} },
-	{ name = "CONSTRUIR", items = {
-		{ "PART", "Part ▸", { kind = "part" } },
-		{ "UNION", "Union", { kind = "api", action = "CsgDo", payload = { op = "union" } } },
-		{ "NEGATE", "Negate", { kind = "api", action = "CsgDo", payload = { op = "negate" } } },
-		{ "BASEPLATE", "Baseplate", { kind = "api", action = "EnsureBase", payload = {} } },
-		{ "TOOLBOX", "Toolbox", { kind = "deck", view = "toolbox" } },
-	} },
-	{ name = "ESTÚDIO", items = {
-		{ "PROPS", "Propriedades", { kind = "deck", view = "props" } },
-		{ "CORES", "Cores", { kind = "deck", view = "cores" } },
-		{ "OUTPUT", "Output", { kind = "deck", view = "output" } },
-		{ "COMANDO", "Comando", { kind = "deck", view = "comando" } },
-		{ "SCRIPTS", "Scripts", { kind = "deck", view = "scripts" } },
-	} },
-	{ name = "DEV", items = {
-		{ "SCRIPTS", "Scripts", { kind = "deck", view = "scripts" } },
-		{ "PY", "Python", { kind = "deck", view = "py" } },
-		{ "PLUGINS", "Plugins", { kind = "deck", view = "plugins" } },
-		{ "GRUPOS", "Colisões", { kind = "deck", view = "grupos" } },
-	} },
-	{ name = "ORIGINAL", original = true, tip = "O ribbon ORIGINAL do estúdio (FileTools, gizmos, menus) — intacto" },
-}
-
--- ---------- medida da ribbon em PIXELS DE TELA (gui space) ----------
-local ribbonRect = { x = 0, y = 78, w = 1366, h = 96 }
-local function measureRibbon()
-	if ribbon then
-		local ok, ap, asz = pcall(function()
-			return ribbon.AbsolutePosition, ribbon.AbsoluteSize
-		end)
-		if ok and asz and asz.Y > 10 then
-			ribbonRect = { x = ap.X, y = ap.Y, w = asz.X, h = asz.Y }
-		end
-	end
-	return ribbonRect
-end
-
--- escala do Canvas (ResponsiveScale = UIScale) p/ corrigir o deslocamento
-local function canvasScale()
-	if not canvas then return 1 end
-	local s = canvas:FindFirstChildOfClass("UIScale")
-	if s and s.Scale and s.Scale > 0 then return s.Scale end
-	return 1
-end
-
--- empurra a ribbon original + docks para baixo (UMA VEZ), compensando a escala
-local pushedDone = false
-local function pushOriginal()
-	if pushedDone or not ribbon then return end
-	local ok = pcall(function()
-		local px = math.ceil(30 / canvasScale())
-		ribbon.Position = ribbon.Position + UDim2.fromOffset(0, px)
-		for _, nm in ipairs({ "HierarchyDock", "PropertiesDock" }) do
-			local d2 = canvas and canvas:FindFirstChild(nm)
-			if d2 and d2:IsA("GuiObject") then
-				d2.Position = d2.Position + UDim2.fromOffset(0, px)
-				d2.Size = d2.Size - UDim2.fromOffset(0, px)
-			end
-		end
-	end)
-	if ok then pushedDone = true end
-	task.defer(measureRibbon)
-end
-
--- ---------- host PRÓPRIO: filho direto da ScreenGui (renderiza SEMPRE) ----------
-local host = Instance.new("Frame")
-host.Name = "ArkherTopbarHost"
-host.BackgroundTransparency = 1
-host.BorderSizePixel = 0
-host.Size = UDim2.fromScale(1, 1)
-host.Position = UDim2.fromOffset(0, 0)
-host.ZIndex = 50
-host.ClipsDescendants = false
-host.Parent = uiRoot
-
--- 2) tab strip
-local tabStrip = Instance.new("Frame")
-tabStrip.Name = "ArkherTabStrip"
-tabStrip.BackgroundColor3 = m.bg
-tabStrip.BackgroundTransparency = 0.05
-tabStrip.BorderSizePixel = 0
-tabStrip.ZIndex = 55
-tabStrip.Active = true
-local tpad = Instance.new("UIPadding") tpad.PaddingLeft = UDim.new(0, 6) tpad.PaddingTop = UDim.new(0, 2) tpad.Parent = tabStrip
-local tlay = Instance.new("UIListLayout")
-tlay.FillDirection = Enum.FillDirection.Horizontal
-tlay.Padding = UDim.new(0, 4)
-tlay.VerticalAlignment = Enum.VerticalAlignment.Center
-tlay.SortOrder = Enum.SortOrder.LayoutOrder
-tlay.Parent = tabStrip
-
--- 3) faixa de páginas (cobre o ribbon quando aba ≠ ORIGINAL)
-local pagesHost = Instance.new("Frame")
-pagesHost.Name = "ArkherTabPages"
-pagesHost.BackgroundColor3 = m.ribbonBg
-pagesHost.BackgroundTransparency = 0.02
-pagesHost.BorderSizePixel = 0
-pagesHost.Visible = false
-pagesHost.ZIndex = 54
-pagesHost.Active = false
-local pstroke = Instance.new("UIStroke") pstroke.Thickness = 1 pstroke.Color = m.border pstroke.Parent = pagesHost
-
-tabStrip.Parent = host
-pagesHost.Parent = host
-
-local STRIP_H = 26
-local function layoutTopbar()
-	local m0 = measureRibbon()
-	if ribbon then
-		tabStrip.Position = UDim2.fromOffset(m0.x, math.max(m0.y - STRIP_H - 2, 0))
-		tabStrip.Size = UDim2.new(0, m0.w, 0, STRIP_H)
-		pagesHost.Position = UDim2.fromOffset(m0.x, m0.y)
-		pagesHost.Size = UDim2.new(0, m0.w, 0, m0.h)
-	else
-		tabStrip.Position = UDim2.fromOffset(8, 64)
-		tabStrip.Size = UDim2.new(1, -16, 0, STRIP_H)
-		pagesHost.Position = UDim2.fromOffset(8, 92)
-		pagesHost.Size = UDim2.new(1, -16, 0, 96)
-	end
-end
-
--- popup de shapes do PART — spawna REAL no servidor, na frente da CÂMERA
-local shapesPopup
-local function closeShapes()
-	if shapesPopup and shapesPopup.Parent then shapesPopup:Destroy() end
-	shapesPopup = nil
-end
+-- ---------- popup de shapes (anchored no botão; dentro do canvas escalado) ----------
 local SHAPES = {
 	{ "Block", "Block (4×2×4)" }, { "Ball", "Ball (esfera)" },
 	{ "Cylinder", "Cylinder (roda)" }, { "CylinderVertical", "Cylinder vertical (pilar)" },
 	{ "Wedge", "Wedge (rampa)" }, { "CornerWedge", "CornerWedge (canto)" },
 	{ "Truss", "Truss (treliça)" },
 }
+local shapesPopup
+local function closeShapes()
+	if shapesPopup and shapesPopup.Parent then shapesPopup:Destroy() end
+	shapesPopup = nil
+end
 local function camSpawnPos()
 	local cam = workspace.CurrentCamera
 	if cam then
@@ -475,16 +184,20 @@ local function camSpawnPos()
 end
 local function openShapes(hostBtn)
 	closeShapes()
+	if not popups then return end
+	local scale = (uiscale and uiscale.Scale) or 1
+	if scale <= 0 then scale = 1 end
+	local ap, asz = hostBtn.AbsolutePosition, hostBtn.AbsoluteSize
 	local f = Instance.new("Frame")
+	f.Name = "ArkherShapesPopup"
 	f.Size = UDim2.fromOffset(230, #SHAPES * 28 + 12)
+	f.Position = UDim2.fromOffset(ap.X / scale, (ap.Y + asz.Y) / scale + 4)
 	f.BackgroundColor3 = m.panel
 	f.BorderSizePixel = 0
-	f.ZIndex = 70
+	f.ZIndex = 60
 	f.Active = true
 	local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, 8) c.Parent = f
 	local st = Instance.new("UIStroke") st.Thickness = 1.5 st.Color = m.border st.Parent = f
-	local ap = hostBtn.AbsolutePosition
-	f.Position = UDim2.fromOffset(ap.X, ap.Y + hostBtn.AbsoluteSize.Y + 4)
 	for q, spec in ipairs(SHAPES) do
 		local row = Instance.new("TextButton")
 		row.Size = UDim2.new(1, -12, 0, 24)
@@ -495,7 +208,7 @@ local function openShapes(hostBtn)
 		row.TextSize = 12
 		row.TextXAlignment = Enum.TextXAlignment.Left
 		row.TextColor3 = m.text
-		row.ZIndex = 71
+		row.ZIndex = 61
 		row.BorderSizePixel = 0
 		local rc = Instance.new("UICorner") rc.CornerRadius = UDim.new(0, 6) rc.Parent = row
 		row.MouseEnter:Connect(function() row.BackgroundColor3 = m.selected end)
@@ -505,19 +218,14 @@ local function openShapes(hostBtn)
 			task.spawn(function()
 				local x2, y2, z2 = camSpawnPos()
 				local res, err = apiResult("QuickPart", { shape = spec[1], x = x2, y = y2, z = z2 })
-				if res and res.msg then
-					W("Message", { text = res.msg })
-				elseif err then
-					W("Message", { text = "Spawn falhou: " .. tostring(err), bad = true })
-				else
-					W("Message", { text = spec[1] .. " criado na frente da câmera." })
-				end
+				if res and res.msg then W("Message", { text = res.msg })
+				elseif err then W("Message", { text = "Spawn falhou: " .. tostring(err), bad = true })
+				else W("Message", { text = spec[1] .. " criado na frente da câmera." }) end
 			end)
 		end)
 		row.Parent = f
 	end
-	shapesPopup = f
-	f.Parent = host
+	local UIS = game:GetService("UserInputService")
 	local conn
 	conn = UIS.InputBegan:Connect(function(inp, gp)
 		if gp or not f.Parent then if conn then conn:Disconnect() end return end
@@ -530,160 +238,104 @@ local function openShapes(hostBtn)
 			end
 		end
 	end)
+	shapesPopup = f
+	f.Parent = popups
 end
 
--- abas e páginas
-local curTab = 1
-local tabBtns = {}
-local pageFrames = {}
-local pageLayouts = {}
-
-local function activateTab(idx)
-	curTab = idx
-	for q, b in ipairs(tabBtns) do
-		b.BackgroundColor3 = (q == idx) and m.selected or m.panel
-		b.TextColor3 = (q == idx) and m.cyan or m.muted
-	end
-	local tab = TABS[idx]
-	local showPages = not tab.original
-	for q, pf in ipairs(pageFrames) do
-		pf.Visible = (q == idx) and showPages
-	end
-	pagesHost.Visible = showPages
-	rawset(_G, "ArkherTopTab", tab.name)
-	closeShapes()
-	if pageLayouts[idx] then pcall(pageLayouts[idx]) end
-end
-
-for idx, tab in ipairs(TABS) do
-	local tb = Instance.new("TextButton")
-	tb.Name = "Tab_" .. tab.name
-	tb.Size = UDim2.fromOffset(math.max(64, #tab.name * 9 + 26), 0, 22)
-	tb.AutoButtonColor = true
-	tb.BackgroundColor3 = m.panel
-	tb.Text = tab.name
-	tb.Font = Enum.Font.GothamBold
-	tb.TextSize = 13
-	tb.TextColor3 = m.muted
-	tb.ZIndex = 56
-	tb.BorderSizePixel = 0
-	tb.LayoutOrder = idx
-	local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, 7) c.Parent = tb
-	onTap(tb, function() activateTab(idx) end)
-	tb.Parent = tabStrip
-	tabBtns[idx] = tb
-
-	-- página ORIGINAL não existe: mostramos o ribbon intacto do estúdio
-	if not tab.original then
-		local pf = Instance.new("Frame")
-		pf.Name = "Page_" .. tab.name
-		pf.Size = UDim2.fromScale(1, 1)
-		pf.BackgroundTransparency = 1
-		pf.Visible = false
-		pf.ZIndex = 57
-		local grid = Instance.new("UIGridLayout")
-		grid.FillDirection = Enum.FillDirection.Horizontal
-		grid.CellPadding = UDim2.new(0, 6, 0, 4)
-		grid.SortOrder = Enum.SortOrder.LayoutOrder
-		grid.HorizontalAlignment = Enum.HorizontalAlignment.Left
-		grid.Parent = pf
-		local gpad = Instance.new("UIPadding")
-		gpad.PaddingLeft = UDim.new(0, 8) gpad.PaddingTop = UDim.new(0, 6)
-		gpad.Parent = pf
-		-- responsivo: recalcula a célula pelo espaço real da página
-		local function layoutPage()
-			local avail = math.max(pagesHost.AbsoluteSize.X - 16, 400)
-			local hR = math.max(pagesHost.AbsoluteSize.Y - 10, 60)
-			local cellH = math.clamp(hR, 58, 110)
-			local cellW = 78
-			local cols = math.max(1, math.floor(avail / (cellW + 6)))
-			if cols > #tab.items then cols = #tab.items end
-			local extra = avail - cols * (cellW + 6)
-			if extra > 0 and cols > 0 then cellW = cellW + math.min(extra / cols, 40) end
-			grid.CellSize = UDim2.new(0, cellW, 0, cellH)
+-- ---------- injeção dos botões X no Ribbon ----------
+local injected = {}
+local function injectButton(nm, caption, kind, onClick, order)
+	if injected[nm] then return end
+	local b = template:Clone()
+	b.Name = nm
+	-- texto: procura um TextLabel de caption no molde; senão usa o próprio Text
+	local hadCaption = false
+	for _, d in ipairs(b:GetDescendants()) do
+		if d:IsA("TextLabel") and d.Name:lower():find("cap") then
+			d.Text = caption
+			hadCaption = true
 		end
-		layoutPage()
-		pagesHost:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutPage)
-		pageLayouts[idx] = layoutPage
-		task.spawn(function() task.wait(0.4) layoutPage() end)
-
-		for q2, it in ipairs(tab.items) do
-			local iconKind, label2, act = it[1], it[2], it[3]
-			local btn = Instance.new("TextButton")
-			btn.Name = "TopBtn_" .. iconKind .. "_" .. tostring(q2)
-			btn.BackgroundColor3 = m.panel
-			btn.BackgroundTransparency = 0.12
-			btn.Text = ""
-			btn.AutoButtonColor = true
-			btn.BorderSizePixel = 0
-			btn.ZIndex = 58
-			btn.LayoutOrder = q2
-			local bc = Instance.new("UICorner") bc.CornerRadius = UDim.new(0, 8) bc.Parent = btn
-			btn.MouseEnter:Connect(function() btn.BackgroundColor3 = m.selected end)
-			btn.MouseLeave:Connect(function() btn.BackgroundColor3 = m.panel end)
-			-- ícone EM CIMA, label EMBAIXO (estilo ribbon)
-			local ic = drawIcon(iconKind, btn, 30)
-			ic.AnchorPoint = Vector2.new(0.5, 0)
-			ic.Position = UDim2.new(0.5, 0, 0, 5)
-			ic.ZIndex = 59
-			local lb = Instance.new("TextLabel")
-			lb.Name = "Label"
-			lb.AnchorPoint = Vector2.new(0.5, 1)
-			lb.Position = UDim2.new(0.5, 0, 1, -3)
-			lb.Size = UDim2.new(1, -4, 0, 18)
-			lb.BackgroundTransparency = 1
-			lb.Text = label2
-			lb.Font = Enum.Font.GothamBold
-			lb.TextSize = 11
-			lb.TextColor3 = m.text
-			lb.TextXAlignment = Enum.TextXAlignment.Center
-			lb.ZIndex = 59
-			lb.Parent = btn
-			onTap(btn, function()
-				if act.kind == "deck" then
-					deckOpen(act.view)
-				elseif act.kind == "part" then
-					openShapes(btn)
-				elseif act.kind == "api" then
-					task.spawn(function()
-						local res, err = apiResult(act.action, act.payload or {})
-						if res and res.msg then
-							W("Message", { text = res.msg })
-						elseif res and res.error then
-							W("Message", { text = tostring(res.error), bad = true })
-						elseif err then
-							W("Message", { text = act.action .. " falhou: " .. tostring(err), bad = true })
-						end
-					end)
+	end
+	if not hadCaption then
+		b.Text = caption
+		b.TextSize = math.max(math.min(b.TextSize, 11), 9)
+	end
+	for _, d in ipairs(b:GetDescendants()) do
+		if d:IsA("TextLabel") and d.Name:lower():find("cap") == nil and #d.Text <= 2 then
+			d.Text = ""
+		end
+	end
+	pcall(function() b.LayoutOrder = 900 + (order or 0) end)
+	b.Visible = true
+	drawIcon16(kind, b)
+	onTap(b, onClick)
+	b.Parent = template.Parent
+	-- se o contêiner não tiver layout automático, posiciona depois do último filho
+	task.defer(function()
+		local row = b.Parent
+		if not row then return end
+		local auto = false
+		for _, c in ipairs(row:GetChildren()) do
+			if c:IsA("UIListLayout") or c:IsA("UIGridLayout") or c:IsA("UIPageLayout") or c:IsA("UITableLayout") then
+				auto = true
+				break
+			end
+		end
+		if not auto then
+			local right = -1e9
+			for _, c in ipairs(row:GetChildren()) do
+				if c:IsA("GuiObject") and c ~= b then
+					local rx = c.Position.X.Offset + c.Size.X.Offset
+					if rx > right then right = rx end
 				end
-			end)
-			btn.Parent = pf
+			end
+			if right > -1e9 then
+				b.Position = UDim2.new(
+					template.Position.X.Scale,
+					right + 6,
+					template.Position.Y.Scale,
+					template.Position.Y.Offset
+				)
+			end
 		end
-		pf.Parent = pagesHost
-		pageFrames[idx] = pf
-	end
-end
-
--- posicionamento final + listeners responsivos
-pushOriginal()
-layoutTopbar()
-task.delay(0.12, layoutTopbar)
-task.delay(0.6, layoutTopbar)
-task.delay(1.6, layoutTopbar)
-if ribbon then
-	pcall(function()
-		ribbon:GetPropertyChangedSignal("AbsolutePosition"):Connect(layoutTopbar)
-		ribbon:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutTopbar)
 	end)
+	b.Parent = template.Parent
+	injected[nm] = b
+	return b
 end
-pcall(function()
-	uiRoot:GetPropertyChangedSignal("AbsoluteSize"):Connect(layoutTopbar)
-end)
-pcall(function()
-	local s = canvas and canvas:FindFirstChildOfClass("UIScale")
-	if s then s:GetPropertyChangedSignal("Scale"):Connect(layoutTopbar) end
-end)
 
-activateTab(1) -- HOME: botões NOVOS com ícones, na hora
-W("Message", { text = "Topbar X: HOME/MUNDO/NATUREZA/CRIAÇÃO/CONSTRUIR/ESTÚDIO/DEV com ícones desenhados · BASEPLATE + PART spawnam de verdade (na frente da câmera) · aba ORIGINAL = ribbon antigo intacto." })
-print("[ArkherX] 09_Topbar: 8 abas (HOME nova com ícones + 6 páginas X + ORIGINAL intacta) — host direto na ScreenGui, PART spawna via QuickPart server na frente da câmera")
+injectButton("ArkherX_Part", "Part ▸", "PART", function() openShapes(injected.ArkherX_Part) end, 1)
+injectButton("ArkherX_Base", "Baseplate", "BASEPLATE", function()
+	task.spawn(function()
+		local res, err = apiResult("EnsureBase", {})
+		if res and res.msg then W("Message", { text = res.msg })
+		elseif err then W("Message", { text = "Baseplate falhou: " .. tostring(err), bad = true }) end
+	end)
+end, 2)
+injectButton("ArkherX_Union", "Union", "UNION", function()
+	task.spawn(function()
+		local res, err = apiResult("CsgDo", { op = "union" })
+		if res and res.msg then W("Message", { text = res.msg })
+		elseif res and res.error then W("Message", { text = tostring(res.error), bad = true })
+		elseif err then W("Message", { text = tostring(err), bad = true }) end
+	end)
+end, 3)
+injectButton("ArkherX_Negate", "Negate", "NEGATE", function()
+	task.spawn(function()
+		local res, err = apiResult("CsgDo", { op = "negate" })
+		if res and res.msg then W("Message", { text = res.msg })
+		elseif res and res.error then W("Message", { text = tostring(res.error), bad = true })
+		elseif err then W("Message", { text = tostring(err), bad = true }) end
+	end)
+end, 4)
+injectButton("ArkherX_Toolbox", "Toolbox", "TOOLBOX", function()
+	local ok = pcall(function()
+		local d = rawget(_G, "ArkherStudioDock")
+		if d and d.toggle then return d.toggle("toolbox") end
+		deckOpen("toolbox")
+	end)
+	if not ok then deckOpen("toolbox") end
+end, 5)
+
+W("Message", { text = "Ribbon X: botões Part ▸ / Baseplate / Union / Negate / Toolbox injetados DENTRO do ribbon original (estilo nativo). Menus da faixa (MUNDO/MODELAGEM/…) clicáveis de novo." })
+print("[ArkherX] 09_RibbonX: 5 botões nativos injetados no Ribbon real — zero overlay, menus reais clicáveis")
