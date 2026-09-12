@@ -25,9 +25,12 @@ local tic = Instance.new("Frame"); tic.Name = "Icon"; tic.Parent = tpl
 -- host X estático (GUIX real: XBar + popup de formas via guix_static)
 local host = Instance.new("Frame"); host.Name = "ArkherXDeck"; host.Parent = canvas
 local dscale = Instance.new("UIScale"); dscale.Name = "DeckScale"; dscale.Parent = host
-local GuixStatic = assert(loadstring(io.open("studio-completo/tools/guix_static.lua"):read("*a"), "[guix_static]"))()
-GuixStatic.buildXBar(host)
-GuixStatic.buildPopups(host)
+dofile("studio-completo/tools/baked_fixture.lua")
+for _, t in ipairs(FIXTURE_TREES) do
+  if t.name == "ArkherTop" or t.name == "ArkherMsg" or t.name == "ServerEditorPopups" then
+    buildFixtureTree(t, host)
+  end
+end
 -- MenuBar com botão View (molde dos menus X do 03)
 local menuBar = canvas:FindFirstChild("MenuBar")
 local viewBtn = Instance.new("TextButton"); viewBtn.Name = "View"; viewBtn.Text = "View"; viewBtn.Parent = menuBar
@@ -80,6 +83,7 @@ end
 
 print("\n== Clientes ==")
 check(loadClient("studio-completo/scripts/03_Menus.lua", "Arkher_03_Menus"), "03 ok")
+check(loadClient("studio-completo/scripts/05_StudioX.lua", "Arkher_05_StudioX"), "05 ok")
 check(loadClient("studio-completo/scripts/09_Topbar.lua", "Arkher_09_Topbar"), "09 ok")
 check(loadClient("studio-completo/scripts/10_Studio.lua", "Arkher_10_Studio"), "10 ok")
 
@@ -132,25 +136,39 @@ if lugBtn then
   end
 end
 
-print("\n== XBar real (6 botões, GUIX) ==")
-local bar = host:FindFirstChild("ArkherXBar")
-check(bar ~= nil, "ArkherXBar existe no host")
-local xpart = bar and bar:FindFirstChild("ArkherX_Part")
-local xbase = bar and bar:FindFirstChild("ArkherX_Base")
-local xunion = bar and bar:FindFirstChild("ArkherX_Union")
-local xneg = bar and bar:FindFirstChild("ArkherX_Negate")
-local xtool = bar and bar:FindFirstChild("ArkherX_Toolbox")
-local xlaunch = bar and bar:FindFirstChild("ArkherX_Launcher")
-check(xpart and xbase and xunion and xneg and xtool and xlaunch, "6 botões X reais (Part/Base/Union/Negate/Toolbox/X)")
-check(xpart and xpart:IsA("GuiButton"), "ArkherX_Part é botão clicável")
-check(xpart and xpart:FindFirstChild("Icon") and xpart:FindFirstChild("Caption"), "botão tem Icon + Caption reais")
+print("\n== Shell real (abas + paginas + botoes) ==")
+local top12 = host:FindFirstChild("ArkherTop")
+check(top12 ~= nil, "ArkherTop existe no host")
+local strip12 = top12 and top12:FindFirstChild("TabStrip")
+local ribbon12 = top12 and top12:FindFirstChild("Ribbon")
+local nTabs12, nPages12, nBtns12 = 0, 0, 0
+if strip12 then for _, ch in ipairs(strip12:GetChildren()) do
+  if ch:IsA("GuiButton") and ch.Name:sub(1, 4) == "Tab_" then nTabs12 = nTabs12 + 1 end
+end end
+if ribbon12 then for _, pg in ipairs(ribbon12:GetChildren()) do
+  if pg.Name:sub(1, 5) == "Page_" then
+    nPages12 = nPages12 + 1
+    for _, ch in ipairs(pg:GetChildren()) do
+      if ch:IsA("GuiButton") and ch.Name:sub(1, 10) == "RibbonBtn_" then nBtns12 = nBtns12 + 1 end
+    end
+  end
+end end
+check(nTabs12 == 11 and nPages12 == 11 and nBtns12 == 81,
+  "11 abas + 11 paginas + 81 botoes (" .. nTabs12 .. "/" .. nPages12 .. "/" .. nBtns12 .. ")")
+local tabB = strip12 and strip12:FindFirstChild("Tab_BUILD")
+if tabB then
+  tabB.Activated:Fire()
+  check(ribbon12:FindFirstChild("Page_BUILD").Visible == true, "aba BUILD mostra Page_BUILD")
+  check(ribbon12:FindFirstChild("Page_HOME").Visible == false, "Page_HOME esconde")
+end
 
-print("\n== Submenu PART (7 formas reais) ==")
+print("\n== Submenu PART (7 formas reais, via ribbon) ==")
 local hostPopups = host:FindFirstChild("ServerEditorPopups")
-if xpart then
-  xpart.Activated:Fire()
+local partBtn = ribbon12 and ribbon12:FindFirstChild("Page_BUILD"):FindFirstChild("RibbonBtn_BUILD_Part")
+if partBtn then
+  partBtn.Activated:Fire()
   local sh = hostPopups and hostPopups:FindFirstChild("ArkherShapesPopup")
-  check(sh ~= nil and sh.Visible == true, "PART ▸ mostra o popup de formas real")
+  check(sh ~= nil and sh.Visible == true, "PART mostra o popup de formas real")
   if sh then
     local rows = {}
     for _, d in ipairs(sh:GetChildren()) do if d:IsA("GuiButton") then rows[#rows + 1] = d end end
@@ -165,17 +183,20 @@ if xpart then
   end
 end
 
-print("\n== Baseplate / Union / Negate clicáveis ==")
-if xbase then
-  xbase.Activated:Fire()
-  check(true, "Baseplate clique não explode (mock já tem Baseplate)")
+print("\n== Baseplate / Union / Negate clicaveis (via ribbon) ==")
+local pageB = ribbon12 and ribbon12:FindFirstChild("Page_BUILD")
+local bBase = pageB and pageB:FindFirstChild("RibbonBtn_BUILD_Base")
+local bUnion = pageB and pageB:FindFirstChild("RibbonBtn_BUILD_Union")
+local bNeg = pageB and pageB:FindFirstChild("RibbonBtn_BUILD_Negate")
+if bBase then
+  bBase.Activated:Fire()
+  check(true, "Baseplate clique nao explode (mock ja tem Baseplate)")
 end
 local msgBefore = #messages
-if xunion then
-  -- sem seleção → msg honesta pedindo peça
+if bUnion then
   invoke("QuickPart", { shape = "Block", x = 0, y = 3, z = 0 })
-  xunion.Activated:Fire()
-  xneg.Activated:Fire()
+  bUnion.Activated:Fire()
+  bNeg.Activated:Fire()
   check(true, "Union/Negate respondem sem crash")
 end
 

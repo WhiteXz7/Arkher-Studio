@@ -131,6 +131,7 @@ UDim2 = {} function UDim2.new(a,b,c,d) return {X={Scale=a or 0,Offset=b or 0},Y=
 UDim2.fromOffset = function(x,y) return UDim2.new(0,x,0,y) end
 UDim2.fromScale = function(a,b) return UDim2.new(a,0,b,0) end
 UDim = {} function UDim.new(a,b) return {Scale=a or 0,Offset=b or 0,__t="UDim"} end
+ColorSequence = {} function ColorSequence.new(...) return {__t="ColorSequence"} end
 Vector2 = {} function Vector2.new(x,y) return {X=x or 0,Y=y or 0,__t="Vector2"} end
 
 -- ============ Event ============
@@ -147,6 +148,7 @@ task = {
   delay = function(_t, f, ...) if type(f) == "function" then pcall(f, ...) end end,
   wait = function(_t) return nil end,
 }
+wait = function(_t) return nil end  -- v2: corrotinas de build completam na hora
 
 -- ============ Instance ============
 local CLASS_SUPER = {
@@ -174,7 +176,7 @@ local CLASS_SUPER = {
 local AUTO_EVENTS = { "AncestryChanged","Changed","Destroying","DescendantAdded","DescendantRemoving",
   "PlayerRemoving","OnServerEvent","PlayerAdded","InputBegan","InputChanged","InputEnded","SelectionChanged",
   "Activated","MouseEnter","MouseLeave","MouseButton1Click","MouseButton2Click","TouchTap","FocusLost",
-  "ChildAdded","ChildRemoved","MessageOut" }
+  "ChildAdded","ChildRemoved","MessageOut","Heartbeat","RenderStepped","Stepped" }
 local fireDescendantAdded, fireDescendantRemoving  -- forward declarations
 local MT = {}
 MT.__index = function(self,k)
@@ -298,6 +300,9 @@ function METHODS:Destroy()
     for i=#kids,1,-1 do if kids[i]==self then table.remove(kids,i) end end
   end
   rawget(self,"__props").Parent = nil
+end
+function METHODS:ClearAllChildren()
+  for _,ch in ipairs({table.unpack(rawget(self,"__children"))}) do ch:Destroy() end
 end
 function METHODS:GetChildren()
   local out={}

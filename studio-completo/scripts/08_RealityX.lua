@@ -195,28 +195,28 @@ local function mkWin(id, title, w, h, th)
 		BackgroundColor3 = th.bg, BorderSizePixel = 0, Visible = false,
 		Active = true, ZIndex = 40,
 	}, deckHost)
-	H(f, th.cr or 10)
+	H(f, th.cr or 12)
 	ST(f, 1.2, th.edge)
 	-- re-skin ROUND 13: sombra + faixa com acento da janela
 	local shw = B("Frame", {
 		Name = "Shadow", Size = UDim2.fromOffset(w, h), Position = UDim2.fromOffset(6, 8),
-		BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = 0.84,
+		BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = 0.78,
 		BorderSizePixel = 0, ZIndex = 38, Active = false,
 	}, f)
-	H(shw, (th.cr or 10) + 4)
+	H(shw, (th.cr or 12) + 4)
 	local cap = B("Frame", { Name = "Cap", Size = UDim2.new(1, 0, 0, 30), BackgroundColor3 = th.cap, BorderSizePixel = 0, ZIndex = 41 }, f)
-	H(cap, th.cr or 10)
+	H(cap, th.cr or 12)
 	B("Frame", { Name = "CapFill", Size = UDim2.new(1, 0, 0, 15), Position = UDim2.fromOffset(0, 15),
 		BackgroundColor3 = th.cap, BorderSizePixel = 0, ZIndex = 41 }, cap)
 	B("Frame", { Name = "Hairline", Size = UDim2.new(1, 0, 0, 1), Position = UDim2.fromOffset(0, 29),
-		BackgroundColor3 = th.edge, BorderSizePixel = 0, ZIndex = 42 }, cap)
-	local grip = B("Frame", { Name = "Grip", Size = UDim2.fromOffset(3, 14), Position = UDim2.fromOffset(9, 8),
+		BackgroundColor3 = th.acc, BorderSizePixel = 0, ZIndex = 42 }, cap)
+	local grip = B("Frame", { Name = "Grip", Size = UDim2.fromOffset(4, 16), Position = UDim2.fromOffset(9, 7),
 		BackgroundColor3 = th.acc, BorderSizePixel = 0, ZIndex = 43 }, cap)
 	H(grip, 2)
 	B("TextLabel", {
 		Name = "Title", Size = UDim2.new(1, -80, 1, 0), Position = UDim2.fromOffset(18, 0),
 		BackgroundTransparency = 1, Text = title, Font = Enum.Font.GothamBold,
-		TextSize = 13, TextColor3 = th.text, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 42,
+		TextSize = 14, TextColor3 = th.text, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 42,
 	}, cap)
 	local tag = B("TextLabel", {
 		Name = "Tag", Size = UDim2.fromOffset(120, 30), Position = UDim2.new(1, -160, 0, 0),
@@ -224,7 +224,7 @@ local function mkWin(id, title, w, h, th)
 		TextSize = 10, TextColor3 = th.muted, TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 42,
 	}, cap)
 	local cls = B("TextButton", {
-		Name = "Close", Size = UDim2.fromOffset(22, 20), Position = UDim2.new(1, -27, 0, 5),
+		Name = "Close", Size = UDim2.fromOffset(24, 22), Position = UDim2.new(1, -29, 0, 4),
 		BackgroundColor3 = th.bg2 or th.cap, Text = "✕", Font = Enum.Font.GothamBold,
 		TextSize = 11, TextColor3 = th.muted, BorderSizePixel = 0, ZIndex = 43,
 	}, cap)
@@ -251,6 +251,7 @@ local function actBtn(parent, posTxt, wTxt, label, th, fn, order)
 		AutoButtonColor = true, ZIndex = (order or 43),
 	}, parent)
 	H(b0, 6)
+	ST(b0, 1, th.edge)
 	ST(b0, 1, th.edge)
 	-- hover: clareia 14% (re-skin ROUND 13)
 	local function lift(c, k) return Color3.new(c.R + (1 - c.R) * k, c.G + (1 - c.G) * k, c.B + (1 - c.B) * k) end
@@ -405,10 +406,10 @@ end
 -- TERRAIN X — o editor territorial ARKHER (único, do zero)
 -- =============================================================
 local THEME_TERRAIN = {
-	bg = Color3.fromRGB(9, 20, 26), bg2 = Color3.fromRGB(12, 27, 34), bg3 = Color3.fromRGB(16, 34, 42),
-	cap = Color3.fromRGB(13, 30, 38), edge = Color3.fromRGB(46, 84, 96),
-	text = Color3.fromRGB(226, 244, 250), muted = Color3.fromRGB(130, 168, 178),
-	acc = Color3.fromRGB(43, 203, 190), act = Color3.fromRGB(16, 58, 62),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(43, 203, 190), act = Color3.fromRGB(26, 42, 74),
 }
 
 local TERRAIN_CATS = {
@@ -602,10 +603,10 @@ buildTerrain(wTerrain)
 -- MODELER X — estilo Blender (modos + toolbox + outliner + N-panel)
 -- =============================================================
 local THEME_MODELER = {
-	bg = Color3.fromRGB(30, 30, 34), bg2 = Color3.fromRGB(36, 36, 41), bg3 = Color3.fromRGB(42, 42, 48),
-	cap = Color3.fromRGB(24, 24, 28), edge = Color3.fromRGB(62, 62, 72),
-	text = Color3.fromRGB(235, 235, 240), muted = Color3.fromRGB(150, 152, 160),
-	acc = Color3.fromRGB(224, 124, 28), act = Color3.fromRGB(58, 58, 66),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(224, 124, 28), act = Color3.fromRGB(26, 42, 74),
 	tag = "Blender-style",
 }
 
@@ -782,10 +783,10 @@ buildModeler(wModeler)
 -- ANIMATOR X — estilo Cascadeur (timeline + transporte + AutoPhysics)
 -- =============================================================
 local THEME_ANIM = {
-	bg = Color3.fromRGB(20, 15, 28), bg2 = Color3.fromRGB(26, 20, 36), bg3 = Color3.fromRGB(34, 27, 46),
-	cap = Color3.fromRGB(16, 11, 24), edge = Color3.fromRGB(76, 58, 114),
-	text = Color3.fromRGB(240, 232, 252), muted = Color3.fromRGB(158, 140, 186),
-	acc = Color3.fromRGB(166, 117, 240), act = Color3.fromRGB(46, 34, 70),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(166, 117, 240), act = Color3.fromRGB(26, 42, 74),
 	tag = "Cascadeur-style",
 }
 
@@ -965,10 +966,10 @@ buildAnimator(wAnimator)
 -- ESPAÇO — criador orbital único ARKHER (Képler + escala log/real)
 -- =============================================================
 local THEME_SPACE = {
-	bg = Color3.fromRGB(7, 11, 24), bg2 = Color3.fromRGB(10, 16, 32), bg3 = Color3.fromRGB(14, 22, 42),
-	cap = Color3.fromRGB(9, 14, 30), edge = Color3.fromRGB(48, 74, 140),
-	text = Color3.fromRGB(226, 236, 255), muted = Color3.fromRGB(146, 164, 210),
-	acc = Color3.fromRGB(240, 185, 70), act = Color3.fromRGB(24, 38, 84),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(240, 185, 70), act = Color3.fromRGB(26, 42, 74),
 }
 
 local SCALE_MODES = {
@@ -1163,10 +1164,10 @@ buildEspaco(wEspaco)
 -- FABRICAR — catálogo gramatical (criar qualquer coisa)
 -- =============================================================
 local THEME_FAB = {
-	bg = Color3.fromRGB(24, 14, 10), bg2 = Color3.fromRGB(30, 18, 13), bg3 = Color3.fromRGB(38, 24, 17),
-	cap = Color3.fromRGB(20, 12, 8), edge = Color3.fromRGB(110, 66, 40),
-	text = Color3.fromRGB(252, 236, 222), muted = Color3.fromRGB(196, 156, 126),
-	acc = Color3.fromRGB(255, 130, 60), act = Color3.fromRGB(70, 40, 24),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(255, 130, 60), act = Color3.fromRGB(26, 42, 74),
 }
 
 local FAB_FAMS = {
@@ -1315,10 +1316,10 @@ buildFabricar(wFabricar)
 -- Arquimedes (empuxo = rho*V*g) + cachoeira de materia real.
 -- =============================================================
 local THEME_WATER = {
-	bg = Color3.fromRGB(6, 24, 32), bg2 = Color3.fromRGB(9, 32, 42), bg3 = Color3.fromRGB(12, 42, 54),
-	cap = Color3.fromRGB(5, 20, 28), edge = Color3.fromRGB(28, 92, 112),
-	text = Color3.fromRGB(214, 244, 252), muted = Color3.fromRGB(118, 178, 192),
-	acc = Color3.fromRGB(53, 200, 232), act = Color3.fromRGB(14, 64, 80),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(53, 200, 232), act = Color3.fromRGB(26, 42, 74),
 	tag = "óceano real",
 }
 
@@ -1502,10 +1503,10 @@ buildWater(wWater)
 -- ATMOS X — céu/clima físico (Kelvin real, 7 estados, ciclo solar)
 -- =============================================================
 local THEME_ATMOS = {
-	bg = Color3.fromRGB(10, 14, 32), bg2 = Color3.fromRGB(14, 20, 42), bg3 = Color3.fromRGB(18, 26, 54),
-	cap = Color3.fromRGB(8, 11, 26), edge = Color3.fromRGB(60, 78, 150),
-	text = Color3.fromRGB(232, 238, 255), muted = Color3.fromRGB(148, 160, 210),
-	acc = Color3.fromRGB(255, 208, 116), act = Color3.fromRGB(70, 58, 24),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(255, 208, 116), act = Color3.fromRGB(26, 42, 74),
 }
 
 local function buildAtmos(win)
@@ -1648,10 +1649,10 @@ buildAtmos(wAtmos)
 -- CLIMA X — frentes H/L que VIAJAM e mudam o tempo de verdade
 -- =============================================================
 local THEME_CLIMA = {
-	bg = Color3.fromRGB(22, 24, 28), bg2 = Color3.fromRGB(28, 31, 38), bg3 = Color3.fromRGB(34, 38, 48),
-	cap = Color3.fromRGB(18, 20, 25), edge = Color3.fromRGB(78, 92, 122),
-	text = Color3.fromRGB(238, 242, 252), muted = Color3.fromRGB(150, 160, 182),
-	acc = Color3.fromRGB(122, 168, 255), act = Color3.fromRGB(46, 68, 118),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(122, 168, 255), act = Color3.fromRGB(26, 42, 74),
 }
 
 local function buildClima(win)
@@ -1739,10 +1740,10 @@ buildClima(wClima)
 -- VIDA X — humanos digitais, NPCs, ecossistema, mentes
 -- =============================================================
 local THEME_VIDA = {
-	bg = Color3.fromRGB(14, 28, 18), bg2 = Color3.fromRGB(18, 36, 24), bg3 = Color3.fromRGB(22, 46, 32),
-	cap = Color3.fromRGB(12, 24, 16), edge = Color3.fromRGB(52, 122, 74),
-	text = Color3.fromRGB(228, 250, 234), muted = Color3.fromRGB(140, 190, 156),
-	acc = Color3.fromRGB(127, 226, 138), act = Color3.fromRGB(24, 74, 42),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(127, 226, 138), act = Color3.fromRGB(26, 42, 74),
 }
 
 local function buildVida(win)
@@ -1830,10 +1831,10 @@ buildVida(wVida)
 -- CIDADE X — assentamentos (malha viaria + FABX) que GRAVAM na terra
 -- =============================================================
 local THEME_CIDADE = {
-	bg = Color3.fromRGB(30, 23, 16), bg2 = Color3.fromRGB(38, 30, 22), bg3 = Color3.fromRGB(46, 38, 29),
-	cap = Color3.fromRGB(26, 20, 14), edge = Color3.fromRGB(124, 88, 52),
-	text = Color3.fromRGB(250, 238, 222), muted = Color3.fromRGB(200, 168, 132),
-	acc = Color3.fromRGB(224, 164, 92), act = Color3.fromRGB(96, 62, 30),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(224, 164, 92), act = Color3.fromRGB(26, 42, 74),
 }
 
 local function buildCidade(win)
@@ -1915,10 +1916,10 @@ buildCidade(wCidade)
 -- ÁUDIO X — o mixer dos 7 buses reais do mundo (AUX)
 -- =============================================================
 local THEME_AUDIO = {
-	bg = Color3.fromRGB(20, 14, 30), bg2 = Color3.fromRGB(26, 19, 40), bg3 = Color3.fromRGB(32, 24, 50),
-	cap = Color3.fromRGB(16, 12, 24), edge = Color3.fromRGB(88, 66, 140),
-	text = Color3.fromRGB(244, 238, 254), muted = Color3.fromRGB(176, 156, 210),
-	acc = Color3.fromRGB(192, 140, 255), act = Color3.fromRGB(56, 38, 96),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(192, 140, 255), act = Color3.fromRGB(26, 42, 74),
 }
 
 local BUS_ORDER = { "master", "music", "sfx", "ui", "ambient", "weather", "voice" }
@@ -2022,10 +2023,10 @@ buildAudio(wAudio)
 -- FX X — 13 presets de partículas FÍSICAS (gravidade real, budget D-O15)
 -- =============================================================
 local THEME_FX = {
-	bg = Color3.fromRGB(28, 12, 8), bg2 = Color3.fromRGB(36, 17, 12), bg3 = Color3.fromRGB(46, 23, 16),
-	cap = Color3.fromRGB(24, 11, 8), edge = Color3.fromRGB(128, 60, 30),
-	text = Color3.fromRGB(252, 238, 226), muted = Color3.fromRGB(204, 160, 128),
-	acc = Color3.fromRGB(255, 154, 61), act = Color3.fromRGB(108, 48, 18),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(255, 154, 61), act = Color3.fromRGB(26, 42, 74),
 }
 
 local function buildFx(win)
@@ -2131,10 +2132,10 @@ buildFx(wFx)
 -- CORDAS X — integração Verlet íntegra (corda, bandeira, ponte)
 -- =============================================================
 local THEME_CORDAS = {
-	bg = Color3.fromRGB(24, 18, 12), bg2 = Color3.fromRGB(30, 24, 17), bg3 = Color3.fromRGB(38, 30, 22),
-	cap = Color3.fromRGB(20, 16, 11), edge = Color3.fromRGB(112, 84, 48),
-	text = Color3.fromRGB(250, 240, 228), muted = Color3.fromRGB(196, 168, 130),
-	acc = Color3.fromRGB(216, 162, 90), act = Color3.fromRGB(84, 54, 26),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(216, 162, 90), act = Color3.fromRGB(26, 42, 74),
 }
 
 local function buildCordas(win)
@@ -2196,10 +2197,10 @@ buildCordas(wCordas)
 -- TOOLBOX X — Creator Store REAL do Roblox + templates Arkher
 -- =============================================================
 local THEME_TOOLBOX = {
-	bg = Color3.fromRGB(16, 20, 30), bg2 = Color3.fromRGB(20, 25, 38), bg3 = Color3.fromRGB(26, 32, 48),
-	cap = Color3.fromRGB(13, 16, 25), edge = Color3.fromRGB(64, 84, 130),
-	text = Color3.fromRGB(235, 242, 255), muted = Color3.fromRGB(150, 165, 200),
-	acc = Color3.fromRGB(96, 180, 255), act = Color3.fromRGB(28, 64, 112),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(96, 180, 255), act = Color3.fromRGB(26, 42, 74),
 }
 
 local function buildToolbox(win)
@@ -2425,10 +2426,10 @@ buildToolbox(wToolbox)
 -- PROPS X — TODAS as propriedades do objeto selecionado, editáveis
 -- =============================================================
 local THEME_PROPS = {
-	bg = Color3.fromRGB(18, 18, 24), bg2 = Color3.fromRGB(23, 23, 31), bg3 = Color3.fromRGB(28, 29, 40),
-	cap = Color3.fromRGB(14, 14, 19), edge = Color3.fromRGB(68, 70, 100),
-	text = Color3.fromRGB(240, 241, 252), muted = Color3.fromRGB(152, 154, 178),
-	acc = Color3.fromRGB(150, 200, 255), act = Color3.fromRGB(36, 52, 88),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(150, 200, 255), act = Color3.fromRGB(26, 42, 74),
 }
 
 
@@ -2779,10 +2780,10 @@ buildProps(wProps)
 -- CORES X — color picker REAL (HSV/RGB/hex) que aplica no alvo
 -- =============================================================
 local THEME_CORES = {
-	bg = Color3.fromRGB(22, 18, 26), bg2 = Color3.fromRGB(28, 23, 33), bg3 = Color3.fromRGB(35, 29, 42),
-	cap = Color3.fromRGB(18, 15, 21), edge = Color3.fromRGB(96, 78, 120),
-	text = Color3.fromRGB(248, 244, 252), muted = Color3.fromRGB(182, 170, 196),
-	acc = Color3.fromRGB(255, 200, 120), act = Color3.fromRGB(80, 52, 26),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(255, 200, 120), act = Color3.fromRGB(26, 42, 74),
 }
 
 local function buildCores(win)
@@ -2972,10 +2973,10 @@ buildCores(wCores)
 -- OUTPUT X — o log REAL (LogService) com filtros e limpar
 -- =============================================================
 local THEME_OUTPUT = {
-	bg = Color3.fromRGB(12, 12, 14), bg2 = Color3.fromRGB(16, 16, 20), bg3 = Color3.fromRGB(21, 21, 27),
-	cap = Color3.fromRGB(9, 9, 11), edge = Color3.fromRGB(60, 62, 74),
-	text = Color3.fromRGB(235, 236, 240), muted = Color3.fromRGB(146, 148, 160),
-	acc = Color3.fromRGB(124, 200, 255), act = Color3.fromRGB(24, 44, 72),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(124, 200, 255), act = Color3.fromRGB(26, 42, 74),
 }
 
 local function buildOutput(win)
@@ -3088,10 +3089,10 @@ buildOutput(wOutput)
 -- COMANDO X — barra de comandos que EXECUTA de verdade
 -- =============================================================
 local THEME_COMANDO = {
-	bg = Color3.fromRGB(14, 18, 22), bg2 = Color3.fromRGB(18, 23, 29), bg3 = Color3.fromRGB(23, 30, 37),
-	cap = Color3.fromRGB(10, 13, 17), edge = Color3.fromRGB(56, 86, 108),
-	text = Color3.fromRGB(230, 244, 252), muted = Color3.fromRGB(140, 170, 190),
-	acc = Color3.fromRGB(140, 255, 196), act = Color3.fromRGB(20, 70, 48),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(140, 255, 196), act = Color3.fromRGB(26, 42, 74),
 }
 
 local function mathEval(src)
@@ -3387,10 +3388,10 @@ buildComando(wComando)
 -- Source REAL via PropsAll/PropsSet (le e aplica de verdade)
 -- =============================================================
 local THEME_SCRIPTS = {
-	bg = Color3.fromRGB(13, 18, 26), bg2 = Color3.fromRGB(17, 23, 33), bg3 = Color3.fromRGB(22, 29, 42),
-	cap = Color3.fromRGB(10, 14, 20), edge = Color3.fromRGB(48, 84, 122),
-	text = Color3.fromRGB(228, 240, 252), muted = Color3.fromRGB(140, 164, 192),
-	acc = Color3.fromRGB(120, 210, 255), act = Color3.fromRGB(22, 54, 88),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(120, 210, 255), act = Color3.fromRGB(26, 42, 74),
 }
 
 local function buildScripts(win)
@@ -3644,10 +3645,10 @@ buildScripts(wScripts)
 -- PY X — ponte com PYTHON do PC (tests/build/audit reais via HTTP)
 -- =============================================================
 local THEME_PY = {
-	bg = Color3.fromRGB(12, 16, 24), bg2 = Color3.fromRGB(16, 21, 30), bg3 = Color3.fromRGB(21, 28, 38),
-	cap = Color3.fromRGB(9, 12, 18), edge = Color3.fromRGB(52, 78, 108),
-	text = Color3.fromRGB(230, 242, 254), muted = Color3.fromRGB(146, 168, 192),
-	acc = Color3.fromRGB(120, 255, 176), act = Color3.fromRGB(18, 60, 40),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(120, 255, 176), act = Color3.fromRGB(26, 42, 74),
 }
 
 -- PY vai pelo servidor (HttpService nao roda em LocalScript — era o PluginOrCloudAPI)
@@ -3789,10 +3790,10 @@ buildPy(wPy)
 -- SCULPT X — pincéis de terreno com falloff gaussiano REAL
 -- =============================================================
 local THEME_SCULPT = {
-	bg = Color3.fromRGB(24, 18, 10), bg2 = Color3.fromRGB(30, 23, 14), bg3 = Color3.fromRGB(38, 30, 20),
-	cap = Color3.fromRGB(20, 15, 9), edge = Color3.fromRGB(120, 88, 44),
-	text = Color3.fromRGB(250, 240, 226), muted = Color3.fromRGB(200, 170, 130),
-	acc = Color3.fromRGB(240, 170, 80), act = Color3.fromRGB(110, 66, 20),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(240, 170, 80), act = Color3.fromRGB(26, 42, 74),
 }
 
 local function buildSculpt(win)
@@ -3884,10 +3885,10 @@ buildSculpt(wSculpt)
 -- GRUPOS X — grupos de colisão REAIS (PhysicsService)
 -- =============================================================
 local THEME_GRUPOS = {
-	bg = Color3.fromRGB(14, 20, 16), bg2 = Color3.fromRGB(18, 26, 21), bg3 = Color3.fromRGB(23, 33, 27),
-	cap = Color3.fromRGB(11, 16, 13), edge = Color3.fromRGB(58, 108, 72),
-	text = Color3.fromRGB(230, 248, 236), muted = Color3.fromRGB(150, 190, 164),
-	acc = Color3.fromRGB(120, 230, 150), act = Color3.fromRGB(30, 90, 50),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(120, 230, 150), act = Color3.fromRGB(26, 42, 74),
 }
 
 local function buildGrupos(win)
@@ -3996,10 +3997,10 @@ buildGrupos(wGrupos)
 -- PLUGINS X — módulos X ligam/desligam de verdade (pump real)
 -- =============================================================
 local THEME_PLUGINS = {
-	bg = Color3.fromRGB(20, 16, 26), bg2 = Color3.fromRGB(26, 21, 34), bg3 = Color3.fromRGB(33, 27, 43),
-	cap = Color3.fromRGB(16, 13, 22), edge = Color3.fromRGB(88, 70, 120),
-	text = Color3.fromRGB(244, 238, 252), muted = Color3.fromRGB(180, 162, 200),
-	acc = Color3.fromRGB(190, 140, 255), act = Color3.fromRGB(60, 34, 96),
+	bg = Color3.fromRGB(11, 18, 32), bg2 = Color3.fromRGB(15, 27, 51), bg3 = Color3.fromRGB(20, 38, 74),
+	cap = Color3.fromRGB(11, 18, 32), edge = Color3.fromRGB(42, 59, 94),
+	text = Color3.fromRGB(230, 235, 245), muted = Color3.fromRGB(154, 167, 192),
+	acc = Color3.fromRGB(190, 140, 255), act = Color3.fromRGB(26, 42, 74),
 }
 
 local function buildPlugins(win)

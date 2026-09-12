@@ -1,12 +1,9 @@
 -- =============================================================
--- Arkher_09_Topbar (GUIX) — FIAÇÃO da barra X.
--- A barra é REAL (Canvas/ArkherXDeck/ArkherXBar no .rbxl, com os 6
--- botões + ícones desenhados em Frames); o popup de formas também é
--- REAL (ServerEditorPopups/ArkherShapesPopup). Aqui mora SÓ o sistema:
---   PART ▸ (7 formas, spawn server na frente da câmera),
---   BASEPLATE (garante chão), UNION / NEGATE (CSG real),
---   TOOLBOX (deck-first, cai no dock do 10 se o deck não subiu),
---   ✦ X (abre a central de editores do 05).
+-- Arkher_09_Topbar (GUIX) — GUARDIÃO DOS POPUPS.
+-- Os popups são REAIS (Canvas/ArkherXDeck/ServerEditorPopups no .rbxl).
+-- Aqui mora SÓ o sistema: 7 linhas de formas (spawn server QuickPart
+-- na frente da câmera), hover, fechar clicando fora. ZERO Instance.new.
+-- A shell (05) mostra os popups; o 09 fia o conteúdo deles.
 -- =============================================================
 
 local Players = game:GetService("Players")
@@ -35,13 +32,12 @@ local function apiResult(action, payload)
 	if r and r.result then return r.result end
 	return nil, r and r.error
 end
-local function deckOpen(v)
-	local d = rawget(_G, "ArkherDeck")
-	if d and d.open then return d.open(v, nil) end
-	W("Message", { text = "UI X ainda carregando…", bad = true })
+local function say(text, bad)
+	local sh = rawget(_G, "ArkherShell")
+	if sh and sh.say and not bad then sh.say(text) return end
+	W("Message", { text = text, bad = bad })
 end
 
--- clique à prova de bala: Activated + MouseButton1Click com dedupe
 local function onTap(btn, fn)
 	local lastEvt, lastT = nil, -1
 	local function fire(src, ...)
@@ -62,19 +58,14 @@ local function onTap(btn, fn)
 end
 
 local m = {
-	bg = Color3.fromRGB(7, 16, 32), panel = Color3.fromRGB(9, 23, 44), section = Color3.fromRGB(20, 42, 75),
-	border = Color3.fromRGB(52, 80, 120), text = Color3.fromRGB(228, 240, 255), muted = Color3.fromRGB(146, 170, 202),
-	blue = Color3.fromRGB(35, 139, 230), selected = Color3.fromRGB(17, 76, 139), cyan = Color3.fromRGB(43, 203, 243),
-	purple = Color3.fromRGB(166, 117, 240), gold = Color3.fromRGB(240, 185, 70), error = Color3.fromRGB(255, 164, 143),
+	panel = Color3.fromRGB(9, 23, 44), selected = Color3.fromRGB(17, 76, 139),
 }
 
--- ---------- GUI real: XBar + popup de formas ----------
+-- ---------- popup de formas REAL ----------
 local canvas = uiRoot:WaitForChild("Canvas", 25)
 local host = canvas:WaitForChild("ArkherXDeck", 25)
-local bar = host:WaitForChild("ArkherXBar", 25)
 local popups = host:WaitForChild("ServerEditorPopups", 25)
 local shapesPopup = popups:WaitForChild("ArkherShapesPopup", 25)
-local uiscale = canvas:FindFirstChild("ResponsiveScale")
 
 local SHAPES = {
 	{ "Block", "Block (4×2×4)" }, { "Ball", "Ball (esfera)" },
@@ -99,12 +90,11 @@ local function spawnShape(shapeId, shapeLabel)
 	task.spawn(function()
 		local x2, y2, z2 = camSpawnPos()
 		local res, err = apiResult("QuickPart", { shape = shapeId, x = x2, y = y2, z = z2 })
-		if res and res.msg then W("Message", { text = res.msg })
-		elseif err then W("Message", { text = "Spawn falhou: " .. tostring(err), bad = true })
-		else W("Message", { text = shapeId .. " criado na frente da câmera." }) end
+		if res and res.msg then say(res.msg)
+		elseif err then say("Spawn falhou: " .. tostring(err), true)
+		else say(shapeId .. " criado na frente da câmera.") end
 	end)
 end
--- fia as 7 linhas REAIS (uma vez; o popup só mostra/esconde)
 for _, spec in ipairs(SHAPES) do
 	local row = shapesPopup:FindFirstChild("ShapeRow_" .. spec[1])
 	if row then
@@ -112,13 +102,6 @@ for _, spec in ipairs(SHAPES) do
 		row.MouseLeave:Connect(function() row.BackgroundColor3 = m.panel end)
 		onTap(row, function() spawnShape(spec[1], spec[2]) end)
 	end
-end
-local function openShapes(hostBtn)
-	local scale = (uiscale and uiscale.Scale) or 1
-	if scale <= 0 then scale = 1 end
-	local ap, asz = hostBtn.AbsolutePosition, hostBtn.AbsoluteSize
-	shapesPopup.Position = UDim2.fromOffset(ap.X / scale, (ap.Y + asz.Y) / scale + 4)
-	shapesPopup.Visible = true
 end
 do
 	local UIS = game:GetService("UserInputService")
@@ -134,51 +117,5 @@ do
 	end)
 end
 
--- ---------- fia os 6 botões REAIS ----------
-local btnPart = bar:WaitForChild("ArkherX_Part", 10)
-local btnBase = bar:WaitForChild("ArkherX_Base", 10)
-local btnUnion = bar:WaitForChild("ArkherX_Union", 10)
-local btnNegate = bar:WaitForChild("ArkherX_Negate", 10)
-local btnToolbox = bar:WaitForChild("ArkherX_Toolbox", 10)
-local btnLauncher = bar:WaitForChild("ArkherX_Launcher", 10)
-
-onTap(btnPart, function() openShapes(btnPart) end)
-onTap(btnBase, function()
-	task.spawn(function()
-		local res, err = apiResult("EnsureBase", {})
-		if res and res.msg then W("Message", { text = res.msg })
-		elseif err then W("Message", { text = "Baseplate falhou: " .. tostring(err), bad = true }) end
-	end)
-end)
-onTap(btnUnion, function()
-	task.spawn(function()
-		local res, err = apiResult("CsgDo", { op = "union" })
-		if res and res.msg then W("Message", { text = res.msg })
-		elseif res and res.error then W("Message", { text = tostring(res.error), bad = true })
-		elseif err then W("Message", { text = tostring(err), bad = true }) end
-	end)
-end)
-onTap(btnNegate, function()
-	task.spawn(function()
-		local res, err = apiResult("CsgDo", { op = "negate" })
-		if res and res.msg then W("Message", { text = res.msg })
-		elseif res and res.error then W("Message", { text = tostring(res.error), bad = true })
-		elseif err then W("Message", { text = tostring(err), bad = true }) end
-	end)
-end)
-onTap(btnToolbox, function() -- deck-first; cai no dock do 10 se o deck não subiu
-	local d = rawget(_G, "ArkherDeck")
-	if d and d.open then d.open("toolbox") return end
-	local dd = rawget(_G, "ArkherStudioDock")
-	if dd and dd.toggle then dd.toggle("toolbox") return end
-	W("Message", { text = "UI X ainda carregando…", bad = true })
-end)
-onTap(btnLauncher, function()
-	local s = rawget(_G, "ArkherStudioX")
-	if s and s.open then s.open() return end
-	local lw = host:FindFirstChild("Deck_launcher")
-	if lw then lw.Visible = true end
-end)
-
-W("Message", { text = "XBar: 6 botões reais (Part ▸ / Baseplate / Union / Negate / Toolbox / ✦ X) + popup de 7 formas." })
-print("[ArkherX] 09_Topbar: XBar real fiada — zero overlay, zero Instance.new de GUI")
+_G.ArkherPopups = { shapes = function() shapesPopup.Visible = true end, say = say }
+print("[ArkherX] 09_Popups: 7 formas reais fiadas — zero Instance.new de GUI")

@@ -302,7 +302,7 @@ def main():
     host_scale = {"cls": "UIScale", "name": "DeckScale",
                   "props": {"Scale": float(spec.get("host_scale", 1.0))}, "kids": []}
     roots = [host]
-    host["kids"] = spec["deck"] + spec["extra"] + [spec["xbar"], spec["popups"]]
+    host["kids"] = spec["deck"] + spec["extra"] + spec["shell"] + [spec["popups"]] + spec["v2"]
     ordered = []  # (nó, ref-pai-ou-None, é-host?)
 
     def walk(n, parent):

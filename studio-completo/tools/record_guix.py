@@ -59,7 +59,6 @@ def main():
         return 1
     spec = lua.eval("_G.__SPEC")
     deck = conv_node(spec["deck"])
-    xbar = conv_node(spec["xbar"])
     popups = conv_node(spec["popups"])
     extra = conv_node(spec["extra"])
     warns = [str(spec["warnings"][i]) for i in range(1, len(spec["warnings"]) + 1)]
@@ -80,12 +79,9 @@ def main():
     print("janelas:", ", ".join(win_names))
 
     # OUT roots: pega os filhos (o OUT_* é só envelope)
-    assert len(xbar["kids"]) == 1, "OUT_XBar deve ter 1 filho"
     assert len(popups["kids"]) == 1, "OUT_Popups deve ter 1 filho"
-    xbar_node = xbar["kids"][0]
     popups_node = popups["kids"][0]
     extra_kids = extra["kids"]
-    print(f"XBar: {xbar_node['name']} ({len(xbar_node['kids'])} botões)")
     print(f"Popups: {popups_node['name']} ({len(popups_node['kids'])} filhos)")
     print(f"Extra: {[k['name'] for k in extra_kids]}")
 
@@ -117,7 +113,7 @@ def main():
             if "Size" not in n["props"] or "Position" not in n["props"]:
                 nonpos.append(f"{path} [{n['cls']}]")
 
-    for n in host_real + [xbar_node, popups_node] + extra_kids:
+    for n in host_real + [popups_node] + extra_kids:
         walk(n, visit)
 
     total = sum(counts.values())
@@ -148,12 +144,11 @@ def main():
         "host_scale": 1.0,
         "deck": host_real,
         "extra": extra_kids,
-        "xbar": xbar_node,
         "popups": popups_node,
     }
-    with open(os.path.join(HERE, "guix_spec.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(HERE, "deck_spec.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False)
-    print(f"\nspec salva: tools/guix_spec.json ({os.path.getsize(os.path.join(HERE, 'guix_spec.json'))} bytes)")
+    print(f"\nspec salva: tools/deck_spec.json ({os.path.getsize(os.path.join(HERE, 'deck_spec.json'))} bytes)")
     return 0
 
 
