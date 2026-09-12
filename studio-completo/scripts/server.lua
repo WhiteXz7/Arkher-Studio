@@ -1075,6 +1075,29 @@ function handlers.AccountPlaces(player, payload)
 	return { places = data.places or {}, universeId = uid }
 end
 
+function handlers.CloudQuick(player, payload)
+	needSvc()
+	local data = serializeTree(workspace)
+	local n = countTree(data)
+	local json = Http:JSONEncode(data)
+	local rec = services.cloudPut("Nuvem " .. os.date("%d/%m %H:%M"), json, #json, n)
+	local okS, retS = pcall(function() return game:GetService("AssetService"):SavePlaceAsync() end)
+	local pc = handlers.PlaceCreate(player, { name = "Place " .. os.date("%d/%m %H:%M") })
+	local parts = { "Nuvem ok (" .. tostring(n) .. " obj)" }
+	if okS then parts[#parts + 1] = "Publish ok"
+	else parts[#parts + 1] = "Publish recusou" end
+	if pc and pc.placeId then parts[#parts + 1] = "Place " .. tostring(pc.placeId)
+	else parts[#parts + 1] = "Place: " .. tostring(pc and pc.error or "?"):sub(1, 60) end
+	return {
+		snapshot = rec and rec.name or "?",
+		nodes = n,
+		saved = okS == true,
+		placeId = pc and pc.placeId or nil,
+		placeError = (pc and pc.error) or nil,
+		msg = table.concat(parts, " | "),
+	}
+end
+
 function handlers.Publish(player, payload)
 	needSvc()
 	local info = payload or {}

@@ -155,7 +155,7 @@ local ACTIONS = {
 	HOME_Plugins = { "open", "V2_ArkherPluginManager" },
 	HOME_Save = { "open", "V2_ArkherSaveOpen" },
 	HOME_Open = { "open", "V2_ArkherSaveOpen" },
-	HOME_Cloud = { "open", "V2_ArkherSaveOpen" },
+	HOME_Cloud = { "bus", "CloudQuick" },
 	HOME_Undo = { "bus", "Undo", {} },
 	HOME_Redo = { "bus", "Redo", {} },
 	HOME_Palette = { "open", "V2_ArkherPalette" },
@@ -239,6 +239,7 @@ local ACTIONS = {
 	VIEW_Pause = { "menus", "RunPause" },
 }
 
+local lastQuick = 0
 local function runAction(key)
 	local a = ACTIONS[key]
 	if not a then say("Ação não mapeada: " .. key) return end
@@ -253,6 +254,12 @@ local function runAction(key)
 		local _, err = menusDo(a[2])
 		if err then say(tostring(err)) end
 	elseif a[1] == "bus" then
+		if a[2] == "CloudQuick" then
+			local nowQ = os.clock()
+			if nowQ - lastQuick < 5 then say("Aguarde " .. math.ceil(5 - (nowQ - lastQuick)) .. "s (publicando...).") return end
+			lastQuick = nowQ
+			say("Publicando + criando place...")
+		end
 		local res, err = busApi(a[2], a[3])
 		if err then
 			say(tostring(err))

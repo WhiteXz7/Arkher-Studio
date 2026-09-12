@@ -1,7 +1,7 @@
 ================================================================
 ARKHER STUDIO — INVENTÁRIO COMPLETO (texto)
 Gerado no ciclo Fase 4 + Fase 5. Placa: ArkherStudio_Completo_GUIX.rbxl
-9547 instâncias, 35 tipos, 203 checks de teste verdes (6/6 suítes).
+9547 instâncias, 35 tipos, 205 checks de teste verdes (6/6 suítes).
 ================================================================
 
 1) SCRIPTS (tudo assado dentro do rbxl, zero criação em runtime na shell)
@@ -15,7 +15,7 @@ PyBridge externo: pybridge.py + rbxlx.py + test_rbxlx.py + README.
 
 2) RIBBON (abertura automática por aba; 11 abas, 11 páginas, 88 botões)
 ------------------------------------------------------------
-HOME: Play Pause Stop | Plugins Save Open Cloud | Undo Redo Palette
+HOME: Play Pause Stop | Plugins Save Open Cloud(acao direta) | Undo Redo Palette
   Search Toolbox Settings | Status Places History
 BUILD: Select Move Rotate Scale | Part Model Folder Script | Material
   Mesh Modeler Fabricar | Insert Base Union Negate
@@ -81,7 +81,8 @@ Privacidade: nunca recebe player/dev; key Open Cloud só no host.
 
 7) FLUXOS PRONTOS DE PONTA A PONTA
 ------------------------------------------------------------
-- Publicar fácil: PUBLISH = 1-CLIQUE (snapshot cloud + SavePlace + link).
+- Publicar fácil: botao CLOUD = 1 clique (snapshot + SavePlace + cria place
+  nova na conta, com anti-spam 5s). PUBLISH na Places = 1-CLIQUE idem.
 - Place nova REAL: NEW PLACE (cria na conta) > ABRIR (teleporta) >
   constrói > SAVE ACCOUNT (persiste; places criadas já vêm c/ API on).
 - Conta real: CONTA lista places do universo; Go2/ABRIR teleporta.
@@ -117,5 +118,5 @@ h) TERRA (places por região + Teleport): só após o studio pronto.
    ABRIR, EXPORT, CONTA. 4. ScriptEditor: troque LU>PY>C+, rode.
 5. Toolbox: busca normal + "$castle". 6. PUBLISH = 1-clique.
 7. python3 studio-completo/tools/run_tests.py (esperado: 6/6 verdes,
-   203 checks: server 43 + services 29 + cliente 18 + paineis 27 +
+   205 checks: server 45 + services 29 + cliente 18 + paineis 27 +
    round12 37 + adopt 49).

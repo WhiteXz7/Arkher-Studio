@@ -158,6 +158,12 @@ local trF = nil
 if pa3 and pa3.fields then for _, f in ipairs(pa3.fields) do if f.name == "Transparency" then trF = f end end end
 check(s3 and s3.ok == true and trF and trF.value == 0.5, "SetAny: Transparency 0.5 roundtrip")
 
+
+print("\n== CloudQuick (snapshot+publish+place) ==")
+local cq = invokeWait("CloudQuick", {})
+check(cq and cq.snapshot and cq.snapshot:sub(1, 5) == "Nuvem" and (cq.nodes or 0) > 0, "CloudQuick: snapshot Nuvem (" .. (cq and cq.nodes or 0) .. " obj)")
+check(cq and cq.msg and (cq.saved or cq.placeId or cq.placeError), "CloudQuick: msg + resultado publish/place")
+
 print("\n================================")
 print(string.format("RESULTADO: %d passaram, %d falharam", pass, fail))
 if fail > 0 then os.exit(1) else os.exit(0) end
