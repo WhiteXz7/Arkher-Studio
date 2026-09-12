@@ -914,10 +914,41 @@ function handlers.ScriptList(player, payload)
 end
 '''
 
+BLOCK_X9 = r'''
+-- ============ BLOCK_X9: PYBRIDGE via SERVIDOR (HttpService so roda server-side) ============
+local PY_URL = "http://127.0.0.1:8773"
+local function pyGet(path2)
+	local ok2, res = pcall(function()
+		return Http:GetAsync(PY_URL .. path2, true)
+	end)
+	if not ok2 then
+		return nil, ("python bridge/offline OU HttpService desligado: ligar em Game Settings > Security > HTTP Requests. Detalhe: %s"):format(tostring(res))
+	end
+	local ok3, data = pcall(function() return Http:JSONDecode(res) end)
+	if not ok3 then return nil, "resposta nao-JSON do python bridge" end
+	return data
+end
+
+function handlers.PyStatus(player)
+	local data, err = pyGet("/status")
+	if not data then return { online = false, error = err } end
+	return { online = data.ok == true, py = data.py, cwd = data.cwd, tasks = data.tasks, version = data.version }
+end
+
+function handlers.PyRun(player, payload)
+	local task = tostring(payload.task or "")
+	local arg = tostring(payload.arg or "")
+	local enc = (task == "shell") and ("?task=shell&arg=" .. Http:UrlEncode(arg)) or ("?task=" .. Http:UrlEncode(task))
+	local data, err = pyGet("/run" .. enc)
+	if not data then return { ok = false, error = err } end
+	return { ok = data.ok == true, summary = data.summary, error = data.error, out = data.out }
+end
+'''
+
 src = replace_once(src, MARK_A, MARK_A + BLOCK_A, "A")
 src = replace_once(src, "local function getObject(id)", SER_DESER + "local function getObject(id)", "B")
 src = replace_once(src, "local handlers={}", HIST_OPS + "local handlers={}", "C")
-src = replace_once(src, "request.OnServerInvoke=function(player,action,payload)", NEW_HANDLERS + BLOCK_S + BLOCK_X7 + BLOCK_X8 + "request.OnServerInvoke=function(player,action,payload)", "D")
+src = replace_once(src, "request.OnServerInvoke=function(player,action,payload)", NEW_HANDLERS + BLOCK_S + BLOCK_X7 + BLOCK_X8 + BLOCK_X9 + "request.OnServerInvoke=function(player,action,payload)", "D")
 # Delete original -> delega para Delete_ (reusa hDelete)
 src = replace_once(
     src,

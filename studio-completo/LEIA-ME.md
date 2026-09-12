@@ -139,6 +139,25 @@ em cada um dos 121 chunks PROP (#StudioSafe). Baixe novamente a placa atual.
 - **RIG X + MESH X no DECK** (os docks 05/06/07 foram removidos: eram
   "enfeite" de retângulos e a diretriz é ZERO painel sem efeito real).
 
+**ROUND 9 (2026-09-11) — a TOPBAR CERTA (abas estilo Roblox) + correções fortes:**
+
+- **X-tier morto** (os mini-botões "View" clonados sumiram).
+- **09_Topbar.lua**: faixa de **ABAS** acima do Ribbon — HOME (**o Ribbon ORIGINAL
+  fica intacto, nada é destruído**) + MUNDO/NATUREZA/CRIAÇÃO/CONSTRUIR/ESTÚDIO/DEV
+  com **botões grandes, ÍCONE DESENHADO EM CIMA + label embaixo** (IconX procedural
+  32×32 — montanha, ondas, cubo wireframe, planeta, cidade, cordas…) no mesmo estilo
+  do ribbon. Ribbon e docks descem 26 px só para a faixa de abas; nada vaza.
+- **PART com submenu de FORMAS na própria topbar** (Block/Ball/Cylinder/CylVert/
+  Wedge/CornerWedge/Truss → QuickPart real).
+- **Color picker INLINE nas propriedades**: só aparece quando você **clica no
+  quadrado de cor** (popup acoplado à janela PROPS), aplica direto — sem abrir painel.
+- **PluginOrCloudAPI eliminado**: a ponte PY saiu do LocalScript (HttpService é
+  servidor-only! era isso que gritava "toda hora em todos os rbxl") — agora via
+  `handlers.PyStatus/PyRun` server-side com resposta honesta se a ponte estiver off.
+- **Atlas de ícones gerado**: `studio-completo/icons/atlas_sistemas.png`
+  (20 ícones neon, referência/Marketing/upload manual).
+- Auditoria: **56/56 ✅**. Placa X = 228.868 B #StudioSafe, testes 100%.
+
 **ROUND 8 (2026-09-11) — os 3 itens finais + AUDITORIA:**
 
 1. **PLACES do perfil**: painel "Game ▸ Places do meu perfil…" — lista jogos

@@ -1377,4 +1377,33 @@ function handlers.ScriptList(player, payload)
 	table.sort(out, function(a, b) return a.path < b.path end)
 	return { scripts = out, count = #out }
 end
+
+-- ============ BLOCK_X9: PYBRIDGE via SERVIDOR (HttpService so roda server-side) ============
+local PY_URL = "http://127.0.0.1:8773"
+local function pyGet(path2)
+	local ok2, res = pcall(function()
+		return Http:GetAsync(PY_URL .. path2, true)
+	end)
+	if not ok2 then
+		return nil, ("python bridge/offline OU HttpService desligado: ligar em Game Settings > Security > HTTP Requests. Detalhe: %s"):format(tostring(res))
+	end
+	local ok3, data = pcall(function() return Http:JSONDecode(res) end)
+	if not ok3 then return nil, "resposta nao-JSON do python bridge" end
+	return data
+end
+
+function handlers.PyStatus(player)
+	local data, err = pyGet("/status")
+	if not data then return { online = false, error = err } end
+	return { online = data.ok == true, py = data.py, cwd = data.cwd, tasks = data.tasks, version = data.version }
+end
+
+function handlers.PyRun(player, payload)
+	local task = tostring(payload.task or "")
+	local arg = tostring(payload.arg or "")
+	local enc = (task == "shell") and ("?task=shell&arg=" .. Http:UrlEncode(arg)) or ("?task=" .. Http:UrlEncode(task))
+	local data, err = pyGet("/run" .. enc)
+	if not data then return { ok = false, error = err } end
+	return { ok = data.ok == true, summary = data.summary, error = data.error, out = data.out }
+end
 request.OnServerInvoke=function(player,action,payload)if not authorized(player)then return{ok=false,error="A conta @"..player.Name.." não está autorizada. Adicione esse nome principal em AUTHORIZED_USERNAMES no servidor; não use o nome de exibição."}end if type(action)~="string"or not handlers[action]or not consume(player,action=="Snapshot"and 4 or 1)then return{ok=false,error="Requisição inválida ou limite de frequência."}end if payload~=nil and type(payload)~="table"then return{ok=false,error="Formato inválido."}end local ok,result=pcall(handlers[action],player,payload or{})if not ok then local t=transactions[player]if action=="Begin"or(action=="End"and t and payload and t.token==payload.token)then release(player,true)end return{ok=false,error=tostring(result)}end result=result or{};result.ok=true;return result end preview.OnServerEvent:Connect(function(player,payload)if not authorized(player)or type(payload)~="table"or not consume(player,1)then return end local t=transactions[player]if not t or payload.token~=t.token then return end if t.lastPreview and os.clock()-t.lastPreview<0.045 then return end t.lastPreview=os.clock()local ok=pcall(applyTransform,t,payload)if not ok then release(player,true)end end)Players.PlayerRemoving:Connect(function(player)release(player,true);subscribed[player]=nil;selected[player]=nil;buckets[player]=nil;created[player]=nil end)local timer,propertyTimer=0,0 Run.Heartbeat:Connect(function(dt)timer=timer+dt;propertyTimer=propertyTimer+dt for player,t in pairs(transactions)do if os.clock()-t.time>CONFIG.TRANSFORM_TIMEOUT then release(player,true)end end if timer>=0.12 then timer=0 if next(dirty)or next(removed)then revision=revision+1 local packet={kind="Delta",revision=revision,nodes={},removed={}}for id in pairs(dirty)do local o=objects[id];if inspectable(o)then packet.nodes[#packet.nodes+1]=record(o)end end for id in pairs(removed)do packet.removed[#packet.removed+1]=id end dirty={};removed={}for player in pairs(subscribed)do if authorized(player)then updates:FireClient(player,packet)end end end end if propertyTimer>=0.3 then propertyTimer=0 for player,o in pairs(selected)do if subscribed[player]and authorized(player)and not transactions[player]then if inspectable(o)then updates:FireClient(player,{kind="Properties",properties=properties(o)})else selected[player]=nil;updates:FireClient(player,{kind="SelectionRemoved"})end end end end end)print("ArkherEditorServer pronto. Edição restrita aos nomes principais em AUTHORIZED_USERNAMES; scripts novos ficam vazios e desativados.")

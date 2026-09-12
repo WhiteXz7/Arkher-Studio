@@ -2361,6 +2361,103 @@ local THEME_PROPS = {
 	acc = Color3.fromRGB(150, 200, 255), act = Color3.fromRGB(36, 52, 88),
 }
 
+
+-- =============================================================
+-- PICKER DE COR POPUP — aparece NAS PROPRIEDADES: só quando você
+-- CLICA no quadrado de cor. nada de abrir janela separada.
+-- =============================================================
+local __colorPopup
+local function openColorPopup(hostFrame, startColor, applyFn, hostZ)
+	if __colorPopup and __colorPopup.Parent then __colorPopup:Destroy() end
+	local th2 = { bg = Color3.fromRGB(20, 24, 34), bg2 = Color3.fromRGB(26, 31, 44), bg3 = Color3.fromRGB(33, 40, 56), edge = Color3.fromRGB(90, 110, 150), text = Color3.fromRGB(235, 242, 255), muted = Color3.fromRGB(150, 165, 190), acc = Color3.fromRGB(255, 200, 120), act = Color3.fromRGB(60, 44, 24) }
+	local C = { h = 0, s = 0, v = 1 }
+	if startColor then C.h, C.s, C.v = Color3.toHSV(startColor) end
+	local f = B("Frame", {
+		Size = UDim2.fromOffset(252, 246), Position = UDim2.fromOffset(8, 8),
+		BackgroundColor3 = th2.bg, BorderSizePixel = 0, ZIndex = (hostZ or 46) + 10,
+	}, hostFrame)
+	H(f, 8) ST(f, 1.2, th2.edge)
+	f.Active = true
+	__colorPopup = f
+	local hover = false
+	f.MouseEnter:Connect(function() hover = true end)
+	f.MouseLeave:Connect(function() task.delay(0.8, function() end) end)
+	local cls = B("TextButton", {
+		Size = UDim2.fromOffset(22, 20), Position = UDim2.new(1, -26, 0, 4),
+		BackgroundColor3 = th2.bg2, Text = "x", Font = Enum.Font.GothamBold,
+		TextSize = 12, TextColor3 = th2.muted, BorderSizePixel = 0, ZIndex = f.ZIndex + 2,
+	}, f)
+	H(cls, 5)
+	cls.MouseButton1Click:Connect(function() f:Destroy() end)
+	local prev = B("Frame", {
+		Size = UDim2.fromOffset(60, 60), Position = UDim2.fromOffset(8, 8),
+		BackgroundColor3 = Color3.fromHSV(C.h, C.s, C.v), BorderSizePixel = 0, ZIndex = f.ZIndex + 1,
+	}, f)
+	H(prev, 6) ST(prev, 1, th2.edge)
+	local hexLb = B("TextLabel", {
+		Size = UDim2.fromOffset(60, 14), Position = UDim2.fromOffset(8, 70),
+		BackgroundTransparency = 1, Text = "#FFFFFF", Font = Enum.Font.Code,
+		TextSize = 9, TextColor3 = th2.muted, TextXAlignment = Enum.TextXAlignment.Center, ZIndex = f.ZIndex + 1,
+	}, f)
+	local function refreshP()
+		local c = Color3.fromHSV(C.h, C.s, C.v)
+		prev.BackgroundColor3 = c
+		hexLb.Text = string.format("#%02X%02X%02X", math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5))
+	end
+	-- sliders H/S/V e R/G/B
+	local xs = 78
+	sliderCtl(f, UDim2.fromOffset(xs, 8), 0, "H", 0, 360, C.h * 360, th2, function(v) C.h = v / 360 refreshP() end)
+	sliderCtl(f, UDim2.fromOffset(xs, 42), 0, "S", 0, 100, C.s * 100, th2, function(v) C.s = v / 100 refreshP() end)
+	sliderCtl(f, UDim2.fromOffset(xs, 76), 0, "V", 0, 100, C.v * 100, th2, function(v) C.v = v / 100 refreshP() end)
+	local rgbY = { 112, 146, 180 }
+	local names = { "R", "G", "B" }
+	local gets = { function() return prev.BackgroundColor3.R * 255 end, function() return prev.BackgroundColor3.G * 255 end, function() return prev.BackgroundColor3.B * 255 end }
+	for q = 1, 3 do
+		sliderCtl(f, UDim2.fromOffset(8, rgbY[q]), 0, names[q], 0, 255, gets[q](), th2, function(v)
+			local c = prev.BackgroundColor3
+			local rr, gg, bb = c.R, c.G, c.B
+			if q == 1 then rr = v / 255 elseif q == 2 then gg = v / 255 else bb = v / 255 end
+			C.h, C.s, C.v = Color3.toHSV(Color3.new(rr, gg, bb))
+			refreshP()
+		end)
+	end
+	-- paleta em miniatura
+	local paleta2 = { "Bright red", "Bright blue", "Bright green", "Bright yellow", "Bright orange", "Bright violet", "White", "Black", "Deep orange", "Pink", "Lime green", "Cyan" }
+	for q, nm in ipairs(paleta2) do
+		local bc = BrickColor.new(nm)
+		local sw2 = B("TextButton", {
+			Size = UDim2.fromOffset(22, 22), Position = UDim2.fromOffset(8 + ((q - 1) % 10) * 24, 234 - 24),
+			BackgroundColor3 = bc.Color, Text = "", BorderSizePixel = 0, ZIndex = f.ZIndex + 1,
+		}, f)
+		H(sw2, 5) ST(sw2, 1, th2.edge)
+		sw2.MouseButton1Click:Connect(function()
+			C.h, C.s, C.v = Color3.toHSV(bc.Color) refreshP()
+		end)
+	end
+	-- posiciona ao lado do host (clamp dentro da janela)
+	local hostSize = hostFrame.AbsoluteSize
+	if hostSize.X > 400 then
+		f.Position = UDim2.new(1, 8, 0, 30)
+		f.AnchorPoint = Vector2.new(1, 0)
+	else
+		f.Position = UDim2.fromOffset(8, 30)
+	end
+	-- APLICAR grande
+	local applyB = B("TextButton", {
+		Size = UDim2.fromOffset(98, 24), Position = UDim2.new(1, -104, 1, -30),
+		BackgroundColor3 = th2.acc, Text = "APLICAR ✓",
+		Font = Enum.Font.GothamBold, TextSize = 11, TextColor3 = Color3.fromRGB(30, 20, 10),
+		BorderSizePixel = 0, ZIndex = f.ZIndex + 2,
+	}, f)
+	H(applyB, 6)
+	applyB.MouseButton1Click:Connect(function()
+		applyFn(prev.BackgroundColor3)
+		f:Destroy()
+	end)
+	refreshP()
+	return f
+end
+
 local PROPS_STATE = { targetId = nil, fields = {} }
 
 local function buildProps(win)
@@ -2483,13 +2580,20 @@ local function buildProps(win)
 			}, row)
 			H(sw, 4) ST(sw, 1, th.edge)
 			sw.MouseButton1Click:Connect(function()
-				-- abre CORES X já apontada pro target
-				local d = rawget(_G, "ArkherDeck")
-				if d and d.open then d.open("cores", nil) end
-				if rawget(_G, "ArkherColorTarget") then
-					_G.ArkherColorTarget({ id = PROPS_STATE.targetId, key = f.key })
-				end
-				log("CORES X aberta — escolha a cor e ela aplica em '" .. f.key .. "'")
+				-- picker INLINE: aparece NAS PROPRIEDADES quando clica no quadrado
+				openColorPopup(win.root, Color3.new(c.r or 1, c.g or 1, c.b or 1), function(col)
+					task.spawn(function()
+						local rr, err = bridgeResult("PropsSet", {
+							id = PROPS_STATE.targetId, key = f.key, kind = "color",
+							r = col.R, g = col.G, b = col.B,
+						})
+						if not rr then log("⚠ " .. tostring(err)) else
+							sw.BackgroundColor3 = col
+							log(("✓ %s = #%02X%02X%02X aplicado DIRETO nas propriedades"):format(f.key,
+								math.floor(col.R * 255 + 0.5), math.floor(col.G * 255 + 0.5), math.floor(col.B * 255 + 0.5)))
+						end
+					end)
+				end, 45)
 			end)
 			local tbc = mkVal(("%d,%d,%d"):format(math.floor((c.r or 1) * 255 + 0.5), math.floor((c.g or 1) * 255 + 0.5), math.floor((c.b or 1) * 255 + 0.5)), X0 + 52, 92)
 			tbc.FocusLost:Connect(function(enter)
@@ -3476,12 +3580,11 @@ local THEME_PY = {
 	acc = Color3.fromRGB(120, 255, 176), act = Color3.fromRGB(18, 60, 40),
 }
 
-local PY_ENDPOINT = "http://127.0.0.1:8773"
+-- PY vai pelo servidor (HttpService nao roda em LocalScript — era o PluginOrCloudAPI)
 
 local function buildPy(win)
 	local th = THEME_PY
 	local body = win.body
-	local HttpS = game:GetService("HttpService")
 	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
 	local statusBar = B("TextLabel", {
 		Size = UDim2.new(1, -20, 0, 40), Position = UDim2.fromOffset(10, 6),
@@ -3493,27 +3596,19 @@ local function buildPy(win)
 	statusBar.TextWrapped = true
 
 	local conn = { ok = false, info = "" }
-	local function httpGet(path2)
-		local ok2, res = pcall(function() return HttpS:GetAsync(PY_ENDPOINT .. path2, true) end)
-		if ok2 and res then return res end
-		return nil, tostring(res)
-	end
 	local function check()
 		task.spawn(function()
-			local res = httpGet("/status")
-			if res then
-				local ok2, data = pcall(function() return HttpS:JSONDecode(res) end)
-				if ok2 and data and data.ok then
-					conn.ok = true
-					conn.info = ("✓ python %s · %s"):format(tostring(data.py or "?"), tostring(data.cwd or ""))
-					statusBar.Text = "  " .. conn.info .. "  — bridge PYTHON ATIVA"
-					statusBar.TextColor3 = th.acc
-					return
-				end
+			local res, err = bridgeResult("PyStatus")
+			if res and res.online then
+				conn.ok = true
+				conn.info = ("✓ python %s · v%s"):format(tostring(res.py or "?"), tostring(res.version or "?"))
+				statusBar.Text = "  " .. conn.info .. "  — bridge PYTHON ATIVA (via servidor)"
+				statusBar.TextColor3 = th.acc
+			else
+				conn.ok = false
+				statusBar.Text = "  ✗ pybridge offline. Rode: python studio-completo/tools/pybridge.py\n  " .. tostring((res and res.error) or err or "")
+				statusBar.TextColor3 = Color3.fromRGB(255, 170, 120)
 			end
-			conn.ok = false
-			statusBar.Text = ("  ✗ pybridge OFFLINE. Ligue com:\n  python tools/pybridge.py  (e deixe HttpEnabled on no Studio)")
-			statusBar.TextColor3 = Color3.fromRGB(255, 170, 120)
 		end)
 	end
 	check()
@@ -3549,10 +3644,8 @@ local function buildPy(win)
 		if not conn.ok then log("⚠ pybridge offline — recheque o status em cima") return end
 		sayOut("→ " .. labelDesc .. " …", th.muted)
 		task.spawn(function()
-			local res = httpGet("/run?task=" .. tostring(taskName))
-			if not res then sayOut("⚠ falha HTTP (servidor desligou?)", Color3.fromRGB(255, 150, 120)) return end
-			local ok2, data = pcall(function() return HttpS:JSONDecode(res) end)
-			if not ok2 or not data then sayOut("⚠ resposta invalida do bridge", Color3.fromRGB(255, 150, 120)) return end
+			local data, err = bridgeResult("PyRun", { task = taskName })
+			if not data then sayOut("⚠ " .. tostring(err), Color3.fromRGB(255, 150, 120)) return end
 			if data.ok then
 				sayOut("✓ " .. tostring(data.summary or "ok"), th.acc)
 				for _, ln in ipairs(data.out or {}) do sayOut("   " .. tostring(ln), th.text) end
@@ -3598,13 +3691,11 @@ local function buildPy(win)
 		if not conn.ok then log("⚠ pybridge offline") return end
 		local cmdText = cmdBox.Text
 		task.spawn(function()
-			local res = httpGet("/run?task=shell&arg=" .. HttpS:UrlEncode(cmdText))
-			if not res then sayOut("⚠ falha HTTP", Color3.fromRGB(255, 150, 120)) return end
-			local ok2, data = pcall(function() return HttpS:JSONDecode(res) end)
-			if ok2 and data then
+			local data = bridgeResult("PyRun", { task = "shell", arg = cmdText })
+			if data then
 				sayOut("$ " .. cmdText, th.acc)
 				for _, ln in ipairs(data.out or {}) do sayOut("   " .. tostring(ln), th.text) end
-				if data.error then sayOut("✗ " .. tostring(data.error), Color3.fromRGB(255, 150, 120)) end
+				if data.error or (not data.ok) then sayOut("✗ " .. tostring(data.error or data.summary or ""), Color3.fromRGB(255, 150, 120)) end
 			end
 		end)
 		cmdBox.Text = ""
