@@ -362,6 +362,7 @@ actions.GameProperties = function()
 end
 
 -- ---- TOPOS ----
+actions.PlacesProfile = function() openPlacesPanel() end
 actions.Collaborate = function()
   W("Info", { title = "Colaboração", text = "Colaboração em tempo real com convites e presença.\nEste build roda como editor local de um jogador.\nA arquitetura já isola servidor/cliente para escalar para multi-jogador." })
 end
@@ -530,7 +531,8 @@ local MENUS = {
     { sep = true },
     { icon = "Rotate", label = "Reiniciar Workspace", act = "ResetWorkspace" },
     { sep = true },
-    { icon = "Save", label = "Publicar no Roblox…", act = "Publish" },
+    { icon = "Save", label = "Publicar no Roblox…", act = "Publish", tip = "Publica o jogo atual no seu PERFIL (página estilo jogo do Roblox)" },
+    { icon = "Folder", label = "Places do meu perfil…", act = "PlacesProfile", tip = "Lista jogos/places do perfil + cria PLACES NOVAS de verdade (CreatePlaceAsync)" },
   },
 }
 -- Menus dos topos (Collaborate/Invites/Changes/Account) — item unico que abre Info.
@@ -1001,22 +1003,43 @@ end
 
 -- ---------- COLABORAÇÃO (equipe + convites) ----------
 openCollaborationPanel = function()
+  -- PAINEL COLABORAÇÃO — redesenhado (3 colunas limpas, sem sobreposição):
+  --   [EQUIPE] [CONVITES] [COMO FUNCIONA + NOVO]
   local t, te = api("TeamInfo")
   local inv, ie = api("InviteList")
-  local d, body = modalDialog("Colaboração", 680, 560)
+  local d, body = modalDialog("Colaboração", 700, 540)
   local members = (t and t.result and t.result.members) or {}
-  label("Own", body, "Equipe (caminho custom — persiste no place)  ·  " .. tostring(#members) .. " membro(s)", 0, 8, 600, 20, 14, m.cyan, true)
-  local tlist = scrollList(body, 0, 34, 330, 250)
+  local invites = (inv and inv.result and inv.result.invites) or {}
+
+  local function colFrame(x, wCol, title, accent)
+    local f2 = frame("Col", body, UDim2.fromOffset(x, 8), UDim2.fromOffset(wCol, 500), m.panel, 0)
+    f2.ZIndex = 42
+    corner(f2, 10)
+    stroke(f2, accent or m.border, 1.2)
+    local hd = frame("Hd", f2, UDim2.fromOffset(0, 0), UDim2.new(1, 0, 0, 30), accent or m.section, 0.25)
+    hd.ZIndex = 43
+    corner(hd, 10)
+    local t2 = label("T", hd, "  " .. title, 8, 5, wCol - 16, 20, 15, m.text)
+    t2.Font = Enum.Font.GothamBold
+    return f2
+  end
+
+  -- COL 1: EQUIPE (membros reais do place, com online + papel)
+  local c1 = colFrame(0, 336, "EQUIPE — " .. #members .. " membro(s)", m.cyan)
+  local tlist = scrollList(c1, 8, 38, 320, 380)
+  if #members == 0 then
+    label("E0", tlist, "(só você por enquanto)", UDim2.fromOffset(10, 8), UDim2.fromOffset(300, 20), 13, m.muted)
+  end
   for idx, mbr in ipairs(members) do
-    local c = card(tlist, idx, 52)
-    local dot = frame("Dot", c, UDim2.fromOffset(12, 14), UDim2.fromOffset(12, 12), mbr.online and m.cyan or m.muted, 0)
-    corner(dot, 6)
-    label("N", c, mbr.name, 34, 8, 200, 20, 15, m.text)
-    label("R", c, mbr.role, 34, 30, 120, 18, 12, m.purple)
+    local c = card(tlist, idx, 46)
+    local dot = frame("Dot", c, UDim2.fromOffset(10, 10), UDim2.fromOffset(10, 10), mbr.online and m.cyan or m.muted, 0)
+    corner(dot, 5)
+    label("N", c, mbr.name, 30, 4, 210, 18, 15, m.text)
+    label("R", c, mbr.role, 30, 24, 210, 16, 12, m.purple)
     if mbr.role ~= "Owner" then
-      local del = button("Del", c, UDim2.new(1, -64, 0, 12), UDim2.fromOffset(54, 26), "Remover", m.error)
-      del.TextSize = 12
-      del.ZIndex = 44
+      local del = button("Del", c, UDim2.new(1, -70, 0, 10), UDim2.fromOffset(64, 24), "Remover", m.error)
+      del.TextSize = 11
+      del.ZIndex = 46
       del.Activated:Connect(function()
         local rr, ee = api("TeamRemove", { name = mbr.name })
         if ee then say(ee, true) else say("Membro removido.") end
@@ -1024,48 +1047,111 @@ openCollaborationPanel = function()
       end)
     end
   end
-  rowLabel(body, "Convidar por e-mail", 0, 292, 200, 14)
-  local eIn = input(body, "Email", 0, 312, 220, "email@dev.com")
-  local role = "Editor"
-  local roleBtn = actionBtn(body, 228, 312, 78, 34, role, m.purple)
-  roleBtn.Activated:Connect(function() role = role == "Editor" and "Viewer" or "Editor" roleBtn.Text = role end)
-  local addM = actionBtn(body, 314, 312, 78, 34, "Adicionar", m.blue)
-  addM.Activated:Connect(function()
-    local rr, ee = api("TeamAdd", { name = eIn.Text, role = role })
-    if ee then say(ee, true) else say("Membro adicionado.") end
-    openCollaborationPanel()
-  end)
-  -- convites
-  rowLabel(body, "Convites", 360, 292, 120, 14)
-  local ilist = scrollList(body, 360, 312, 280, 140)
-  local invites = (inv and inv.result and inv.result.invites) or {}
+  local onlineTxt = "custom: persiste no place (ServerStorage), nao usa API externa"
+  label("Foot", c1, onlineTxt, 10, 424, 316, 13, m.muted)
+
+  -- COL 2: CONVITES (pendentes + aceitar)
+  local c2 = colFrame(344, 336 - 8, "CONVITES — " .. #invites, m.gold)
+  local ilist = scrollList(c2, 8, 38, 312, 300)
   if #invites == 0 then
-    label("E", ilist, "(nenhum convite)", UDim2.fromOffset(10, 8), UDim2.fromOffset(260, 20), 13, m.muted)
+    label("E1", ilist, "(nenhum convite gerado)", UDim2.fromOffset(10, 8), UDim2.fromOffset(290, 20), 13, m.muted)
   end
   for idx, iv in ipairs(invites) do
     local c = card(ilist, idx, 56)
-    label("C", c, iv.code .. " · " .. iv.role, 12, 8, 200, 20, 13, m.gold)
-    label("E", c, iv.email .. " · " .. (iv.status or "pendente"), 12, 30, 200, 18, 11, m.muted)
+    label("C", c, iv.code, 10, 6, 200, 18, 14, m.gold)
+    label("E", c, (iv.email or "") .. " · " .. (iv.status or "pendente"), 10, 26, 250, 16, 11, m.muted)
+    label("R", c, iv.role, 10, 42, 120, 12, 10, m.purple)
     if iv.status == "pending" then
-      local acc = actionBtn(c, 200, 12, 66, 20, "Aceitar", m.blue)
+      local acc = button("Acc", c, UDim2.new(1, -86, 0, 8), UDim2.fromOffset(78, 20), "Aceitar", m.blue)
       acc.TextSize = 11
+      acc.ZIndex = 46
       acc.Activated:Connect(function()
         local rr, ee = api("InviteAccept", { code = iv.code })
-        if ee then say(ee, true) else say("Convite aceito: @" .. tostring(rr.member) .. " entrou.") end
+        if ee then say(ee, true) else say("Convite aceito: @?" .. " entrou na equipe.") end
         openCollaborationPanel()
       end)
     end
   end
-  rowLabel(body, "Novo convite", 360, 466, 140, 13)
-  local ieIn = input(body, "IEmail", 360, 486, 150, "email@dev.com")
-  local icBtn = actionBtn(body, 520, 486, 120, 34, "Gerar convite", m.gold)
+  rowLabel(c2, "Novo convite", 10, 348, 150, 13)
+  local ieIn = input(c2, "IEmail", 10, 368, 200, "email@dev.com")
+  local iRole = "Editor"
+  local iRoleBtn = actionBtn(c2, 218, 368, 110, 30, "papel: " .. iRole, m.purple)
+  iRoleBtn.TextSize = 11
+  iRoleBtn.Activated:Connect(function()
+    iRole = (iRole == "Editor") and "Viewer" or "Editor"
+    iRoleBtn.Text = "papel: " .. iRole
+  end)
+  local icBtn = actionBtn(c2, 218, 404, 110, 30, "Gerar convite", m.gold)
+  icBtn.TextSize = 11
   icBtn.Activated:Connect(function()
-    local rr, ee = api("InviteCreate", { email = ieIn.Text, role = role })
-    if ee then say(ee, true) else say("Convite gerado: " .. (rr.invite and rr.invite.link or "")) end
+    local rr, ee = api("InviteCreate", { email = ieIn.Text, role = iRole })
+    if ee then say(ee, true) else say("Convite criado para " .. ieIn.Text) end
+    openCollaborationPanel()
+  end)
+  label("Foot2", c2, "código do convite = link pra entrar na equipe", 10, 440, 300, 13, m.muted)
+
+  -- adicionar membro direto (em cima de EQUIPE)
+  rowLabel(c1, "Adicionar membro (email + papel)", 10, 348, 220, 13)
+  local eIn2 = input(c1, "Email", 10, 368, 200, "email@dev.com")
+  local role2 = "Editor"
+  local roleBtn2 = actionBtn(c1, 218, 368, 110, 30, "papel: " .. role2, m.purple)
+  roleBtn2.TextSize = 11
+  roleBtn2.Activated:Connect(function()
+    role2 = (role2 == "Editor") and "Viewer" or "Editor"
+    roleBtn2.Text = "papel: " .. role2
+  end)
+  local addM2 = actionBtn(c1, 218, 404, 110, 30, "Adicionar", m.blue)
+  addM2.TextSize = 11
+  addM2.Activated:Connect(function()
+    local rr, ee = api("TeamAdd", { name = eIn2.Text, role = role2 })
+    if ee then say(ee, true) else say("Membro '" .. eIn2.Text .. "' adicionado.") end
     openCollaborationPanel()
   end)
 end
 
+-- ---------- PLACES DO PERFIL (criar places novas de verdade) ----------
+local function openPlacesPanel()
+  local pl, pe = api("ProfileList")
+  local d, body = modalDialog("Places do meu perfil", 680, 520)
+  local games = (pl and pl.result and pl.result.games) or {}
+  label("T", body, "JOGOS/PLACES PUBLICADOS — " .. #games, 0, 8, 400, 18, 14, m.cyan, true)
+  local glist = scrollList(body, 0, 34, 660, 300)
+  if #games == 0 then
+    label("E", glist, "(nenhum jogo publicado ainda — use Game > Publicar)", UDim2.fromOffset(10, 8), UDim2.fromOffset(600, 20), 13, m.muted)
+  end
+  for idx, g in ipairs(games) do
+    local c = card(glist, idx, 54)
+    label("N", c, g.name or ("place " .. tostring(g.id)), 12, 6, 300, 20, 15, m.text)
+    label("D", c, (g.url or ("roblox.com/games/" .. tostring(g.placeId or g.id))) .. " · v" .. tostring(g.version or 1) .. " · " .. tostring(g.visits or 0) .. " visitas", 12, 28, 460, 18, 12, m.muted)
+    label("V", c, (g.visibility or "public"), 480, 6, 120, 18, 11, g.visibility == "private" and m.muted or m.cyan)
+    local del = button("Del", c, UDim2.new(1, -70, 0, 12), UDim2.fromOffset(62, 24), "Excluir", m.error)
+    del.TextSize = 11
+    del.ZIndex = 46
+    del.Activated:Connect(function()
+      local rr, ee = api("ProfileDelete", { id = g.id })
+      if ee then say(ee, true) else say("Jogo removido do perfil.") end
+      openPlacesPanel()
+    end)
+  end
+  -- NOVA PLACE NO PERFIL (AssetService.CreatePlaceAsync — REAL)
+  label("T2", body, "CRIAR PLACE NOVA NO PERFIL (AssetService.CreatePlaceAsync — cria de VERDADE)", 0, 348, 660, 16, 13, m.gold, true)
+  local nmIn = input(body, "Nm", 0, 372, 220, "Minha place nova")
+  local tpIn = input(body, "Tp", 228, 372, 150, "templateId (vazio = baseplate)")
+  label("TpL", body, "template opcional", 228, 396, 200, 12, 10, m.muted)
+  local dsIn = input(body, "Ds", 386, 372, 274, "descrição da place")
+  local cre = actionBtn(body, 0, 420, 200, 34, "CRIAR NO PERFIL", m.gold)
+  cre.Activated:Connect(function()
+    local tpl = tonumber(tpIn.Text)
+    local rr, ee2 = api("PlaceCreate", { name = nmIn.Text, template = tpl, description = dsIn.Text })
+    if ee2 then say("Criar place: " .. ee2, true)
+    elseif rr and rr.result and rr.result.error then say(rr.result.error, true)
+    elseif rr and rr.result then
+      say(rr.result.msg or "Place criada!")
+      openPlacesPanel()
+    end
+  end)
+  label("Hint", body, "Só funciona em jogo ONLINE publicado com permissão de criar places ativa. Se recusar, o texto explica exatamente o porquê.", 0, 462, 660, 30, 11, m.muted)
+end
 -- ---------- LOCALIZAÇÃO (i18n) ----------
 openLocalizationPanel = function()
   local loc, le = api("Locales")
@@ -1402,6 +1488,15 @@ MENUS.COMANDO = {
   { icon = "Data", label = "Ajuda de comandos", act = "XComandoHelp", tip = "Lista tudo que a barra sabe fazer" },
 }
 
+MENUS.SCRIPTSX = {
+  { icon = "Script", label = "SCRIPTS X (abrir editor)", act = "XOpenScripts", tip = "Editor POTENTE: abas por script, buscar/substituir, Source LIDO e APLICADO de verdade" },
+  { sep = true },
+  { icon = "plus", label = "Novo Script em ServerScriptService", act = "InsertScript", tip = "Cria um Script novo (via inserir nativo)" },
+}
+MENUS.PYTHONX = {
+  { icon = "Data", label = "PY X (abrir ponte)", act = "XOpenPy", tip = "Conecta no python/pybridge.py do seu PC — roda TESTES/BUILD/AUDITORIA/SHELL de verdade e mostra a saída" },
+}
+
 MENUS.CORDAS = {
   { icon = "plus", label = "CORDAS X — Verlet (abrir)", act = "XOpenCordas" },
   { sep = true },
@@ -1477,6 +1572,8 @@ actions.XOpenOutput       = function() deckOpen("output", nil) end
 actions.XOutputClear      = function() deckOpen("output", nil) say("Abra OUTPUT X e clique em LIMPAR (botão real, LogService.ClearOutput).") end
 actions.XOpenComando      = function() deckOpen("comando", nil) end
 actions.XComandoHelp      = function() deckOpen("comando", "ajuda") end
+actions.XOpenScripts      = function() deckOpen("scripts", nil) end
+actions.XOpenPy           = function() deckOpen("py", nil) end
 actions.XCordaDemo        = function() deckCmd("rope_demo", {}) deckOpen("cordas", "demos") end
 actions.XCordaPonte       = function() deckOpen("cordas", "ponte") end
 
@@ -1542,6 +1639,8 @@ do
     { "CORES",      "cores",    "CORES", "CORES X — color picker REAL aplicado no selecionado" },
     { "OUTPUT",     "output",   "OUTPUT", "OUTPUT X — log REAL do jogo (LogService) com filtros" },
     { "COMANDO",    "comando",  "COMANDO", "COMANDO X — barra de comandos que EXECUTA de verdade" },
+    { "SCRIPTS",    "scripts",  "SCRIPTSX", "SCRIPTS X — editor POTENTE: abas, buscar/substituir, Source real" },
+    { "PYTHON",     "py",       "PYTHONX", "PY X — ponte com o PYTHON do PC (tests/build/shell reais)" },
   }
   local function findBtn(nm)
     for _, c in ipairs(g:GetDescendants()) do
@@ -1652,5 +1751,5 @@ do
     end)
     b0.Parent = tier
   end
-  print("[ArkherX] X-TIER v2: 19 ativadores na topbar (esquerda abre/aciona · direita = dropdown · wrapa em telas estreitas)")
+  print("[ArkherX] X-TIER v2: 21 ativadores na topbar (esquerda abre/aciona · direita = dropdown · wrapa em telas estreitas)")
 end

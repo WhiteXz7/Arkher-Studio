@@ -1343,4 +1343,38 @@ function handlers.PlaceCreate(player, payload)
 	end
 	return { placeId = ret, msg = "PLACE CRIADA no seu perfil: id " .. tostring(ret) .. "  — abra em roblox.com/games/" .. tostring(ret) }
 end
+
+-- ============ BLOCK_X8: SCRIPTS (listar p/ o SCRIPT EDITOR X) ============
+function handlers.ScriptList(player, payload)
+	local out = {}
+	local roots = {
+		workspace,
+		game:GetService("ServerScriptService"),
+		game:GetService("ServerStorage"),
+		game:GetService("ReplicatedStorage"),
+		game:GetService("ReplicatedFirst"),
+		game:GetService("StarterPlayer"),
+		game:GetService("StarterPack"),
+		game:GetService("StarterGui"),
+	}
+	local seen = {}
+	local function walk(o, depth)
+		if depth > 30 or hidden(o) then return end
+		if o:IsA("LuaSourceContainer") and not seen[o] then
+			seen[o] = true
+			local len2 = 0
+			pcall(function() len2 = #o.Source end)
+			out[#out + 1] = {
+				id = idOf[o] or 0, className = o.ClassName, name = o.Name,
+				path = o:GetFullName(), len = len2,
+			}
+		end
+		for _, c in ipairs(o:GetChildren()) do
+			if not hidden(c) then walk(c, depth + 1) end
+		end
+	end
+	for _, r in ipairs(roots) do walk(r, 0) end
+	table.sort(out, function(a, b) return a.path < b.path end)
+	return { scripts = out, count = #out }
+end
 request.OnServerInvoke=function(player,action,payload)if not authorized(player)then return{ok=false,error="A conta @"..player.Name.." não está autorizada. Adicione esse nome principal em AUTHORIZED_USERNAMES no servidor; não use o nome de exibição."}end if type(action)~="string"or not handlers[action]or not consume(player,action=="Snapshot"and 4 or 1)then return{ok=false,error="Requisição inválida ou limite de frequência."}end if payload~=nil and type(payload)~="table"then return{ok=false,error="Formato inválido."}end local ok,result=pcall(handlers[action],player,payload or{})if not ok then local t=transactions[player]if action=="Begin"or(action=="End"and t and payload and t.token==payload.token)then release(player,true)end return{ok=false,error=tostring(result)}end result=result or{};result.ok=true;return result end preview.OnServerEvent:Connect(function(player,payload)if not authorized(player)or type(payload)~="table"or not consume(player,1)then return end local t=transactions[player]if not t or payload.token~=t.token then return end if t.lastPreview and os.clock()-t.lastPreview<0.045 then return end t.lastPreview=os.clock()local ok=pcall(applyTransform,t,payload)if not ok then release(player,true)end end)Players.PlayerRemoving:Connect(function(player)release(player,true);subscribed[player]=nil;selected[player]=nil;buckets[player]=nil;created[player]=nil end)local timer,propertyTimer=0,0 Run.Heartbeat:Connect(function(dt)timer=timer+dt;propertyTimer=propertyTimer+dt for player,t in pairs(transactions)do if os.clock()-t.time>CONFIG.TRANSFORM_TIMEOUT then release(player,true)end end if timer>=0.12 then timer=0 if next(dirty)or next(removed)then revision=revision+1 local packet={kind="Delta",revision=revision,nodes={},removed={}}for id in pairs(dirty)do local o=objects[id];if inspectable(o)then packet.nodes[#packet.nodes+1]=record(o)end end for id in pairs(removed)do packet.removed[#packet.removed+1]=id end dirty={};removed={}for player in pairs(subscribed)do if authorized(player)then updates:FireClient(player,packet)end end end end if propertyTimer>=0.3 then propertyTimer=0 for player,o in pairs(selected)do if subscribed[player]and authorized(player)and not transactions[player]then if inspectable(o)then updates:FireClient(player,{kind="Properties",properties=properties(o)})else selected[player]=nil;updates:FireClient(player,{kind="SelectionRemoved"})end end end end end)print("ArkherEditorServer pronto. Edição restrita aos nomes principais em AUTHORIZED_USERNAMES; scripts novos ficam vazios e desativados.")

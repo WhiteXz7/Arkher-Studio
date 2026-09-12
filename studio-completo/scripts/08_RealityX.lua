@@ -3207,6 +3207,422 @@ end
 local wComando = mkWin("comando", "COMANDO X — barra funcional (spawn · set · cmd · math)", 660, 400, THEME_COMANDO)
 buildComando(wComando)
 
+
+-- =============================================================
+-- SCRIPTS X — editor de scripts POTENTE: abas, buscar/substituir,
+-- Source REAL via PropsAll/PropsSet (le e aplica de verdade)
+-- =============================================================
+local THEME_SCRIPTS = {
+	bg = Color3.fromRGB(13, 18, 26), bg2 = Color3.fromRGB(17, 23, 33), bg3 = Color3.fromRGB(22, 29, 42),
+	cap = Color3.fromRGB(10, 14, 20), edge = Color3.fromRGB(48, 84, 122),
+	text = Color3.fromRGB(228, 240, 252), muted = Color3.fromRGB(140, 164, 192),
+	acc = Color3.fromRGB(120, 210, 255), act = Color3.fromRGB(22, 54, 88),
+}
+
+local function buildScripts(win)
+	local th = THEME_SCRIPTS
+	local body = win.body
+	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
+	local tabs = {} -- {id, name, path, className, dirty}
+	local curTab = 1
+
+	-- COL ESQUERDA: lista de scripts do jogo
+	local lList = listCtl(body, UDim2.fromOffset(10, 30), UDim2.fromOffset(180, 1 - 60), th)
+	-- ajusta altura proporcional ao corpo
+	lList.Size = UDim2.new(0, 180, 1, -100)
+	local lHead = B("TextLabel", {
+		Size = UDim2.fromOffset(180, 20), Position = UDim2.fromOffset(10, 6),
+		BackgroundColor3 = th.cap, Text = "  SCRIPTS DO JOGO",
+		Font = Enum.Font.GothamBold, TextSize = 10, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(lHead, 5)
+	local reB = B("TextButton", {
+		Size = UDim2.fromOffset(180, 20), Position = UDim2.new(0, 10, 1, -96),
+		BackgroundColor3 = th.bg3, Text = "↻ recarregar lista",
+		Font = Enum.Font.GothamBold, TextSize = 10, TextColor3 = th.muted,
+		BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(reB, 5)
+
+	-- area editor: barra de abas + toolbar + editor
+	local ED_X = 196
+	local tabsBar = B("Frame", {
+		Size = UDim2.new(1, -(ED_X + 10), 0, 26), Position = UDim2.fromOffset(ED_X, 6),
+		BackgroundTransparency = 1, ZIndex = 43,
+	}, body)
+	local toolBar = B("Frame", {
+		Size = UDim2.new(1, -(ED_X + 10), 0, 30), Position = UDim2.fromOffset(ED_X, 36),
+		BackgroundColor3 = th.bg2, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(toolBar, 6)
+	-- find / replace
+	local findBox = B("TextBox", {
+		Size = UDim2.fromOffset(150, 22), Position = UDim2.fromOffset(6, 4),
+		BackgroundColor3 = th.bg3, Text = "", PlaceholderText = "buscar…",
+		Font = Enum.Font.Code, TextSize = 11, TextColor3 = th.text,
+		PlaceholderColor3 = th.muted, BorderSizePixel = 0,
+		TextXAlignment = Enum.TextXAlignment.Left, ClearTextOnFocus = false, ZIndex = 44,
+	}, toolBar)
+	H(findBox, 4)
+	local repBox = B("TextBox", {
+		Size = UDim2.fromOffset(150, 22), Position = UDim2.fromOffset(162, 4),
+		BackgroundColor3 = th.bg3, Text = "", PlaceholderText = "substituir por…",
+		Font = Enum.Font.Code, TextSize = 11, TextColor3 = th.text,
+		PlaceholderColor3 = th.muted, BorderSizePixel = 0,
+		TextXAlignment = Enum.TextXAlignment.Left, ClearTextOnFocus = false, ZIndex = 44,
+	}, toolBar)
+	H(repBox, 4)
+	local repBtn = B("TextButton", {
+		Size = UDim2.fromOffset(96, 22), Position = UDim2.fromOffset(318, 4),
+		BackgroundColor3 = th.act, Text = "SUBSTITUIR", Font = Enum.Font.GothamBold,
+		TextSize = 9, TextColor3 = th.text, BorderSizePixel = 0, ZIndex = 44,
+	}, toolBar)
+	H(repBtn, 4)
+	local countLbl = B("TextLabel", {
+		Size = UDim2.fromOffset(150, 22), Position = UDim2.fromOffset(422, 4),
+		BackgroundTransparency = 1, Text = "0 ocorrências",
+		Font = Enum.Font.Code, TextSize = 10, TextColor3 = th.muted,
+		TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+	}, toolBar)
+	local saveBtn = B("TextButton", {
+		Size = UDim2.fromOffset(130, 22), Position = UDim2.new(1, -136, 0, 4),
+		BackgroundColor3 = th.acc, Text = "APLICAR ✓ (Ctrl+S)",
+		Font = Enum.Font.GothamBold, TextSize = 10,
+		TextColor3 = Color3.fromRGB(8, 16, 30), BorderSizePixel = 0, ZIndex = 44,
+	}, toolBar)
+	H(saveBtn, 5)
+
+	local editor = B("TextBox", {
+		Size = UDim2.new(1, -(ED_X + 10), 1, -140), Position = UDim2.fromOffset(ED_X, 72),
+		BackgroundColor3 = Color3.fromRGB(9, 12, 18), Text = "-- Selecione um script na lista",
+		Font = Enum.Font.Code, TextSize = 13, TextColor3 = Color3.fromRGB(220, 236, 252),
+		TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+		TextWrapped = false, MultiLine = true, ClearTextOnFocus = false,
+		BorderSizePixel = 0, ZIndex = 43, RichText = false,
+	}, body)
+	H(editor, 6)
+	local padE = Instance.new("UIPadding") padE.PaddingLeft = UDim.new(0, 8) padE.PaddingTop = UDim.new(0, 6) padE.Parent = editor
+
+	local infoBar = B("TextLabel", {
+		Size = UDim2.new(1, -(ED_X + 10), 0, 18), Position = UDim2.new(0, ED_X, 1, -60),
+		BackgroundColor3 = th.cap, Text = "  linhas 0 · chars 0 · readonly? —",
+		Font = Enum.Font.Code, TextSize = 10, TextColor3 = th.muted,
+		TextXAlignment = Enum.TextXAlignment.Left, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(infoBar, 5)
+
+	local function updateInfo()
+		local t2 = tabs[curTab]
+		local txt = editor.Text
+		local nls = select(2, txt:gsub("\n", "\n")) + 1
+		infoBar.Text = ("  linhas %d · chars %d · %s"):format(nls, #txt, t2 and (t2.path or t2.name) or "(sem aba)")
+	end
+	editor:GetPropertyChangedSignal("Text"):Connect(function()
+		if tabs[curTab] then tabs[curTab].dirty = true end
+		updateInfo()
+	end)
+
+	local function repaintTabs()
+		for _, c0 in ipairs(tabsBar:GetChildren()) do if c0:IsA("GuiObject") then c0:Destroy() end end
+		local lay = Instance.new("UIListLayout") lay.FillDirection = Enum.FillDirection.Horizontal lay.Padding = UDim.new(0, 4) lay.Parent = tabsBar
+		for i, t2 in ipairs(tabs) do
+			local tb = B("TextButton", {
+				Size = UDim2.fromOffset(math.clamp(#t2.name * 8 + 52, 90, 190), 0, 26),
+				BackgroundColor3 = (i == curTab) and th.act or th.bg3,
+				Text = "  " .. t2.name .. (t2.dirty and " ●" or "") .. "  ×",
+				Font = Enum.Font.GothamBold, TextSize = 10,
+				TextColor3 = (i == curTab) and th.text or th.muted,
+				BorderSizePixel = 0, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+			}, tabsBar)
+			H(tb, 5)
+			tb.MouseButton1Click:Connect(function()
+				-- salva o texto atual na aba anterior
+				if tabs[curTab] and tabs[curTab].id then tabs[curTab].text = editor.Text end
+				curTab = i
+				editor.Text = t2.text or "-- (carregando)"
+				repaintTabs()
+				updateInfo()
+			end)
+			tb.MouseButton2Click:Connect(function()
+				table.remove(tabs, i)
+				if #tabs == 0 then curTab = 1 editor.Text = "-- nenhuma aba" else
+					curTab = math.max(1, math.min(curTab, #tabs))
+					editor.Text = tabs[curTab].text or ""
+				end
+				repaintTabs() updateInfo()
+			end)
+		end
+	end
+
+	local function openScript(id, name, path)
+		for i, t2 in ipairs(tabs) do
+			if t2.id == id then curTab = i editor.Text = t2.text repaintTabs() return end
+		end
+		tabs[#tabs + 1] = { id = id, name = name, path = path, text = "-- carregando Source…", dirty = false }
+		curTab = #tabs
+		repaintTabs()
+		editor.Text = "-- carregando Source…"
+		task.spawn(function()
+			local res = bridgeResult("PropsAll", { id = id })
+			local src = nil
+			if res then
+				for _, f in ipairs(res.fields or {}) do
+					if f.key == "Source" then src = f.v and f.v.s break end
+				end
+			end
+			local t2 = tabs[curTab]
+			if t2 and t2.id == id then
+				t2.text = src or "-- (sem permissao de leitura do Source)"
+				if #editor.Text < 60 or editor.Text:find("carregando") then editor.Text = t2.text end
+				log("✓ Source lido: " .. (t2.name) .. " (" .. #(src or "") .. " chars)")
+			end
+			updateInfo()
+		end)
+	end
+
+	local function applySource()
+		local t2 = tabs[curTab]
+		if not t2 or not t2.id then log("⚠ sem aba ativa") return end
+		t2.text = editor.Text
+		task.spawn(function()
+			local rr, err = bridgeResult("PropsSet", { id = t2.id, key = "Source", kind = "source", s = t2.text })
+			if not rr then log("⚠ aplicar: " .. tostring(err)) else
+				t2.dirty = false
+				repaintTabs()
+				log(("✓ Source APLICADO de verdade em '%s' (%d chars) — historico hSet gravou"):format(t2.name, #t2.text))
+			end
+		end)
+	end
+	saveBtn.MouseButton1Click:Connect(applySource)
+	UIS.InputBegan:Connect(function(inp, gp)
+		if gp then return end
+		if inp.KeyCode == Enum.KeyCode.S and UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
+			if win.root.Visible then applySource() end
+		end
+	end)
+
+	local function findCount(pat)
+		if pat == "" then return 0 end
+		local n = 0
+		local plain = true
+		local pos = 1
+		while true do
+			local a, b = (editor.Text):find(pat, pos, plain)
+			if not a then break end
+			n = n + 1
+			pos = b + 1
+			if n > 9999 then break end
+		end
+		return n
+	end
+	findBox:GetPropertyChangedSignal("Text"):Connect(function()
+		countLbl.Text = findCount(findBox.Text) .. " ocorrências"
+	end)
+	repBtn.MouseButton1Click:Connect(function()
+		if findBox.Text == "" then return end
+		local newTxt, n2 = (editor.Text):gsub(findBox.Text:gsub("(%W)", "%%%1"), repBox.Text)
+		editor.Text = newTxt
+		log(("✓ substituídos %d× '%s' → '%s' (entao APLICAR)"):format(n2, findBox.Text, repBox.Text))
+	end)
+
+	local function reloadList()
+		task.spawn(function()
+			local res, err = bridgeResult("ScriptList")
+			for _, ch in ipairs(lList:GetChildren()) do if ch:IsA("GuiObject") then ch:Destroy() end end
+			if not res then log("⚠ ScriptList: " .. tostring(err)) return end
+			lHead.Text = ("  %d SCRIPTS"):format(res.count or 0)
+			for _, sc2 in ipairs(res.scripts or {}) do
+				local row = B("TextButton", {
+					Size = UDim2.new(1, -8, 0, 30), BackgroundColor3 = th.bg2,
+					Text = "", BorderSizePixel = 0, ZIndex = 43,
+				}, lList)
+				H(row, 5)
+				B("TextLabel", {
+					Size = UDim2.new(1, -8, 0, 15), Position = UDim2.fromOffset(6, 1),
+					BackgroundTransparency = 1, Text = sc2.name,
+					Font = Enum.Font.GothamBold, TextSize = 10, TextColor3 = th.text,
+					TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+				}, row)
+				B("TextLabel", {
+					Size = UDim2.new(1, -8, 0, 12), Position = UDim2.fromOffset(6, 16),
+					BackgroundTransparency = 1,
+					Text = ("%s · %d ch"):format(sc2.className, sc2.len or 0),
+					Font = Enum.Font.Code, TextSize = 8, TextColor3 = th.muted,
+					TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+				}, row)
+				row.MouseButton1Click:Connect(function()
+					openScript(sc2.id, sc2.name, sc2.path)
+				end)
+			end
+		end)
+	end
+	reB.MouseButton1Click:Connect(reloadList)
+	task.delay(0.5, reloadList)
+	log("SCRIPTS X — abas + buscar/substituir + APLICAR de verdade (le/escreve Source via bridge)")
+	return win
+end
+
+local wScripts = mkWin("scripts", "SCRIPTS X — editor potente (abas · buscar · aplicar Source real)", 720, 430, THEME_SCRIPTS)
+buildScripts(wScripts)
+
+-- =============================================================
+-- PY X — ponte com PYTHON do PC (tests/build/audit reais via HTTP)
+-- =============================================================
+local THEME_PY = {
+	bg = Color3.fromRGB(12, 16, 24), bg2 = Color3.fromRGB(16, 21, 30), bg3 = Color3.fromRGB(21, 28, 38),
+	cap = Color3.fromRGB(9, 12, 18), edge = Color3.fromRGB(52, 78, 108),
+	text = Color3.fromRGB(230, 242, 254), muted = Color3.fromRGB(146, 168, 192),
+	acc = Color3.fromRGB(120, 255, 176), act = Color3.fromRGB(18, 60, 40),
+}
+
+local PY_ENDPOINT = "http://127.0.0.1:8773"
+
+local function buildPy(win)
+	local th = THEME_PY
+	local body = win.body
+	local HttpS = game:GetService("HttpService")
+	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
+	local statusBar = B("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 40), Position = UDim2.fromOffset(10, 6),
+		BackgroundColor3 = th.cap, Text = "  pybridge: verificando… (rode tools/pybridge.py no PC)",
+		Font = Enum.Font.Code, TextSize = 10, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(statusBar, 6)
+	statusBar.TextWrapped = true
+
+	local conn = { ok = false, info = "" }
+	local function httpGet(path2)
+		local ok2, res = pcall(function() return HttpS:GetAsync(PY_ENDPOINT .. path2, true) end)
+		if ok2 and res then return res end
+		return nil, tostring(res)
+	end
+	local function check()
+		task.spawn(function()
+			local res = httpGet("/status")
+			if res then
+				local ok2, data = pcall(function() return HttpS:JSONDecode(res) end)
+				if ok2 and data and data.ok then
+					conn.ok = true
+					conn.info = ("✓ python %s · %s"):format(tostring(data.py or "?"), tostring(data.cwd or ""))
+					statusBar.Text = "  " .. conn.info .. "  — bridge PYTHON ATIVA"
+					statusBar.TextColor3 = th.acc
+					return
+				end
+			end
+			conn.ok = false
+			statusBar.Text = ("  ✗ pybridge OFFLINE. Ligue com:\n  python tools/pybridge.py  (e deixe HttpEnabled on no Studio)")
+			statusBar.TextColor3 = Color3.fromRGB(255, 170, 120)
+		end)
+	end
+	check()
+	local reB = B("TextButton", {
+		Size = UDim2.fromOffset(100, 18), Position = UDim2.new(1, -110, 0, 8),
+		BackgroundColor3 = th.bg3, Text = "↻ re-checar", Font = Enum.Font.GothamBold,
+		TextSize = 9, TextColor3 = th.muted, BorderSizePixel = 0, ZIndex = 44,
+	}, body)
+	H(reB, 4)
+	reB.MouseButton1Click:Connect(check)
+
+	-- log de saida
+	local outScr = B("ScrollingFrame", {
+		Size = UDim2.new(1, -20, 1, -170), Position = UDim2.fromOffset(10, 132),
+		BackgroundColor3 = th.bg3, BorderSizePixel = 0,
+		CanvasSize = UDim2.new(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarThickness = 6, ScrollBarImageColor3 = th.acc, ZIndex = 43,
+	}, body)
+	H(outScr, 6)
+	local layO = Instance.new("UIListLayout") layO.Padding = UDim.new(0, 2) layO.Parent = outScr
+	local padO = Instance.new("UIPadding") padO.PaddingLeft = UDim.new(0, 6) padO.PaddingTop = UDim.new(0, 4) padO.Parent = outScr
+	local function sayOut(t2, col)
+		B("TextLabel", {
+			Size = UDim2.new(1, -12, 0, 15), BackgroundTransparency = 1,
+			Text = tostring(t2), Font = Enum.Font.Code, TextSize = 10,
+			TextColor3 = col or th.text, TextXAlignment = Enum.TextXAlignment.Left,
+			TextWrapped = false, ZIndex = 44,
+		}, outScr)
+		task.defer(function() outScr.CanvasPosition = Vector2.new(0, outScr.AbsoluteCanvasSize.Y + 40) end)
+	end
+
+	local function runTask(taskName, labelDesc)
+		if not conn.ok then log("⚠ pybridge offline — recheque o status em cima") return end
+		sayOut("→ " .. labelDesc .. " …", th.muted)
+		task.spawn(function()
+			local res = httpGet("/run?task=" .. tostring(taskName))
+			if not res then sayOut("⚠ falha HTTP (servidor desligou?)", Color3.fromRGB(255, 150, 120)) return end
+			local ok2, data = pcall(function() return HttpS:JSONDecode(res) end)
+			if not ok2 or not data then sayOut("⚠ resposta invalida do bridge", Color3.fromRGB(255, 150, 120)) return end
+			if data.ok then
+				sayOut("✓ " .. tostring(data.summary or "ok"), th.acc)
+				for _, ln in ipairs(data.out or {}) do sayOut("   " .. tostring(ln), th.text) end
+			else
+				sayOut("✗ FALHOU: " .. tostring(data.error or "?"), Color3.fromRGB(255, 150, 120))
+				for _, ln in ipairs(data.out or {}) do sayOut("   " .. tostring(ln), Color3.fromRGB(255, 200, 170)) end
+			end
+			log((data.ok and "✓ " or "✗ ") .. labelDesc)
+		end)
+	end
+
+	-- botoes de tarefas reais do pipeline
+	local tasks = {
+		{ "tests", "Rodar SUITE DE TESTES (run_tests.py)", 10, 62 },
+		{ "build", "Rebuild server.lua (build_server.py)", 10, 96 },
+		{ "audit", "Audit especificacoes (auditoria.py)", 10 + 0, 130 },
+		{ "shell", "Executar comando shell (cmd arg)", 228, 62 },
+	}
+	for _, t2 in ipairs(tasks) do
+		local btn = B("TextButton", {
+			Size = UDim2.fromOffset(214, 26), Position = UDim2.fromOffset(t2[3], t2[4]),
+			BackgroundColor3 = th.act, Text = "▶ " .. t2[2],
+			Font = Enum.Font.GothamBold, TextSize = 10, TextColor3 = th.text,
+			BorderSizePixel = 0, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 43,
+		}, body)
+		H(btn, 6)
+		local padB = Instance.new("UIPadding") padB.PaddingLeft = UDim.new(0, 8) padB.Parent = btn
+		btn.MouseButton1Click:Connect(function()
+			runTask(t2[1], t2[2])
+		end)
+	end
+	local cmdBox = B("TextBox", {
+		Size = UDim2.fromOffset(214, 26), Position = UDim2.fromOffset(228, 96),
+		BackgroundColor3 = th.bg2, Text = "", PlaceholderText = "ls -la / python …",
+		Font = Enum.Font.Code, TextSize = 10, TextColor3 = th.text,
+		PlaceholderColor3 = th.muted, BorderSizePixel = 0,
+		TextXAlignment = Enum.TextXAlignment.Left, ClearTextOnFocus = false, ZIndex = 43,
+	}, body)
+	H(cmdBox, 6)
+	local padC = Instance.new("UIPadding") padC.PaddingLeft = UDim.new(0, 8) padC.Parent = cmdBox
+	cmdBox.FocusLost:Connect(function(enter)
+		if not enter or cmdBox.Text == "" then return end
+		if not conn.ok then log("⚠ pybridge offline") return end
+		local cmdText = cmdBox.Text
+		task.spawn(function()
+			local res = httpGet("/run?task=shell&arg=" .. HttpS:UrlEncode(cmdText))
+			if not res then sayOut("⚠ falha HTTP", Color3.fromRGB(255, 150, 120)) return end
+			local ok2, data = pcall(function() return HttpS:JSONDecode(res) end)
+			if ok2 and data then
+				sayOut("$ " .. cmdText, th.acc)
+				for _, ln in ipairs(data.out or {}) do sayOut("   " .. tostring(ln), th.text) end
+				if data.error then sayOut("✗ " .. tostring(data.error), Color3.fromRGB(255, 150, 120)) end
+			end
+		end)
+		cmdBox.Text = ""
+	end)
+	B("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 26), Position = UDim2.fromOffset(10, 160 - 40),
+		BackgroundTransparency = 1,
+		Text = "O PYTHON RODA NO SEU PC (tools/pybridge.py); estes botoes SAO reais: disparam os scripts de verdade e mostram a SAIDA aqui.",
+		Font = Enum.Font.Gotham, TextSize = 9, TextColor3 = th.muted,
+		TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, ZIndex = 43,
+	}, body)
+	log("PY X — ponte python REAL via HTTP local (subprocess de verdade, nao simulado)")
+	return win
+end
+
+local wPy = mkWin("py", "PY X — ponte com o python do PC (tests/build/shell reais)", 660, 400, THEME_PY)
+buildPy(wPy)
+
 -- =============================================================
 -- registro DECK (cada menu da topbar abre SUA janela única)
 -- =============================================================
@@ -3216,7 +3632,7 @@ local windows = {
 	atmos = wAtmos, clima = wClima, vida = wVida, cidade = wCidade,
 	audio = wAudio, fx = wFx, cordas = wCordas,
 	toolbox = wToolbox, props = wProps, cores = wCores, output = wOutput,
-	comando = wComando,
+	comando = wComando, scripts = wScripts, py = wPy,
 }
 _G.ArkherDeck = {
 	open = function(id, view)
@@ -3229,4 +3645,4 @@ _G.ArkherDeck = {
 	end,
 	cmd = cmd,
 }
-print("[ArkherX] 08_Deck: 18 painéis únicos prontos (13 editores + TOOLBOX/PROPS/CORES/OUTPUT/COMANDO) — X-TIER ativador na topbar original, escala adaptativa p/ mobile")
+print("[ArkherX] 08_Deck: 20 painéis únicos prontos (13 editores + TOOLBOX/PROPS/CORES/OUTPUT/COMANDO/SCRIPTS/PY) — X-TIER ativador na topbar original, escala adaptativa p/ mobile")

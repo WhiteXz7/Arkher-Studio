@@ -878,10 +878,46 @@ end
 
 # ================= aplicar =================
 src = ORIG
+BLOCK_X8 = r'''
+-- ============ BLOCK_X8: SCRIPTS (listar p/ o SCRIPT EDITOR X) ============
+function handlers.ScriptList(player, payload)
+	local out = {}
+	local roots = {
+		workspace,
+		game:GetService("ServerScriptService"),
+		game:GetService("ServerStorage"),
+		game:GetService("ReplicatedStorage"),
+		game:GetService("ReplicatedFirst"),
+		game:GetService("StarterPlayer"),
+		game:GetService("StarterPack"),
+		game:GetService("StarterGui"),
+	}
+	local seen = {}
+	local function walk(o, depth)
+		if depth > 30 or hidden(o) then return end
+		if o:IsA("LuaSourceContainer") and not seen[o] then
+			seen[o] = true
+			local len2 = 0
+			pcall(function() len2 = #o.Source end)
+			out[#out + 1] = {
+				id = idOf[o] or 0, className = o.ClassName, name = o.Name,
+				path = o:GetFullName(), len = len2,
+			}
+		end
+		for _, c in ipairs(o:GetChildren()) do
+			if not hidden(c) then walk(c, depth + 1) end
+		end
+	end
+	for _, r in ipairs(roots) do walk(r, 0) end
+	table.sort(out, function(a, b) return a.path < b.path end)
+	return { scripts = out, count = #out }
+end
+'''
+
 src = replace_once(src, MARK_A, MARK_A + BLOCK_A, "A")
 src = replace_once(src, "local function getObject(id)", SER_DESER + "local function getObject(id)", "B")
 src = replace_once(src, "local handlers={}", HIST_OPS + "local handlers={}", "C")
-src = replace_once(src, "request.OnServerInvoke=function(player,action,payload)", NEW_HANDLERS + BLOCK_S + BLOCK_X7 + "request.OnServerInvoke=function(player,action,payload)", "D")
+src = replace_once(src, "request.OnServerInvoke=function(player,action,payload)", NEW_HANDLERS + BLOCK_S + BLOCK_X7 + BLOCK_X8 + "request.OnServerInvoke=function(player,action,payload)", "D")
 # Delete original -> delega para Delete_ (reusa hDelete)
 src = replace_once(
     src,

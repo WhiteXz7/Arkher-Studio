@@ -139,6 +139,28 @@ em cada um dos 121 chunks PROP (#StudioSafe). Baixe novamente a placa atual.
 - **RIG X + MESH X no DECK** (os docks 05/06/07 foram removidos: eram
   "enfeite" de retângulos e a diretriz é ZERO painel sem efeito real).
 
+**ROUND 8 (2026-09-11) — os 3 itens finais + AUDITORIA:**
+
+1. **PLACES do perfil**: painel "Game ▸ Places do meu perfil…" — lista jogos
+   publicados (url/versão/visitas/visibilidade + excluir) e **cria places novas
+   de verdade** (`AssetService:CreatePlaceAsync`, com resposta honesta das
+   pré-condições: online + permissão).
+2. **COLLABORATE redesenhado**: 3 colunas limpas (EQUIPE | CONVITES | ações),
+   sem sobreposição; adicionar membro e gerar convite agora em colunas separadas
+   com papel próprio.
+3. **SCRIPTS X — editor potente**: abas por script, buscar com contador,
+   substituir (count real), Ctrl+S/APLICAR escreve o **Source de verdade** via
+   `handlers.ScriptList` + PropsAll/PropsSet, histórico hSet nativo. 20 painéis no deck.
+4. **PYTHON NO PROJETO — de verdade**: `tools/pybridge.py` (servidor local
+   HTTP, stdlib pura) executa os scripts do pipeline via **subprocess real**;
+   painel **PY X** no deck bate em `/status` e `/run?task=tests|build|audit` e
+   mostra a SAÍDA (mais shell com `/run?task=shell&arg=`). Se o bridge estiver off,
+   o painel diz exatamente como ligá-lo.
+5. **AUDITORIA automatizada**: `tools/auditoria.py` cruza os TXT da raiz
+   (Tese dos D, UTS, UES/RRW, ARKHER STUDIOS, Design System) com o código
+   real + placa descomprimida → `studio-completo/AUDITORIA.md`:
+   **51 exigências ✅, 0 ⚠, 0 ❌**, `Position = nil` na placa = **0**.
+
 **ROUND 7 (2026-09-11) — o pedido COMPLETO da pesquisa UI:** pesquisa feita
 (Roblox Studio toolbar/menus, InsertService Creator Store, LogService, AssetService).
 Entrega neste round:
