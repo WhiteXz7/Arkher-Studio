@@ -182,6 +182,7 @@ def build_prop_values(cls, nodes):
             "Selectable": (0x2, col("Selectable", bool, True)),
             "TextTruncate": (0x12, col("TextTruncate", lambda v: as_enum(v["en"]), 0)),
             "ClipsDescendants": (0x2, col("ClipsDescendants", bool, False)),
+            "Visible": (0x2, col("Visible", bool, True)),
         }
     elif cls == "TextBox":
         P = {
@@ -258,6 +259,18 @@ def build_prop_values(cls, nodes):
             "Name": (0x1, [n["name"] for n in nodes]),
             "Padding": (0x6, [as_u1(n["props"]["Padding"]["u1"]) for n in nodes]),
         }
+    elif cls == "ImageLabel":
+        P = {
+            "Name": (0x1, [n["name"] for n in nodes]),
+            "Position": (0x7, col("Position", lambda v: as_u2(v["u2"]), U2ZERO)),
+            "Size": (0x7, [as_u2(n["props"]["Size"]["u2"]) for n in nodes]),
+            "BackgroundColor3": (0xC, col("BackgroundColor3", lambda v: as_c3(v["c3"]), BLACK)),
+            "BackgroundTransparency": (0x4, col("BackgroundTransparency", float, 0.0)),
+            "BorderSizePixel": (0x3, col("BorderSizePixel", int, 1)),
+            "ZIndex": (0x3, col("ZIndex", int, 1)),
+            "Visible": (0x2, col("Visible", bool, True)),
+            "Image": (0x1, col("Image", str, "")),
+        }
     else:
         sys.exit(f"classe nao planejada: {cls}")
     return P
@@ -268,7 +281,7 @@ OLDFILL = {
     "Frame": {"Visible": True, "ClipsDescendants": False},
     "TextButton": {"FontFace": (FAM_SSP, 400, b"\x00" * 5), "TextSize": 14.0,
                    "TextColor3": BLACK, "TextXAlignment": 2},
-    "TextLabel": {"TextTruncate": 0, "ClipsDescendants": False},
+    "TextLabel": {"TextTruncate": 0, "ClipsDescendants": False, "Visible": True},
     "TextBox": {"MultiLine": False, "TextYAlignment": 1},
     "ScrollingFrame": {"AutomaticCanvasSize": 0, "Visible": True},
 }
@@ -346,6 +359,7 @@ def main():
 
     new_chunks = []
     updated_chunks = {}
+    added_types = []
 
     def inst_payload(tid, cls, is_s, refs):
         return struct.pack("<I", tid) + s(cls) + struct.pack("<B", is_s) + struct.pack("<I", len(refs)) + referent_array_enc(refs)
@@ -376,6 +390,7 @@ def main():
             max_tid += 1
             tid = max_tid
             type_ids[cls] = tid
+            added_types.append(cls)
             new_chunks.append((b"INST", inst_payload(tid, cls, 0, refs)))
 
     # ---------- PROP (decode velho + append tipado) ----------
@@ -531,7 +546,7 @@ def main():
     # ---------- re-emite ----------
     out = bytearray(MAGIC)
     out += struct.pack("<H", version)
-    n_new_types = sum(1 for c in new_by_class if c in ("UIPadding", "UIListLayout"))
+    n_new_types = len(added_types)
     out += struct.pack("<I", num_types + n_new_types)
     total_new = len(ordered) + len(missing)
     out += struct.pack("<I", num_instances + total_new)

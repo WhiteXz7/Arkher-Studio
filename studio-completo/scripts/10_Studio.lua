@@ -44,6 +44,7 @@ local popups = canvas and canvas:FindFirstChild("ServerEditorPopups")
 local uiscale = canvas and canvas:FindFirstChild("ResponsiveScale")
 local dockP = canvas and canvas:FindFirstChild("PropertiesDock")
 local dockH = canvas and canvas:FindFirstChild("HierarchyDock")
+local host = canvas and canvas:FindFirstChild("ArkherXDeck")
 
 local function W(action, payload)
 	local ok, r = pcall(function() return j:Invoke(action, payload or {}) end)
@@ -980,4 +981,191 @@ rawset(_G, "ArkherStudioDock", {
 -- ---------- boot ----------
 takeOverPropertiesDock()
 wireHierarchyPlus()
+
+-- PARTE 4 — V2_ArkherToolbox (janela ASSADA): busca REAL + insert REAL
+do
+	local tbW = host and host:FindFirstChild("V2_ArkherToolbox")
+	if tbW then
+		local searchFrame = tbW:FindFirstChild("Search")
+		local searchBox = searchFrame and searchFrame:FindFirstChild("SearchBox")
+		local rows = {}
+		for _, ch in ipairs(tbW:GetChildren()) do
+			if ch:IsA("Frame") and ch.Name == "AS" then rows[#rows + 1] = ch end
+		end
+		local tb = { kind = "models", items = {}, note = false }
+		local function rowParts(row)
+			local lbl, ins, pv, thumb, ikon
+			for _, ch in ipairs(row:GetChildren()) do
+				if ch:IsA("TextLabel") then lbl = ch
+				elseif ch:IsA("TextButton") and ch.Name == "INS" then ins = ch
+				elseif ch:IsA("Frame") and ch.Name == "PV" then pv = ch end
+			end
+			if pv then
+				thumb = pv:FindFirstChild("Thumb")
+				ikon = pv:FindFirstChild("I")
+			end
+			return lbl, ins, thumb, ikon
+		end
+		local function paint()
+			for i, row in ipairs(rows) do
+				local lbl, _, thumb, ikon = rowParts(row)
+				local it = tb.items[i]
+				pcall(function()
+					if lbl then lbl.Text = it and tostring(it.name):sub(1, 26) or "--" end
+					if thumb then thumb.Image = it and ("rbxthumb://type=Asset&id=" .. tostring(it.id) .. "&w=150&h=150") or "" end
+					if ikon then ikon.Visible = (it == nil) end
+				end)
+			end
+		end
+		local function insertAt(i)
+			local it = tb.items[i]
+			if not it then say("Busque algo primeiro (ENTER na busca).", true) return end
+			local cf = nil
+			pcall(function() cf = workspace.CurrentCamera and workspace.CurrentCamera.CFrame end)
+			local px, py, pz = 0, 4, -14
+			if cf then
+				local pp = cf.Position + cf.LookVector * 14
+				px, py, pz = pp.X, pp.Y, pp.Z
+			end
+			local _, err = apiResult("ToolboxAssetInsert", { assetId = it.id, x = px, y = py, z = pz })
+			if err then say("Inserir: " .. tostring(err), true)
+			else say("BAG " .. tostring(it.name):sub(1, 30) .. " (de " .. tostring(it.creator or "?"):sub(1, 20) .. ") inserido.") end
+		end
+		for i, row in ipairs(rows) do
+			local _, ins = rowParts(row)
+			if ins then onTap(ins, function() insertAt(i) end) end
+		end
+		local catKind = { TC_3D = "models", TC_Images = "decals", TC_Textures = "decals" }
+		local function doSearch()
+			local q = searchBox and searchBox.Text or ""
+			if #q < 2 then say("Digite 2+ letras e ENTER.", true) return end
+			local res, err = apiResult("ToolboxSearch", { query = q, kind = tb.kind, page = 0 })
+			if err then say("Toolbox: " .. tostring(err), true) return end
+			tb.items = (res and res.items) or {}
+			paint()
+			say("BAG " .. #tb.items .. ' resultados reais para "' .. q:sub(1, 24) .. '".')
+		end
+		if searchBox then
+			pcall(function()
+				searchBox.FocusLost:Connect(function(enter)
+					if enter then doSearch() end
+				end)
+			end)
+		end
+		for _, ch in ipairs(tbW:GetChildren()) do
+			if ch:IsA("TextButton") and ch.Name:sub(1, 3) == "TC_" then
+				onTap(ch, function()
+					tb.kind = catKind[ch.Name] or "models"
+					if not catKind[ch.Name] and not tb.note then
+						tb.note = true
+						say("Categoria " .. ch.Name:sub(4) .. ": busca nativa cobre Modelos/Decals -- mostrando Modelos.")
+					end
+					if searchBox and #searchBox.Text >= 2 then doSearch()
+					else say("Categoria: " .. tb.kind .. ". Digite a busca + ENTER.") end
+				end)
+			end
+		end
+	end
+end
+
+
+-- PARTE 5 — V2_ArkherScriptEditor (janela ASSADA): abas + Run REAL (command-bar local)
+do
+	local seW = host and host:FindFirstChild("V2_ArkherScriptEditor")
+	if seW then
+		local codeBox = seW:FindFirstChild("Code")
+		local gutF = seW:FindFirstChild("Gut")
+		local gutLbl = gutF and gutF:FindFirstChildOfClass("TextLabel")
+		local termF = seW:FindFirstChild("Term")
+		local termLbl = termF and termF:FindFirstChildOfClass("TextLabel")
+		local runB = seW:FindFirstChild("Run")
+		local tabs = {}
+		for _, ch in ipairs(seW:GetChildren()) do
+			if ch:IsA("TextButton") and ch.Name:match("^T[123]$") then tabs[ch.Name] = ch end
+		end
+		local order = { "T1", "T2", "T3" }
+		local buffers = {
+			{ name = "ServerMain.lua", code = (codeBox and codeBox.Text) or "-- novo script" },
+			{ name = "ArkherCore.lua", code = "-- ArkherCore.lua\nprint(\"ArkherCore ok\")\n" },
+			{ name = "D_O15.lua", code = "-- D_O15.lua\nprint(\"D-O15 ok\")\n" },
+		}
+		local cur = 1
+		local SEL_BG = Color3.fromRGB(26, 42, 74)
+		local UNS_BG = Color3.fromRGB(7, 13, 25)
+		local function paintGut()
+			if not gutLbl or not codeBox then return end
+			local n = 1
+			for _ in codeBox.Text:gmatch("\n") do n = n + 1 end
+			n = math.min(n, 200)
+			local lines = {}
+			for i = 1, n do lines[i] = tostring(i) end
+			pcall(function() gutLbl.Text = table.concat(lines, "\n") end)
+		end
+		local function paintTabs()
+			for idx, tn in ipairs(order) do
+				local bb = tabs[tn]
+				if bb then pcall(function()
+					bb.BackgroundColor3 = (idx == cur) and SEL_BG or UNS_BG
+					bb.BackgroundTransparency = (idx == cur) and 0 or 1
+				end) end
+			end
+		end
+		local function term(msg, isErr)
+			if termLbl then pcall(function()
+				termLbl.Text = "arkher:~ " .. tostring(msg):sub(1, 220)
+				termLbl.TextColor3 = isErr and Color3.fromRGB(255, 150, 140) or Color3.fromRGB(120, 220, 150)
+			end) end
+		end
+		local function selectTab(idx)
+			if codeBox then buffers[cur].code = codeBox.Text end
+			cur = idx
+			if codeBox then codeBox.Text = buffers[cur].code end
+			paintGut()
+			paintTabs()
+		end
+		for idx, tn in ipairs(order) do
+			local bb = tabs[tn]
+			if bb then
+				onTap(bb, function() selectTab(idx) end)
+				local x = bb:FindFirstChild("x")
+				if x and x:IsA("TextButton") then
+					onTap(x, function()
+						buffers[idx].code = ""
+						if idx == cur and codeBox then codeBox.Text = "" end
+						paintGut()
+						say(buffers[idx].name .. " limpo.")
+					end)
+				end
+			end
+		end
+		if codeBox then
+			pcall(function()
+				codeBox:GetPropertyChangedSignal("Text"):Connect(paintGut)
+			end)
+		end
+		if runB then
+			onTap(runB, function()
+				if not codeBox then return end
+				buffers[cur].code = codeBox.Text
+				local fn, lerr = loadstring(codeBox.Text, "=" .. buffers[cur].name)
+				if not fn then term("ERRO sintaxe: " .. tostring(lerr), true) return end
+				local out = {}
+				local oldPrint = print
+				print = function(...)
+					local parts = {}
+					for i = 1, select("#", ...) do parts[i] = tostring(select(i, ...)) end
+					out[#out + 1] = table.concat(parts, "  ")
+				end
+				local ok, rerr = pcall(fn)
+				print = oldPrint
+				if not ok then term("ERRO: " .. tostring(rerr), true)
+				elseif #out > 0 then term(table.concat(out, " | "))
+				else term("OK (sem saida) -- " .. buffers[cur].name) end
+			end)
+		end
+		paintGut()
+		paintTabs()
+	end
+end
+
 print("[ArkherX] 10_Studio: Properties NA DOCK ORIGINAL (todas as props + color picker) · INSERIR OBJETO (+ da Hierarchy) · TOOLBOX estilo Studio com thumbs reais")

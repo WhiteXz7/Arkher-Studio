@@ -153,8 +153,8 @@ if ribbon12 then for _, pg in ipairs(ribbon12:GetChildren()) do
     end
   end
 end end
-check(nTabs12 == 11 and nPages12 == 11 and nBtns12 == 84,
-  "11 abas + 11 paginas + 84 botoes (" .. nTabs12 .. "/" .. nPages12 .. "/" .. nBtns12 .. ")")
+check(nTabs12 == 11 and nPages12 == 11 and nBtns12 == 89,
+  "11 abas + 11 paginas + 89 botoes (" .. nTabs12 .. "/" .. nPages12 .. "/" .. nBtns12 .. ")")
 local tabB = strip12 and strip12:FindFirstChild("Tab_BUILD")
 if tabB then
   tabB.Activated:Fire()

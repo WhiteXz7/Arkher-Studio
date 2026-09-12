@@ -324,18 +324,23 @@ end
 -- ---- RUN ----
 local running = false
 actions.Play = function()
+  local r, err = api("RunPlay", {})
+  if err then say("Play: " .. tostring(err), true) return end
   running = true
   i:SetAttribute("ArkherRunning", true)
-  say("▶ Simulação iniciada — o projeto está em execução. Stop (F5) para encerrar.")
-  W("Info", { title = "Em execução", text = "O projeto está em modo de execução.\nEdições do editor ficam bloqueadas enquanto em execução.\nClique em Stop (Run > Stop) para voltar ao modo de edição." })
+  say(r.result and r.result.msg or "▶ Executando de verdade.")
 end
 actions.Stop = function()
+  local r, err = api("RunStop", {})
+  if err then say("Stop: " .. tostring(err), true) return end
   running = false
   i:SetAttribute("ArkherRunning", false)
-  say("■ Simulação encerrada. Voltando ao modo de edição.")
+  say(r.result and r.result.msg or "■ Stop: modo de edição.")
 end
 actions.Pause = function()
-  say(running and "Simulação pausada (continua em segundo plano)." or "Nenhuma simulação em andamento.")
+  local r, err = api("RunPause", {})
+  if err then say("Pause: " .. tostring(err), true) return end
+  say(r.result and r.result.msg or "⏸ Pausado.")
 end
 
 -- ---- GAME ----
@@ -1327,6 +1332,9 @@ bj.OnInvoke = function(action, payload)
     return true
   elseif action == "RunPause" then
     actions.Pause()
+    return true
+  elseif action == "RunStop" then
+    actions.Stop()
     return true
   elseif action == "OpenData" then
     openDataPanel()

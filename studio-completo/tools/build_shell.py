@@ -23,6 +23,7 @@ TABS = [
     ("HOME", [
         ("Play", "Play", "play", ("menus", "RunToggle")),
         ("Pause", "Pause", "pause", ("menus", "RunPause")),
+        ("Stop", "Stop", "square", ("menus", "RunStop")),
         ("Plugins", "Plugins", "plugin", ("open", "V2_ArkherPluginManager")),
         ("Save", "Save", "save", ("menus", "Save")),
         ("Open", "Open", "open", ("menus", "File")),
@@ -39,6 +40,10 @@ TABS = [
         ("History", "Undo\nHistory", "square", ("open", "V2_ArkherUndoRedo")),
     ]),
     ("BUILD", [
+        ("Select", "Select", "select", ("core", "Select")),
+        ("Move", "Move", "move", ("core", "Move")),
+        ("Rotate", "Rotate", "rotate", ("core", "Rotate")),
+        ("Scale", "Scale", "scaleI", ("core", "Scale")),
         ("Part", "Part", "cubeW", ("popup", "ArkherShapesPopup")),
         ("Model", "Model", "model", ("bus", "CreateAny", {"class": "Model"})),
         ("Folder", "Folder", "folder", ("bus", "CreateAny", {"class": "Folder"})),

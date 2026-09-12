@@ -1,7 +1,7 @@
 -- =============================================================
 -- Arkher_05_StudioX — CONTROLADOR DA SHELL (TabStrip + Ribbon).
 -- A shell é REAL (Canvas/ArkherXDeck/ArkherTop no .rbxl: 11 abas,
--- 11 páginas, 84 botões com ícones em Frames). Aqui mora SÓ o sistema:
+-- 11 páginas, 89 botões com ícones em Frames). Aqui mora SÓ o sistema:
 --   aba ▸ troca de página; botão ▸ abre janela / popup / ação server.
 -- ZERO criação de GUI (nenhum Instance.new de GuiObject).
 -- Espelha a tabela TABS de tools/build_shell.py (fonte única).
@@ -144,6 +144,7 @@ end
 local ACTIONS = {
 	HOME_Play = { "menus", "RunToggle" },
 	HOME_Pause = { "menus", "RunPause" },
+	HOME_Stop = { "menus", "RunStop" },
 	HOME_Plugins = { "open", "V2_ArkherPluginManager" },
 	HOME_Save = { "menus", "Save" },
 	HOME_Open = { "menus", "File" },
@@ -158,6 +159,10 @@ local ACTIONS = {
 	HOME_Account = { "open", "V2_ArkherLogin" },
 	HOME_Places = { "open", "V2_ArkherSaveOpen" },
 	HOME_History = { "open", "V2_ArkherUndoRedo" },
+	BUILD_Select = { "core", "Select" },
+	BUILD_Move = { "core", "Move" },
+	BUILD_Rotate = { "core", "Rotate" },
+	BUILD_Scale = { "core", "Scale" },
 	BUILD_Part = { "popup", "ArkherShapesPopup" },
 	BUILD_Model = { "bus", "CreateAny", { class = "Model" } },
 	BUILD_Folder = { "bus", "CreateAny", { class = "Folder" } },
@@ -252,6 +257,10 @@ local function runAction(key)
 		else
 			say(a[2] .. " ok")
 		end
+	elseif a[1] == "core" then
+		if not clientBus then say("sem ClientBus") return end
+		local ok, r = pcall(function() return clientBus:Invoke(a[2], a[3] or {}) end)
+		if not ok then say(tostring(r)) end
 	end
 end
 
@@ -310,6 +319,9 @@ if strip and ribbon then
 		end
 	end
 	_G.ArkherShell = { select = selectTab, run = runAction, say = say }
+	-- auto-cura de boot: garante topbar visivel e UMA pagina (HOME)
+	pcall(function() top.Visible = true end)
+	selectTab("HOME")
 	print("[ArkherX] 05_Shell: abas + ribbon ligados.")
 else
 	warn("[ArkherX] 05: TabStrip/Ribbon ausentes.")
