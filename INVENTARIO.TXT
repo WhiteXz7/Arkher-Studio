@@ -15,7 +15,7 @@ PyBridge externo: pybridge.py + rbxlx.py + test_rbxlx.py + README.
 
 2) RIBBON (abertura automática por aba; 11 abas, 11 páginas, 88 botões)
 ------------------------------------------------------------
-HOME: Play Pause Stop | Plugins Save Open Cloud(acao direta) | Undo Redo Palette
+HOME: Play Pause Stop | Plugins Save Open | Undo Redo Palette (Cloud -> aba DATA)
   Search Toolbox Settings | Status Places History
 BUILD: Select Move Rotate Scale | Part Model Folder Script | Material
   Mesh Modeler Fabricar | Insert Base Union Negate
@@ -81,7 +81,7 @@ Privacidade: nunca recebe player/dev; key Open Cloud só no host.
 
 7) FLUXOS PRONTOS DE PONTA A PONTA
 ------------------------------------------------------------
-- Publicar fácil: botao CLOUD = 1 clique (snapshot + SavePlace + cria place
+- Publicar fácil: botao CLOUD (aba DATA) = 1 clique (snapshot + SavePlace + cria place
   nova na conta, com anti-spam 5s). PUBLISH na Places = 1-CLIQUE idem.
 - Place nova REAL: NEW PLACE (cria na conta) > ABRIR (teleporta) >
   constrói > SAVE ACCOUNT (persiste; places criadas já vêm c/ API on).

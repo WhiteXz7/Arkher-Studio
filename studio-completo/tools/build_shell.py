@@ -27,7 +27,6 @@ TABS = [
         ("Plugins", "Plugins", "plugin", ("open", "V2_ArkherPluginManager")),
         ("Save", "Save", "save", ("menus", "Save")),
         ("Open", "Open", "open", ("menus", "File")),
-        ("Cloud", "Cloud", "cloud", ("menus", "OpenCloud")),
         ("Undo", "Undo", "rotate", ("bus", "Undo", {})),
         ("Redo", "Redo", "chevR", ("bus", "Redo", {})),
         ("Palette", "Command\nPalette", "chevD", ("open", "V2_ArkherPalette")),
@@ -106,6 +105,7 @@ TABS = [
         ("Versions", "Versions", "chevD", ("open", "V2_ArkherVersionControl")),
         ("Props", "Props", "check", ("open", "Deck_props")),
         ("Colors", "Colors", "gem", ("open", "Deck_cores")),
+        ("Cloud", "Cloud", "cloud", ("bus", "CloudQuick", {})),
     ]),
     ("AI", [
         ("Singularity", "Singularity", "emblem", ("open", "V2_ArkherAIEditor")),
