@@ -21,7 +21,9 @@ local playerGui = client:WaitForChild("PlayerGui")
 -- espera o núcleo da UI (mesmo contrato do 03)
 local uiRoot = script:FindFirstAncestorOfClass("ScreenGui")
 if not uiRoot then warn("[ArkherX] 09_Topbar precisa estar dentro de ArkherStudioUI") return end
-local i = uiRoot
+-- o núcleo mora dentro de ArkherServerClientRuntime (mesmo contrato do 03/02/04)
+local i = uiRoot:WaitForChild("ArkherServerClientRuntime", 20)
+if not i then warn("[ArkherX] 09: núcleo (01_Nucleo) não achado.") return end
 local j = i:WaitForChild("ClientBus", 20)
 local k = i:WaitForChild("CoreReady", 20)
 if not j or not k then warn("[ArkherX] 09: núcleo incompleto.") return end
@@ -235,6 +237,29 @@ local function drawIcon(kind, parent, size)
 		line(9, 6, 20, 6, m.blue, 3) line(20, 6, 20, 14, m.blue, 3) line(20, 14, 12, 14, m.blue, 3)
 		line(12, 14, 12, 22, P.gold, 3) line(12, 22, 23, 22, P.gold, 3) line(23, 22, 23, 30, P.gold, 3)
 		circ(11.5, 8.5, 1.3, P.text) circ(20.5, 24.5, 1.3, P.text)
+	elseif kind == "SCULPT" then
+		line(3, 26, 11, 14, Color3.fromRGB(240, 170, 80), 3)
+		line(11, 14, 16, 21, Color3.fromRGB(240, 170, 80), 3)
+		line(16, 21, 22, 15, Color3.fromRGB(240, 170, 80), 3)
+		line(22, 15, 29, 26, Color3.fromRGB(240, 170, 80), 3)
+		circ(24, 9, 4, P.section, 1.6)
+		line(24, 13, 24, 17, P.muted, 2)
+	elseif kind == "PLUGINS" then
+		box(5, 7, 14, 14, P.cyan, 3)
+		box(17, 17, 11, 11, m.purple, 3)
+		circ(12, 7, 3, P.cyan) circ(17, 17, 3, m.purple)
+		line(15, 15, 19, 19, P.text, 2)
+	elseif kind == "GRUPOS" then
+		box(4, 6, 17, 17, P.cyan, 3, 0.25)
+		box(11, 12, 17, 17, P.gold, 3, 0.35)
+		circ(16, 14.5, 4, P.text, 1.6)
+	elseif kind == "UNION" then
+		circ(12, 16, 9, P.cyan, 2.4) circ(20, 16, 9, P.gold, 2.4)
+		arc(16, 16, 9, -40, 40, P.text, 2) arc(16, 16, 9, 140, 220, P.text, 2)
+	elseif kind == "NEGATE" then
+		circ(14, 16, 10, P.cyan, 2.4)
+		circ(24, 16, 7, P.error, 2.4)
+		circ(25.5, 16, 5.6, m.ribbonBg)
 	elseif kind == "PUBLISH" then
 		line(16, 26, 16, 6, P.cyan, 3) line(10, 12, 16, 6, P.cyan, 3) line(16, 6, 22, 12, P.cyan, 3)
 		box(6, 28, 20, 3, P.section, 1)
@@ -252,6 +277,7 @@ local TABS = {
 	{ name = "HOME", original = true, tip = "O ribbon ORIGINAL do estúdio (FileTools, gizmos etc) — intacto" },
 	{ name = "MUNDO", items = {
 		{ "TERRAIN", "Terrain", { kind = "deck", view = "terrain" } },
+		{ "SCULPT", "Sculpt", { kind = "deck", view = "sculpt" } },
 		{ "WATER", "Água X", { kind = "deck", view = "water" } },
 		{ "SPACE", "Espaço", { kind = "deck", view = "espaco" } },
 		{ "ATMOS", "Atmosfera", { kind = "deck", view = "atmos" } },
@@ -271,6 +297,8 @@ local TABS = {
 	} },
 	{ name = "CONSTRUIR", items = {
 		{ "PART", "Part ▸", { kind = "part" } },
+		{ "UNION", "Union", { kind = "api", action = "CsgDo", payload = { op = "union" } } },
+		{ "NEGATE", "Negate", { kind = "api", action = "CsgDo", payload = { op = "negate" } } },
 		{ "TOOLBOX", "Toolbox", { kind = "deck", view = "toolbox" } },
 	} },
 	{ name = "ESTÚDIO", items = {
@@ -282,6 +310,8 @@ local TABS = {
 	{ name = "DEV", items = {
 		{ "SCRIPTS", "Scripts", { kind = "deck", view = "scripts" } },
 		{ "PY", "Python", { kind = "deck", view = "py" } },
+		{ "PLUGINS", "Plugins", { kind = "deck", view = "plugins" } },
+		{ "GRUPOS", "Colisões", { kind = "deck", view = "grupos" } },
 	} },
 }
 

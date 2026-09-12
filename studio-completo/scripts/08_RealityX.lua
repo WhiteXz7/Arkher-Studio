@@ -3714,6 +3714,297 @@ end
 local wPy = mkWin("py", "PY X — ponte com o python do PC (tests/build/shell reais)", 660, 400, THEME_PY)
 buildPy(wPy)
 
+
+-- =============================================================
+-- SCULPT X — pincéis de terreno com falloff gaussiano REAL
+-- =============================================================
+local THEME_SCULPT = {
+	bg = Color3.fromRGB(24, 18, 10), bg2 = Color3.fromRGB(30, 23, 14), bg3 = Color3.fromRGB(38, 30, 20),
+	cap = Color3.fromRGB(20, 15, 9), edge = Color3.fromRGB(120, 88, 44),
+	text = Color3.fromRGB(250, 240, 226), muted = Color3.fromRGB(200, 170, 130),
+	acc = Color3.fromRGB(240, 170, 80), act = Color3.fromRGB(110, 66, 20),
+}
+
+local function buildSculpt(win)
+	local th = THEME_SCULPT
+	local body = win.body
+	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
+	local st = { mode = "raise", mat = "Grass" }
+	B("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 18), Position = UDim2.fromOffset(10, 6),
+		BackgroundColor3 = th.cap, Text = "  SCULPT: terreno REAL (RenderVoxels/WriteVoxels + fill real)",
+		Font = Enum.Font.Code, TextSize = 10, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	-- modos (botões grandes, tratado como pincéis do Blender)
+	local modes = {
+		{ "raise", "⛏ RAISE (levanta)" },
+		{ "lower", "⛏ LOWER (cava)" },
+		{ "smooth", "〜 SMOOTH (alisa real)" },
+		{ "flat", "◓ FLAT (aplaina no y)" },
+	}
+	local modeBtns = {}
+	for i, df in ipairs(modes) do
+		local mb = B("TextButton", {
+			Size = UDim2.fromOffset(140, 30), Position = UDim2.fromOffset(10 + (i - 1) * 148, 34),
+			BackgroundColor3 = i == 1 and th.acc or th.bg3,
+			Text = df[2], Font = Enum.Font.GothamBold, TextSize = 10,
+			TextColor3 = i == 1 and Color3.fromRGB(30, 20, 10) or th.muted,
+			BorderSizePixel = 0, ZIndex = 44,
+		}, body)
+		H(mb, 7) ST(mb, 1, th.edge)
+		modeBtns[df[1]] = mb
+		mb.MouseButton1Click:Connect(function()
+			st.mode = df[1]
+			for k2, b2 in pairs(modeBtns) do
+				b2.BackgroundColor3 = (k2 == df[1]) and th.acc or th.bg3
+				b2.TextColor3 = (k2 == df[1]) and Color3.fromRGB(30, 20, 10) or th.muted
+			end
+		end)
+	end
+	-- param steppers
+	local sx = stepCtl(body, UDim2.fromOffset(10, 76), "x", 0, 4, -9999, 9999, th)
+	local sy = stepCtl(body, UDim2.new(0.36, 2, 0, 76), "y", 2, 4, -512, 512, th)
+	local sz = stepCtl(body, UDim2.new(0.69, 2, 0, 76), "z", 0, 4, -9999, 9999, th)
+	local sr = stepCtl(body, UDim2.fromOffset(10, 114), "raio (studs)", 12, 2, 4, 64, th)
+	local sfo = stepCtl(body, UDim2.new(0.36, 2, 0, 114), "força (0-1)", 1, 0.05, 0.05, 1, th, "%.2f", 0.66)
+	-- material (quando raise/flat cria volume)
+	local matLbl = B("TextLabel", {
+		Size = UDim2.fromOffset(90, 16), Position = UDim2.fromOffset(10, 154),
+		BackgroundTransparency = 1, Text = "material:",
+		Font = Enum.Font.GothamBold, TextSize = 10, TextColor3 = th.muted,
+		TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 43,
+	}, body)
+	local matBtn = B("TextButton", {
+		Size = UDim2.fromOffset(130, 22), Position = UDim2.fromOffset(72, 150),
+		BackgroundColor3 = th.bg3, Text = "Grass ▾", Font = Enum.Font.GothamBold,
+		TextSize = 10, TextColor3 = th.text, BorderSizePixel = 0, ZIndex = 44,
+	}, body)
+	H(matBtn, 5)
+	local MATS = { "Grass", "Slate", "Sand", "Snow", "Rock", "Mud", "Ground", "Sandstone" }
+	local matIdx = 1
+	matBtn.MouseButton1Click:Connect(function()
+		matIdx = (matIdx % #MATS) + 1
+		st.mat = MATS[matIdx]
+		matBtn.Text = MATS[matIdx] .. " ▾"
+	end)
+	actBtn(body, UDim2.fromOffset(10, 184), UDim2.fromOffset(300, 32), "▶ APLICAR PINCEL", th, function()
+		local res, err = bridgeResult("SculptApply", {
+			mode = st.mode, x = sx.get(), y = sy.get(), z = sz.get(),
+			r = sr.get(), strength = sfo.get(), material = st.mat,
+		})
+		if not res then log("⚠ " .. tostring(err)) else log(res.msg or "aplicado") end
+	end)
+	B("TextLabel", {
+		Size = UDim2.fromOffset(340, 130), Position = UDim2.fromOffset(320, 30),
+		BackgroundTransparency = 1,
+		Text = "Física de verdade no terreno: RAISE/LOWER usam FillBall real do Roblox; SMOOTH é um Laplaciano REAL (média dos 6 vizinhos por voxel, 4³·stud) com falloff GAUSSIANO (mais força no centro, caindo até zero na borda); FLAT puxa cada voxel prum plano alvo. Múltiplos cliques acumulam o efeito — segure e veja a montanha nascer.",
+		Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = th.muted,
+		TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+		TextWrapped = true, ZIndex = 43,
+	}, body)
+	log("SCULPT X pronto — 4 pincéis reais com falloff gaussiano")
+	return win
+end
+
+local wSculpt = mkWin("sculpt", "SCULPT X — esculpir o terreno de verdade", 676, 250, THEME_SCULPT)
+buildSculpt(wSculpt)
+
+-- =============================================================
+-- GRUPOS X — grupos de colisão REAIS (PhysicsService)
+-- =============================================================
+local THEME_GRUPOS = {
+	bg = Color3.fromRGB(14, 20, 16), bg2 = Color3.fromRGB(18, 26, 21), bg3 = Color3.fromRGB(23, 33, 27),
+	cap = Color3.fromRGB(11, 16, 13), edge = Color3.fromRGB(58, 108, 72),
+	text = Color3.fromRGB(230, 248, 236), muted = Color3.fromRGB(150, 190, 164),
+	acc = Color3.fromRGB(120, 230, 150), act = Color3.fromRGB(30, 90, 50),
+}
+
+local function buildGrupos(win)
+	local th = THEME_GRUPOS
+	local body = win.body
+	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
+	local head = B("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 18), Position = UDim2.fromOffset(10, 6),
+		BackgroundColor3 = th.cap, Text = "  grupos de colisão (servidor real)",
+		Font = Enum.Font.Code, TextSize = 10, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(head, 5)
+	local gList = listCtl(body, UDim2.fromOffset(10, 30), UDim2.fromOffset(300, 170), th)
+
+	local function reload()
+		for _, ch in ipairs(gList:GetChildren()) do if ch:IsA("GuiObject") then ch:Destroy() end end
+		task.spawn(function()
+			local res, err = bridgeResult("ColGroupList")
+			if not res then log("⚠ " .. tostring(err)) return end
+			head.Text = ("  %d grupos de colisão REGISTRADOS"):format(#(res.groups or {}))
+			for _, g in ipairs(res.groups or {}) do
+				local row = B("Frame", { Size = UDim2.new(1, -8, 0, 24), BackgroundColor3 = th.bg2, BorderSizePixel = 0, ZIndex = 43 }, gList)
+				H(row, 5)
+				B("TextLabel", {
+					Size = UDim2.fromOffset(160, 22), Position = UDim2.fromOffset(6, 1),
+					BackgroundTransparency = 1, Text = g.name, Font = Enum.Font.GothamBold,
+					TextSize = 11, TextColor3 = th.text, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+				}, row)
+				B("TextLabel", {
+					Size = UDim2.fromOffset(110, 22), Position = UDim2.new(1, -116, 0, 1),
+					BackgroundTransparency = 1, Text = "id " .. tostring(g.id),
+					Font = Enum.Font.Code, TextSize = 10, TextColor3 = th.muted,
+					TextXAlignment = Enum.TextXAlignment.Right, ZIndex = 44,
+				}, row)
+			end
+		end)
+	end
+	local nmBox = B("TextBox", {
+		Size = UDim2.fromOffset(180, 24), Position = UDim2.fromOffset(10, 208),
+		BackgroundColor3 = th.bg3, Text = "", PlaceholderText = "nome do grupo novo…",
+		Font = Enum.Font.GothamBold, TextSize = 11, TextColor3 = th.text,
+		PlaceholderColor3 = th.muted, BorderSizePixel = 0,
+		TextXAlignment = Enum.TextXAlignment.Left, ClearTextOnFocus = false, ZIndex = 43,
+	}, body)
+	H(nmBox, 5)
+	local padn = Instance.new("UIPadding") padn.PaddingLeft = UDim.new(0, 8) padn.Parent = nmBox
+	actBtn(body, UDim2.fromOffset(196, 208), UDim2.fromOffset(104, 24), "CRIAR", th, function()
+		local res, err = bridgeResult("ColGroupCreate", { name = nmBox.Text })
+		if not res then log("⚠ " .. tostring(err)) else log(res.msg or "criado") reload() end
+	end)
+	-- colidisão A × B
+	B("TextLabel", {
+		Size = UDim2.fromOffset(300, 16), Position = UDim2.fromOffset(10, 240),
+		BackgroundTransparency = 1, Text = "COLISÃO ENTRE GRUPOS (toggle real):",
+		Font = Enum.Font.GothamBold, TextSize = 9, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 43,
+	}, body)
+	local aBox = B("TextBox", {
+		Size = UDim2.fromOffset(120, 22), Position = UDim2.fromOffset(10, 260),
+		BackgroundColor3 = th.bg3, Text = "Default", Font = Enum.Font.Code,
+		TextSize = 10, TextColor3 = th.text, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(aBox, 5)
+	local bBox = B("TextBox", {
+		Size = UDim2.fromOffset(120, 22), Position = UDim2.fromOffset(138, 260),
+		BackgroundColor3 = th.bg3, Text = "Default", Font = Enum.Font.Code,
+		TextSize = 10, TextColor3 = th.text, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(bBox, 5)
+	local colOn = { v = true }
+	local togBtn = B("TextButton", {
+		Size = UDim2.fromOffset(84, 22), Position = UDim2.fromOffset(266, 260),
+		BackgroundColor3 = th.acc, Text = "COLIDE", Font = Enum.Font.GothamBold,
+		TextSize = 10, TextColor3 = Color3.fromRGB(14, 30, 18), BorderSizePixel = 0, ZIndex = 44,
+	}, body)
+	H(togBtn, 5)
+	togBtn.MouseButton1Click:Connect(function()
+		colOn.v = not colOn.v
+		togBtn.Text = colOn.v and "COLIDE" or "IGNORA"
+		togBtn.BackgroundColor3 = colOn.v and th.acc or th.bg3
+	end)
+	actBtn(body, UDim2.fromOffset(10, 290), UDim2.fromOffset(340, 26), "APLICAR regra de colisão", th, function()
+		local res, err = bridgeResult("ColGroupSetCollidable", { a = aBox.Text, b = bBox.Text, collidable = colOn.v })
+		if not res then log("⚠ " .. tostring(err)) else log(res.msg or "aplicado") end
+	end)
+	-- info: como atribuir grupos às peças
+	B("TextLabel", {
+		Size = UDim2.fromOffset(300, 120), Position = UDim2.fromOffset(360, 34),
+		BackgroundTransparency = 1,
+		Text = "1) Crie o grupo aqui.\n2) No PROPS X, na peça, edite CollisionGroupId com o id do grupo (lista acima).\n3) A regra A×B liga/desliga colisão entre grupos — física real instantânea no servidor.",
+		Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = th.muted,
+		TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+		TextWrapped = true, ZIndex = 43,
+	}, body)
+	actBtn(body, UDim2.fromOffset(360, 160), UDim2.fromOffset(200, 24), "↻ atualizar", th, reload)
+	task.delay(0.3, reload)
+	log("GRUPOS X — Collision Groups reais via PhysicsService")
+	return win
+end
+
+local wGrupos = mkWin("grupos", "GRUPOS X — grupos de colisão reais", 666, 330, THEME_GRUPOS)
+buildGrupos(wGrupos)
+
+-- =============================================================
+-- PLUGINS X — módulos X ligam/desligam de verdade (pump real)
+-- =============================================================
+local THEME_PLUGINS = {
+	bg = Color3.fromRGB(20, 16, 26), bg2 = Color3.fromRGB(26, 21, 34), bg3 = Color3.fromRGB(33, 27, 43),
+	cap = Color3.fromRGB(16, 13, 22), edge = Color3.fromRGB(88, 70, 120),
+	text = Color3.fromRGB(244, 238, 252), muted = Color3.fromRGB(180, 162, 200),
+	acc = Color3.fromRGB(190, 140, 255), act = Color3.fromRGB(60, 34, 96),
+}
+
+local function buildPlugins(win)
+	local th = THEME_PLUGINS
+	local body = win.body
+	local log = logCtl(body, UDim2.new(0, 10, 1, -26), UDim2.new(1, -20, 0, 20), th)
+	local head = B("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 18), Position = UDim2.fromOffset(10, 6),
+		BackgroundColor3 = th.cap, Text = "  plugins/pumps X — toggle REAL no servidor",
+		Font = Enum.Font.Code, TextSize = 10, TextColor3 = th.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, BorderSizePixel = 0, ZIndex = 43,
+	}, body)
+	H(head, 5)
+	local pList = listCtl(body, UDim2.fromOffset(10, 30), UDim2.new(1, -20, 1, -90), th)
+	local function reload()
+		for _, ch in ipairs(pList:GetChildren()) do if ch:IsA("GuiObject") then ch:Destroy() end end
+		task.spawn(function()
+			local res, err = bridgeResult("PluginList")
+			if not res then log("⚠ " .. tostring(err)) return end
+			head.Text = ("  %d plugins/pumps registrados"):format(#(res.plugins or {}))
+			for _, pl in ipairs(res.plugins or {}) do
+				local row = B("Frame", { Size = UDim2.new(1, -8, 0, 30), BackgroundColor3 = th.bg2, BorderSizePixel = 0, ZIndex = 43 }, pList)
+				H(row, 6)
+				B("TextLabel", {
+					Size = UDim2.fromOffset(320, 26), Position = UDim2.fromOffset(8, 2),
+					BackgroundTransparency = 1, Text = pl.id .. "  ·" .. pl.kind,
+					Font = Enum.Font.GothamBold, TextSize = 11, TextColor3 = th.text,
+					TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 44,
+				}, row)
+				local tb = B("TextButton", {
+					Size = UDim2.fromOffset(96, 22), Position = UDim2.new(1, -104, 0, 4),
+					BackgroundColor3 = pl.enabled and th.acc or th.bg3,
+					Text = pl.enabled and "LIGADO" or "desligado",
+					Font = Enum.Font.GothamBold, TextSize = 10,
+					TextColor3 = pl.enabled and Color3.fromRGB(20, 10, 34) or th.muted,
+					BorderSizePixel = 0, ZIndex = 44,
+				}, row)
+				H(tb, 5)
+				tb.MouseButton1Click:Connect(function()
+					task.spawn(function()
+						local rr, err2 = bridgeResult("PluginToggle", { id = pl.id, enabled = not pl.enabled })
+						if not rr then log("⚠ " .. tostring(err2)) else
+							pl.enabled = not pl.enabled
+							tb.BackgroundColor3 = pl.enabled and th.acc or th.bg3
+							tb.Text = pl.enabled and "LIGADO" or "desligado"
+							tb.TextColor3 = pl.enabled and Color3.fromRGB(20, 10, 34) or th.muted
+							log(rr.msg or "ok")
+						end
+					end)
+				end)
+			end
+		end)
+	end
+	B("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 40), Position = UDim2.new(0, 10, 1, -56),
+		BackgroundTransparency = 1,
+		Text = "Ligando/desligando você PAUSA istantaneamente o pulso (pump) daquele motor no servidor — efeito real: água congela, céu para, NPCs dormem.",
+		Font = Enum.Font.Gotham, TextSize = 9, TextColor3 = th.muted,
+		TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, ZIndex = 43,
+	}, body)
+	local reB = B("TextButton", {
+		Size = UDim2.fromOffset(96, 18), Position = UDim2.new(1, -106, 0, 8),
+		BackgroundColor3 = th.bg3, Text = "↻ atualizar", Font = Enum.Font.GothamBold,
+		TextSize = 9, TextColor3 = th.muted, BorderSizePixel = 0, ZIndex = 44,
+	}, body)
+	H(reB, 4)
+	reB.MouseButton1Click:Connect(reload)
+	task.delay(0.3, reload)
+	log("PLUGINS X — toggle REAL via atributos lidos no Heartbeat do engine")
+	return win
+end
+
+local wPlugins = mkWin("plugins", "PLUGINS X — liga/desliga os motores de verdade", 700, 320, THEME_PLUGINS)
+buildPlugins(wPlugins)
+
 -- =============================================================
 -- registro DECK (cada menu da topbar abre SUA janela única)
 -- =============================================================
@@ -3724,6 +4015,7 @@ local windows = {
 	audio = wAudio, fx = wFx, cordas = wCordas,
 	toolbox = wToolbox, props = wProps, cores = wCores, output = wOutput,
 	comando = wComando, scripts = wScripts, py = wPy,
+	sculpt = wSculpt, grupos = wGrupos, plugins = wPlugins,
 }
 _G.ArkherDeck = {
 	open = function(id, view)
@@ -3736,4 +4028,4 @@ _G.ArkherDeck = {
 	end,
 	cmd = cmd,
 }
-print("[ArkherX] 08_Deck: 20 painéis únicos prontos (13 editores + TOOLBOX/PROPS/CORES/OUTPUT/COMANDO/SCRIPTS/PY) — X-TIER ativador na topbar original, escala adaptativa p/ mobile")
+print("[ArkherX] 08_Deck: 23 painéis prontos (em diante: +SCULPT/GRUPOS/PLUGINS com backend real) — escala adaptativa p/ mobile")

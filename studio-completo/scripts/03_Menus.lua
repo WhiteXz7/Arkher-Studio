@@ -1026,7 +1026,18 @@ openCollaborationPanel = function()
 
   -- COL 1: EQUIPE (membros reais do place, com online + papel)
   local c1 = colFrame(0, 336, "EQUIPE — " .. #members .. " membro(s)", m.cyan)
-  local tlist = scrollList(c1, 8, 38, 320, 380)
+  -- RADAR DE PRESENÇa: quem está editando o quê AGORA (server real)
+  local pres, _peErr = api("PresenceGet")
+  local presList = (pres and pres.result and pres.result.players) or {}
+  label("PR", c1, "AGORA NA SALA: " .. #presList .. " autorizado(s)", 10, 36, 316, 13, m.cyan)
+  for q, pl2 in ipairs(presList) do
+    if q > 3 then break end
+    local info = "@" .. pl2.name
+    if pl2.editing then info = info .. "  → editando: " .. pl2.editing end
+    if pl2.selected then info = info .. "  (selecionou " .. pl2.selected .. ")" end
+    label("PR" .. q, c1, info, 10, 52 + (q - 1) * 15, 316, 13, 11, pl2.editing and m.gold or m.muted)
+  end
+  local tlist = scrollList(c1, 8, 38 + 40, 320, 340)
   if #members == 0 then
     label("E0", tlist, "(só você por enquanto)", UDim2.fromOffset(10, 8), UDim2.fromOffset(300, 20), 13, m.muted)
   end

@@ -139,6 +139,29 @@ em cada um dos 121 chunks PROP (#StudioSafe). Baixe novamente a placa atual.
 - **RIG X + MESH X no DECK** (os docks 05/06/07 foram removidos: eram
   "enfeite" de retângulos e a diretriz é ZERO painel sem efeito real).
 
+**ROUND 10 (2026-09-12) — CSG + Sculpt + Collab-radar + Plugins + 3 kills de erro:**
+
+- **Erro 889 MORTO DE VEZ** (`cannot write 'Source' — PluginOrOpenCloud`, o
+  "PluginOrCloudAPI de toda hora"): o módulo de services era carregado criando
+  ModuleScript e **escrevendo Source em runtime** — proibido em servidor de jogo.
+  Agora é **embutido inline como função** (sem require, sem Source-write).
+  `ms.Source` na placa: **0**.
+- **09: núcleo incompleto** corrigido (o ClientBus mora dentro de
+  `ArkherServerClientRuntime`, não da ScreenGui — mesmo contrato do 03).
+- **CSG REAL** na aba CONSTRUIR: botões **Union / Negate** (PartOperation de
+  verdade via `UnionAsync/SubtractAsync`, herda cor/material, **histórico desfaz
+  e refaz**: undo recria as peças originais do snapshot).
+- **SCULPT X** (aba MUNDO): 4 pincéis no terreno com **falloff gaussiano real** —
+  RAISE/LOWER (FillBall), SMOOTH (Laplaciano dos 6 vizinhos por voxel) e FLAT
+  (plano-alvo), com raio/força/material — altera o Terrain de verdade.
+- **GRUPOS X** (Collision Groups reais via PhysicsService): criar grupos, listar
+  com ids, e regra A×B colide/ignora no servidor.
+- **Presença no Collaborate**: "AGORA NA SALA" mostra quem está editando o quê
+  (locks reais do servidor) — collab com persistência + radar vivo.
+- **PLUGINS X**: cada motor X tem toggle LIGADO/desligado real — o Heartbeat do
+  engine respeita `Enabled_<nome>` (pumda água congela, céu para, NPCs dormem).
+- Deck = **23 painéis**; audit **61/61 ✅**; placa X = **235.058 B**; testes 100%.
+
 **ROUND 9 (2026-09-11) — a TOPBAR CERTA (abas estilo Roblox) + correções fortes:**
 
 - **X-tier morto** (os mini-botões "View" clonados sumiram).

@@ -398,17 +398,16 @@ local _SS = game:GetService("ServerStorage")
 local services = nil
 local servicesError = ""
 do
+	-- FIX (round 10): NADA de escrever Source em runtime (isso é level
+	-- PluginOrOpenCloud e berrava "cannot write 'Source'" TODA HORA).
+	-- O module agora é EMBUTIDO INLINE como função — roda direto, sem require.
+	local vault = _SS:FindFirstChild("ArkherCloudVault")
+	if not vault then vault = Instance.new("Folder") vault.Name = "ArkherCloudVault" vault.Parent = _SS end
+	vault:SetAttribute("ArkherInternal", true)
 	local okMod, mod = pcall(function()
-		local vault = _SS:FindFirstChild("ArkherCloudVault")
-		if not vault then vault = Instance.new("Folder") vault.Name = "ArkherCloudVault" vault.Parent = _SS end
-		vault:SetAttribute("ArkherInternal", true)
-		local ms = vault:FindFirstChild("ArkherServices") or Instance.new("ModuleScript")
-		ms.Name = "ArkherServices"
-		ms.Source = [[
+		return (function()
 __MODULE__
-]]
-		ms.Parent = vault
-		return require(ms)
+		end)()
 	end)
 	if okMod and type(mod) == "table" then services = mod else servicesError = tostring(mod) end
 end
@@ -945,10 +944,279 @@ function handlers.PyRun(player, payload)
 end
 '''
 
+BLOCK_X10 = r'''
+-- ============ BLOCK_X10 (ROUND 10): CSG real + SCULPT + CollisionGroups + Presence + Plugins ============
+local TERRAIN = workspace:FindFirstChildOfClass("Terrain")
+local function partSnap(o)
+    return {
+        class = o.ClassName, cf = o.CFrame, size = o.Size, color = o.Color,
+        mat = o.Material.Name, trans = o.Transparency, shape = (o:IsA("Part") and o.Shape.Name or nil),
+        name = o.Name, anchored = o.Anchored,
+    }
+end
+local function partRestore(snap, parent)
+    local cls = snap.class
+    if cls == "WedgePart" or cls == "CornerWedgePart" or cls == "TrussPart" or cls == "Part" or cls == "MeshPart" then
+        local o2 = Instance.new(cls == "MeshPart" and "Part" or cls)
+        o2.Name = snap.name
+        o2.CFrame = snap.cf
+        o2.Size = snap.size
+        pcall(function() o2.Color = snap.color end)
+        pcall(function() o2.Material = snap.mat end)
+        pcall(function() o2.Transparency = snap.trans end)
+        if snap.shape then pcall(function() o2.Shape = Enum.PartType[snap.shape] end) end
+        o2.Anchored = snap.anchored
+        o2.Parent = parent
+        register(o2) created[o2] = true
+        return o2
+    end
+    return nil
+end
+
+function handlers.CsgDo(player, payload)
+    local op = tostring(payload.op or "union")
+    assert(op == "union" or op == "negate", "op deve ser 'union' ou 'negate'")
+    local main
+    if payload.mainId then main = getObject(payload.mainId) end
+    if not main then main = selected[player] end
+    assert(main and main:IsA("BasePart") and not main:IsA("Terrain"), "Selecione a PEÇA principal (BasePart) primeiro.")
+    assert(editable(main), "Peça principal somente leitura.")
+    -- outra: ids explicitos ou a peça valida mais proxima da main (escopo 80 studs)
+    local others = {}
+    if type(payload.otherIds) == "table" then
+        for _, id2 in ipairs(payload.otherIds) do
+            local o = getObject(id2)
+            if o and o:IsA("BasePart") and not o:IsA("Terrain") and editable(o) and o ~= main then
+                others[#others + 1] = o
+            end
+        end
+    else
+        local best, bd = nil, 80
+        for _, o in ipairs(workspace:GetDescendants()) do
+            if o:IsA("BasePart") and not o:IsA("Terrain") and o ~= main and editable(o) and not o:IsDescendantOf(main) then
+                local d2 = (o.Position - main.Position).Magnitude
+                if d2 < bd then best, bd = o, d2 end
+            end
+        end
+        if best then others[#others + 1] = best end
+    end
+    assert(#others > 0, "Sem segunda peça: selecione uma peça PERTO do alvo (até 80 studs) ou passe otherIds.")
+    local other = others[1]
+    local snapMain, snapOther = partSnap(main), partSnap(other)
+    local parent = main.Parent
+    local ok2, resultPart = pcall(function()
+        if op == "union" then return main:UnionAsync({ other }) end
+        return main:SubtractAsync({ other })
+    end)
+    assert(ok2 and resultPart, op .. "Async recusou: " .. tostring(resultPart))
+    -- herda o visual da main
+    pcall(function() resultPart.Color = main.Color end)
+    pcall(function() resultPart.Material = main.Material end)
+    pcall(function() resultPart.Transparency = main.Transparency end)
+    resultPart.Name = main.Name .. "_" .. op:upper()
+    resultPart.Anchored = main.Anchored
+    resultPart.Parent = parent
+    register(resultPart) created[resultPart] = true
+    -- remove as duas originais
+    local mId, oId = idOf[main], idOf[other]
+    selected[player] = resultPart
+    main:Destroy() other:Destroy()
+    unregister(main) unregister(other)
+    -- histórico real: undo recria as duas; redo refaz a operação
+    pushHist(player, {
+        label = "CSG " .. op .. " (" .. snapMain.name .. " × " .. snapOther.name .. ")",
+        undo = function()
+            if resultPart.Parent then resultPart:Destroy() end
+            local m2 = partRestore(snapMain, parent)
+            partRestore(snapOther, parent)
+            selected[player] = m2
+            if m2 then queueObject(m2) end
+        end,
+        redo = function()
+            local okR, errR = pcall(function()
+                handlers.CsgDo(player, { op = op })
+            end)
+            if not okR then error(errR) end
+        end,
+    })
+    return { id = idOf[resultPart], msg = ("CSG %s: '%s' × '%s' -> sólido NOVO '%s' (real: PartOperation + histórico desfaz)"):format(op, snapMain.name, snapOther.name, resultPart.Name) }
+end
+
+-- --------- SCULPT X: pincéis de terreno com falloff real (fill/erode/smooth/flat) ---------
+local function sculptInfo(v)
+    return type(v) == "string" and Enum.Material[v] or nil
+end
+function handlers.SculptApply(player, payload)
+    assert(TERRAIN, "Sem Terrain neste mundo.")
+    local mode = tostring(payload.mode or "raise")
+    local cx, cy, cz = tonumber(payload.x) or 0, tonumber(payload.y) or 2, tonumber(payload.z) or 0
+    local r = math.clamp(tonumber(payload.r) or 12, 4, 64)
+    local strength = math.clamp(tonumber(payload.strength) or 1, 0.05, 1)
+    local center = Vector3.new(cx, cy, cz)
+    local mat = sculptInfo(payload.material) or Enum.Material.Grass
+    local cells = 0
+    if mode == "raise" then
+        TERRAIN:FillBall(center, r * strength, mat)
+        cells = 1
+    elseif mode == "lower" then
+        TERRAIN:FillBall(center, r * strength, Enum.Material.Air)
+        cells = 1
+    elseif mode == "smooth" or mode == "flat" then
+        local minP = center - Vector3.new(r, r, r)
+        local maxP = center + Vector3.new(r, r, r)
+        local region = Region3.new(minP, maxP):ExpandToGrid(4)
+        local okR, mats, occs = pcall(function()
+            local m2, o2 = TERRAIN:ReadVoxels(region, 4)
+            return true, m2, o2
+        end)
+        assert(okR, "ReadVoxels falhou: " .. tostring(mats))
+        local sizeY = #occs[1]
+        local sizeZ = #occs[1][1]
+        local function voxelPos(ix, iy, iz)
+            local cell = region.CFrame * Vector3.new(
+                (ix - 0.5 - #occs / 2) * 4,
+                (iy - 0.5 - #occs[1] / 2) * 4,
+                (iz - 0.5 - #occs[1][1] / 2) * 4)
+            return cell
+        end
+        for ix = 1, #occs do
+            for iy = 1, sizeY do
+                for iz = 1, sizeZ do
+                    local vp = voxelPos(ix, iy, iz)
+                    local dist = (vp - center).Magnitude
+                    if dist < r then
+                        local t2 = dist / r
+                        local fall = math.exp(-(t2 * t2) * 4) * strength -- gaussiano caindo p/ zero na borda
+                        if mode == "smooth" then
+                            -- média dos 6 vizinhos (Laplaciano real)
+                            local sum, n2 = 0, 0
+                            local function getO(dx, dy, dz)
+                                local jx, jy, jz = ix + dx, iy + dy, iz + dz
+                                if occs[jx] and occs[jx][jy] and occs[jx][jy][jz] ~= nil then
+                                    sum = sum + occs[jx][jy][jz] n2 = n2 + 1
+                                end
+                            end
+                            getO(-1, 0, 0) getO(1, 0, 0) getO(0, -1, 0) getO(0, 1, 0) getO(0, 0, -1) getO(0, 0, 1)
+                            if n2 > 0 then
+                                occs[ix][iy][iz] = math.clamp(occs[ix][iy][iz] + (sum / n2 - occs[ix][iy][iz]) * fall, 0, 1)
+                            end
+                        else -- flat
+                            local target = (cy - vp.Y) / 4
+                            target = math.clamp(target, 0, 1)
+                            if vp.Y <= cy then target = 1 else target = math.clamp((cy + 4 - vp.Y) / 8, 0, 1) end
+                            occs[ix][iy][iz] = math.clamp(occs[ix][iy][iz] + (target - occs[ix][iy][iz]) * fall, 0, 1)
+                            if occs[ix][iy][iz] > 0.4 and (mats[ix] and mats[ix][iy] and mats[ix][iy][iz] == Enum.Material.Air) then
+                                mats[ix][iy][iz] = mat
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        local okW, errW = pcall(function() TERRAIN:WriteVoxels(region, 4, mats, occs) end)
+        assert(okW, "WriteVoxels falhou: " .. tostring(errW))
+        cells = #occs * sizeY * sizeZ
+    else
+        error("mode deve ser raise|lower|smooth|flat")
+    end
+    return { msg = ("SCULPT %s em (%.0f, %.0f, %.0f) r=%d força=%.2f — terreno REAL alterado (%s)"):format(
+        mode, cx, cy, cz, r, strength, tostring(cells)) }
+end
+
+-- --------- COLLISION GROUPS (grupos de colisão reais) ---------
+local PS = game:GetService("PhysicsService")
+local function colGroups()
+    local ok, list = pcall(function() return PS:GetRegisteredCollisionGroups() end)
+    if ok and type(list) == "table" then return list end
+    return {}
+end
+function handlers.ColGroupList(player)
+    local out = {}
+    for _, g in ipairs(colGroups()) do
+        out[#out + 1] = { id = g.id, name = g.name, mask = (g.mask ~= nil and g.mask or nil) }
+    end
+    return { groups = out }
+end
+function handlers.ColGroupCreate(player, payload)
+    local nm = tostring(payload.name or ""):sub(1, 40)
+    assert(#nm > 1, "Nome de grupo muito curto.")
+    for _, g in ipairs(colGroups()) do
+        if g.name == nm then return { id = g.id, msg = "Já existe: " .. nm .. " (id " .. g.id .. ")" } end
+    end
+    local ok, err = pcall(function() PS:CreateCollisionGroup(nm) end)
+    assert(ok, "CreateCollisionGroup recusou: " .. tostring(err))
+    return { msg = "Grupo de colisão '" .. nm .. "' criado (atribua CollisionGroupId nas peças — PROPS X)." }
+end
+function handlers.ColGroupSetCollidable(player, payload)
+    local a2 = tostring(payload.a or "")
+    local b2 = tostring(payload.b or "")
+    assert(a2 ~= "" and b2 ~= "", "Passe a e b (nomes dos grupos).")
+    local v = payload.collidable ~= false
+    local ok, err = pcall(function() PS:CollisionGroupSetCollidable(a2, b2, v) end)
+    assert(ok, "Recusou: " .. tostring(err))
+    return { msg = ("Colisão %s × %s = %s (real, servidor)"):format(a2, b2, v and "COLIDE" or "ignora") }
+end
+
+-- --------- PRESENCE: quem está editando o quê, agora ----------
+function handlers.PresenceGet(player)
+    local out = {}
+    for pl in pairs(subscribed) do
+        if pl.Parent == Players then
+            local sel2 = selected[pl]
+            local editing = {}
+            for obj, owner in pairs(locks) do
+                if owner == pl and obj and obj.Parent then
+                    editing[#editing + 1] = obj.Name
+                    if #editing >= 3 then break end
+                end
+            end
+            out[#out + 1] = {
+                name = pl.Name,
+                selected = sel2 and sel2.Parent and sel2.Name or nil,
+                editing = (#editing > 0) and table.concat(editing, ", ") or nil,
+            }
+        end
+    end
+    return { players = out }
+end
+
+-- --------- PLUGINS (módulos X ligam/desligam de verdade no pump) ----------
+local function enginesFolder()
+    return game:GetService("ServerStorage"):FindFirstChild("ArkherEngines")
+end
+local PLUGIN_KEYS = { "Atmos", "Water", "Anim", "Audio", "Rig", "Reality", "Scene" }
+function handlers.PluginList(player)
+    local eng = enginesFolder()
+    local out = {}
+    if eng then
+        for _, child in ipairs(eng:GetChildren()) do
+            out[#out + 1] = { id = child.Name, kind = child.ClassName, enabled = eng:GetAttribute("Enabled_" .. child.Name) ~= false }
+        end
+    end
+    for _, kj in ipairs(PLUGIN_KEYS) do
+        if eng and eng:GetAttribute("Enabled_" .. kj) == nil then
+            eng:SetAttribute("Enabled_" .. kj, true)
+        end
+        out[#out + 1] = { id = kj, kind = "pump", enabled = not eng or eng:GetAttribute("Enabled_" .. kj) ~= false }
+    end
+    table.sort(out, function(a, b) return a.id < b.id end)
+    return { plugins = out }
+end
+function handlers.PluginToggle(player, payload)
+    local id = tostring(payload.id or "")
+    assert(#id > 0, "id do plugin")
+    local v = payload.enabled == true
+    local eng = enginesFolder()
+    assert(eng, "ArkherEngines ausente no ServerStorage.")
+    eng:SetAttribute("Enabled_" .. id, v)
+    return { msg = ("Plugin/pump '%s' agora = %s (efeito IMEDIATO no pump do servidor)"):format(id, v and "LIGADO" or "desligado") }
+end
+'''
+
 src = replace_once(src, MARK_A, MARK_A + BLOCK_A, "A")
 src = replace_once(src, "local function getObject(id)", SER_DESER + "local function getObject(id)", "B")
 src = replace_once(src, "local handlers={}", HIST_OPS + "local handlers={}", "C")
-src = replace_once(src, "request.OnServerInvoke=function(player,action,payload)", NEW_HANDLERS + BLOCK_S + BLOCK_X7 + BLOCK_X8 + BLOCK_X9 + "request.OnServerInvoke=function(player,action,payload)", "D")
+src = replace_once(src, "request.OnServerInvoke=function(player,action,payload)", NEW_HANDLERS + BLOCK_S + BLOCK_X7 + BLOCK_X8 + BLOCK_X9 + BLOCK_X10 + "request.OnServerInvoke=function(player,action,payload)", "D")
 # Delete original -> delega para Delete_ (reusa hDelete)
 src = replace_once(
     src,

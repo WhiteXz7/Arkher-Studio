@@ -1052,9 +1052,13 @@ function CMD.rope_stats()
 		msg = ("RPX: %d cordas + %d tecidos Vivos (integracao Verlet no pump)"):format(nr, nc) }
 end
 
+local function modOn(nm)
+	return engines:GetAttribute("Enabled_" .. nm) ~= false
+end
+
 RunService.Heartbeat:Connect(function(dt)
-	if ArkherAtmosX then pcall(function() ArkherAtmosX.pump(dt) end) end
-	if ArkherWaterX then pcall(function()
+	if ArkherAtmosX and modOn("Atmos") then pcall(function() ArkherAtmosX.pump(dt) end) end
+	if ArkherWaterX and modOn("Water") then pcall(function()
 		local t = os.clock()
 		for _, b in ipairs(ArkherWaterX.bodies or {}) do
 			pcall(ArkherWaterX.animate, b, t)
@@ -1063,15 +1067,15 @@ RunService.Heartbeat:Connect(function(dt)
 		if ArkherWaterX.stepFalls then pcall(ArkherWaterX.stepFalls, dt, t) end
 		if ArkherWaterX.stepBoats then pcall(ArkherWaterX.stepBoats, dt, t) end
 	end) end
-	if ArkherAnimX then pcall(function() ArkherAnimX.pump(dt) end) end -- inclui RPX (mesmo pulso)
-	if ArkherAudioX then pcall(function() ArkherAudioX.pump(dt) end) end
-	if ArkherRigX then pcall(function() ArkherRigX.pump(dt) end) end
-	if ArkherRealityX then pcall(function() ArkherRealityX.pump(dt) end) end
+	if ArkherAnimX and modOn("Anim") then pcall(function() ArkherAnimX.pump(dt) end) end -- inclui RPX (mesmo pulso)
+	if ArkherAudioX and modOn("Audio") then pcall(function() ArkherAudioX.pump(dt) end) end
+	if ArkherRigX and modOn("Rig") then pcall(function() ArkherRigX.pump(dt) end) end
+	if ArkherRealityX and modOn("Reality") then pcall(function() ArkherRealityX.pump(dt) end) end
 	acc = acc + dt
 	if acc > 0.25 then
 		acc = 0
 		local w = _G.ArkherWorld
-		if w and ArkherSceneX and ArkherSceneX.applyLOD then
+		if w and ArkherSceneX and ArkherSceneX.applyLOD and modOn("Scene") then
 			pcall(function() ArkherSceneX.applyLOD(0, 0) end)
 		end
 	end
