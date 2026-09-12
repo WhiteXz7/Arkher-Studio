@@ -38,6 +38,7 @@ EDITS = [
     ("Frame", "MenuBar", "Canvas", "BackgroundColor3", NAVY),
     ("Frame", "Footer", "Canvas", "BackgroundColor3", NAVY),
     ("Frame", "Ribbon", "Canvas", "Visible", False),
+    ("Frame", "LeftTabs", "Canvas", "Visible", False),
     ("Frame", "DocumentTabs", "Canvas", "Position", (0.0, 342, 0.0, 216)),
     ("Frame", "DockBackgrounds", "Canvas", "Position", (0.0, 0, 0.0, 216)),
     ("Frame", "DockBackgrounds", "Canvas", "Size", (1.0, 0, 1.0, -279)),
@@ -173,7 +174,13 @@ def main():
             vals[pos] = new
             head = struct.pack("<I", tid) + struct.pack("<I", len(pname)) + \
                 pname.encode("utf-8") + struct.pack("<B", dt)
-            new_chunks.append([b"PROP", head + rbxcodec.encode(dt, vals)])
+            # insere ANTES do PRNT na hora (o proximo edit do mesmo prop ja acha)
+            for _pi, (_cn, _pl) in enumerate(chunks):
+                if _cn == b"PRNT":
+                    chunks.insert(_pi, [b"PROP", head + rbxcodec.encode(dt, vals)])
+                    break
+            else:
+                new_chunks.append([b"PROP", head + rbxcodec.encode(dt, vals)])
             changed[f"{cls}:{name}.{pname}"] = (fmt_val(pname, old) + " (fill)", fmt_val(pname, new))
             continue
         idx, dt, body = hit
@@ -235,7 +242,7 @@ def main():
             return a == b
 
         assert close(got, new), f"nao persistiu: {cls}:{name}.{pname} = {got}"
-    print("re-leitura: 13/13 valores persistidos, contagens intactas.")
+    print(f"re-leitura: {len(EDITS)}/{len(EDITS)} valores persistidos, contagens intactas.")
     return 0
 
 

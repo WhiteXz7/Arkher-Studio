@@ -1,7 +1,7 @@
 -- =============================================================
 -- Arkher_05_StudioX — CONTROLADOR DA SHELL (TabStrip + Ribbon).
 -- A shell é REAL (Canvas/ArkherXDeck/ArkherTop no .rbxl: 11 abas,
--- 11 páginas, 78 botões com ícones em Frames). Aqui mora SÓ o sistema:
+-- 11 páginas, 84 botões com ícones em Frames). Aqui mora SÓ o sistema:
 --   aba ▸ troca de página; botão ▸ abre janela / popup / ação server.
 -- ZERO criação de GUI (nenhum Instance.new de GuiObject).
 -- Espelha a tabela TABS de tools/build_shell.py (fonte única).
@@ -142,6 +142,9 @@ end
 -- ---------- ações (espelho de build_shell.TABS) ----------
 -- { kind, arg, payload? } kind: open/toggle/popup/menus/bus
 local ACTIONS = {
+	HOME_Play = { "menus", "RunToggle" },
+	HOME_Pause = { "menus", "RunPause" },
+	HOME_Plugins = { "open", "V2_ArkherPluginManager" },
 	HOME_Save = { "menus", "Save" },
 	HOME_Open = { "menus", "File" },
 	HOME_Cloud = { "menus", "OpenCloud" },
@@ -311,3 +314,29 @@ if strip and ribbon then
 else
 	warn("[ArkherX] 05: TabStrip/Ribbon ausentes.")
 end
+
+-- Diagnostico de visibilidade (1 tiro, 1s apos boot): prova no log ONDE a shell esta.
+task.delay(1, function()
+	local function fld(fn)
+		local ok, v = pcall(fn)
+		if ok and v ~= nil then return tostring(v) end
+		return "?"
+	end
+	local parts = {
+		"pos=" .. fld(function() local p = top.AbsolutePosition return p.X .. "," .. p.Y end),
+		"size=" .. fld(function() local z = top.AbsoluteSize return z.X .. "x" .. z.Y end),
+		"vis=" .. fld(function() return top.Visible end),
+		"topZ=" .. fld(function() return top.ZIndex end),
+		"hostZ=" .. fld(function() return host.ZIndex end),
+		"deckScale=" .. fld(function() return host:FindFirstChildOfClass("UIScale").Scale end),
+		"viewport=" .. fld(function() local z = uiRoot.AbsoluteSize return z.X .. "x" .. z.Y end),
+		"pagesVis=" .. fld(function()
+			local n = 0
+			for _, pg in ipairs(ribbon:GetChildren()) do
+				if pg.Name:sub(1, 5) == "Page_" and pg.Visible then n = n + 1 end
+			end
+			return n
+		end),
+	}
+	print("[ArkherX] 05_DIAG topbar " .. table.concat(parts, " "))
+end)

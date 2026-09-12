@@ -21,6 +21,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # (tab, id, label, icon, acao...)
 TABS = [
     ("HOME", [
+        ("Play", "Play", "play", ("menus", "RunToggle")),
+        ("Pause", "Pause", "pause", ("menus", "RunPause")),
+        ("Plugins", "Plugins", "plugin", ("open", "V2_ArkherPluginManager")),
         ("Save", "Save", "save", ("menus", "Save")),
         ("Open", "Open", "open", ("menus", "File")),
         ("Cloud", "Cloud", "cloud", ("menus", "OpenCloud")),

@@ -222,6 +222,7 @@ def build_prop_values(cls, nodes):
             "Selectable": (0x2, [True] * N),
             "ZIndex": (0x3, col("ZIndex", int, 1)),
             "AutomaticCanvasSize": (0x12, col("AutomaticCanvasSize", lambda v: as_enum(v["en"]), 0)),
+            "Visible": (0x2, col("Visible", bool, True)),
         }
     elif cls == "UICorner":
         radii = [as_u1(n["props"]["CornerRadius"]["u1"]) for n in nodes]
@@ -269,7 +270,7 @@ OLDFILL = {
                    "TextColor3": BLACK, "TextXAlignment": 2},
     "TextLabel": {"TextTruncate": 0, "ClipsDescendants": False},
     "TextBox": {"MultiLine": False, "TextYAlignment": 1},
-    "ScrollingFrame": {"AutomaticCanvasSize": 0},
+    "ScrollingFrame": {"AutomaticCanvasSize": 0, "Visible": True},
 }
 
 
