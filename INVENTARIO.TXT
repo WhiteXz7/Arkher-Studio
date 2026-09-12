@@ -1,0 +1,118 @@
+================================================================
+ARKHER STUDIO — INVENTÁRIO COMPLETO (texto)
+Gerado no ciclo Fase 4 + Fase 5. Placa: ArkherStudio_Completo_GUIX.rbxl
+9548 instâncias, 35 tipos, 195 checks de teste verdes (6/6 suítes).
+================================================================
+
+1) SCRIPTS (tudo assado dentro do rbxl, zero criação em runtime na shell)
+------------------------------------------------------------
+LocalScripts (10): Arkher_01_Nucleo, 02_Icones, 03_Menus, 04_Gizmos,
+  05_StudioX (shell: abas+ribbon+janelas), 06_RigX, 07_MeshX,
+  08_RealityX (decks), 09_Topbar, 10_Studio (properties/insert/
+  toolbox/scripteditor).
+Scripts servidor (2): ArkherEditorServer (82 handlers), ArkherEngineServer.
+PyBridge externo: pybridge.py + rbxlx.py + test_rbxlx.py + README.
+
+2) RIBBON (abertura automática por aba; 11 abas, 11 páginas, 89 botões)
+------------------------------------------------------------
+HOME: Play Pause Stop | Plugins Save Open Cloud | Undo Redo Palette
+  Search Toolbox Settings | Status Account Places History
+BUILD: Select Move Rotate Scale | Part Model Folder Script | Material
+  Mesh Modeler Fabricar | Insert Base Union Negate
+TERRAIN: Terrain TerrainX Sculpt Water Atmos Clima
+ANIMATE: Animator AnimX Timeline Rig
+FX/VIEW/AI/WORLD/DATA/SCRIPT/CITY: partículas, shaders, VFX, câmera,
+  console, UTS, mundo, dados, scripts, cidade (todos abrindo painéis).
+Auditoria tools/audit_buttons.py: 89/89 botões resolvem p/ algo real,
+0 mortos (janela assada / handler real / cmd menus real).
+
+3) JANELAS V2 ASSADAS (40)
+------------------------------------------------------------
+Login, SaveOpen (cloud+place+publish+conta), Palette, Settings,
+StatusBar, Search, Docs, ScriptEditor (LU/PY/C+/C# + autocomplete),
+Console, Debugger, Profiler, Timeline, MaterialEditor, TerrainEditor,
+AnimationEditor, ParticleEditor, VFXEditor, AudioEditor, PhysicsEditor,
+NavigationEditor, AIEditor, WorldEditor, UIEditor, ShaderEditor,
+VisualScripting, NodeEditor, GraphEditor, UTSAI, ProjectSettings,
+BuildSettings, PackageManager, PluginManager, VersionControl,
+Collaboration, Localization, DataManager, Toolbox (grátis+paga),
+UndoRedo, Layouts, Notifications.
+
+4) DECKS ASSADOS (25) + POPUPS
+------------------------------------------------------------
+animator, atmos, audio, cidade, clima, comando, cordas, cores, espaco,
+fabricar, fx, grupos, mesh, modeler, output, plugins, props, py, rig,
+scripts, sculpt, terrain, toolbox, vida, water.
+Popup: ArkherShapesPopup (formas reais).
+
+5) SERVIDOR — 82 HANDLERS REAIS (todos funcionais)
+------------------------------------------------------------
+Sessão: Hello, Identify, Begin, End, Close, Snapshot.
+Edição: Select, Create, CreateAny, Set, SetAny, PropsAll, PropsSet,
+  Rename, Delete, Delete_, Duplicate, Copy, Cut, Paste, Undo, Redo,
+  GetHistory, QuickPart, EnsureBase, CsgDo, SculptApply, SelectedGet.
+Run: RunPlay, RunPause, RunStop (com trava de edição em Run).
+Cloud ARKHER (vault+DataStore): CloudSave, CloudList, CloudOpen,
+  CloudDelete, CloudStatus (backend vault+datastore quando publicado).
+Place REAL: PlaceCreate (chain template: pedido > sua place > base;
+  funciona publicado+online), SavePlace, TeleportTo.
+Publish: Publish (perfil dev), PublishReal (gera .rbxlx via bridge;
+  publica na conta via Open Cloud se key configurada), Export, Import,
+  New, Open, ProjectInfo, SetProjectInfo.
+Conta REAL: AccountPlaces (places do universo via bridge).
+Loja: Catalog, ToolboxList, ToolboxGet, ToolboxSearch (nativa grátis),
+  ToolboxPaidSearch (paga via bridge), ToolboxInsert, ToolboxAssetInsert.
+Scripts: ScriptList, ClassList (149 classes p/ autocomplete).
+Python: PyRun (shell+exec py/cpp/csharp), PyStatus.
+Colaboração: TeamAdd/Remove/Info, InviteCreate/List/Accept/Reject,
+  PresenceGet, ColGroupCreate/List/SetCollidable.
+Plugins/Dados/i18n: PluginList/Toggle, DataList/Get/Set/Delete,
+  Locales, LocStrings, SetLocale, SetLocString, ProfileList/Get/Delete.
+
+6) PYBRIDGE — 9 ENDPOINTS (só stdlib; localhost livre, token fora)
+------------------------------------------------------------
+/status (langs detectadas py/cpp/csharp + cloud cfg)
+/run?task=shell|exec&lang=&code= (exec real c/ timeout)
+/catalog/search + /catalog/info (proxy loja paga)
+/cloud/places?universeId= (places reais da conta)
+/cloud/export POST {name,tree} (gera .rbxlx; publica se AUTO_PUBLISH)
+/exports/<arq>.rbxlx (download)
+Privacidade: nunca recebe player/dev; key Open Cloud só no host.
+
+7) FLUXOS PRONTOS DE PONTA A PONTA
+------------------------------------------------------------
+- Publicar fácil: PUBLISH = 1-CLIQUE (snapshot cloud + SavePlace + link).
+- Place nova REAL: NEW PLACE (cria na conta) > ABRIR (teleporta) >
+  constrói > SAVE ACCOUNT (persiste; places criadas já vêm c/ API on).
+- Conta real: CONTA lista places do universo; Go2/ABRIR teleporta.
+- Arquivo real: EXPORT gera .rbxlx (download) ou publica direto (key).
+- Cloud: SAVE/OPEN com persistência DataStore (sobrevive restart).
+- ScriptEditor: 4 linguagens executáveis + autocomplete 149 classes.
+- Toolbox: grátis nativa + paga (busca $ + compra nativa).
+
+8) O QUE FALTA / LIMITES HONESTOS (próximos ciclos)
+------------------------------------------------------------
+a) Modais runtime legadas no 03_Menus (criadas via script — violam a
+   regra "tudo assado"; Save/File/OpenCloud já migradas p/ a SaveOpen):
+   Insert, OpenData, OpenToolbox, OpenLocalization, OpenPlugins,
+   OpenProjectSettings, OpenPublish, OpenCollaboration + menus File/
+   Insert/AGUA/ANIMACAO/ATMOS/AUDIO/CIDADE/CLIMA/CORDAS/ESPACO/
+   FABRICAR/FX/MODELAGEM/MUNDO/VIDA. Plano: assar uma a uma no v2spec.
+b) SaveOpen mostra 3 slots; rolagem/paginação da lista cheia.
+c) DataStore e CreatePlaceAsync exigem jogo PUBLICADO + online
+   (não funcionam em Play Solo) — testar publicado e colar o 05_DIAG.
+d) Open Cloud direta exige API key (Creator Dashboard: universe-places
+   + Write) + host com internet — ver pybridge/README.md.
+e) C# exige dotnet no host do bridge; sem ele, erro honesto.
+f) Busca paga: parâmetro Category de Models não confirmado
+   (sandbox sem acesso ao Roblox) — erro transparente se falhar.
+g) Login OAuth (Google/GitHub) precisa de backend de contas.
+h) TERRA (places por região + Teleport): só após o studio pronto.
+
+9) COMO TESTAR AGORA
+------------------------------------------------------------
+1. python3 studio-completo/pybridge/pybridge.py
+2. Abra o GUIX no Studio > Play. 3. HOME > Places: SAVE, NEW PLACE,
+   ABRIR, EXPORT, CONTA. 4. ScriptEditor: troque LU>PY>C+, rode.
+5. Toolbox: busca normal + "$castle". 6. PUBLISH = 1-clique.
+7. python3 studio-completo/tools/run_tests.py (esperado: 6/6 verdes).

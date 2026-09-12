@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 .DS_Store
 studio-completo/build/
+studio-completo/pybridge/exports/

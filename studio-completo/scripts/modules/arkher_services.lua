@@ -72,6 +72,65 @@ end
 ensureAccount()
 
 -- ============ CONTA / STATUS ============
+local DS_IDX = "arkher_cloud_idx_v1"
+local dsState = { ok = false, msg = "" }
+-- ============ ARKHER CLOUD DURAVEL (DataStore mirror; estado acima) ============
+local function dsStore()
+	local ok, svc = pcall(function() return game:GetService("DataStoreService") end)
+	if not ok or not svc then return nil end
+	local ok2, st = pcall(function() return svc:GetDataStore("arkher_cloud_v1") end)
+	if not ok2 then dsState.msg = tostring(st):sub(1, 120) return nil end
+	dsState.ok = true
+	return st
+end
+local function dsIdxRead(st)
+	local ok, v = pcall(function() return st:GetAsync(DS_IDX) end)
+	if ok and type(v) == "table" then return v end
+	return {}
+end
+local function dsMirrorPut(st, rec, json)
+	pcall(function() st:SetAsync("arkher_proj_" .. tostring(rec.id), { rec = rec, snapshot = json }) end)
+	local idx = dsIdxRead(st)
+	local out, seen = {}, {}
+	out[#out + 1] = rec seen[rec.id] = true
+	for _, r in ipairs(idx) do
+		if type(r) == "table" and r.id and not seen[r.id] then seen[r.id] = true out[#out + 1] = r end
+		if #out >= 50 then break end
+	end
+	pcall(function() st:SetAsync(DS_IDX, out) end)
+end
+local function dsListMissing(vault)
+	local have = {}
+	for _, r in ipairs(vault) do if type(r) == "table" and r.id then have[r.id] = true end end
+	local st = dsStore()
+	if not st then return {} end
+	local out = {}
+	for _, r in ipairs(dsIdxRead(st)) do
+		if type(r) == "table" and r.id and not have[r.id] then
+			r.src = "ds" out[#out + 1] = r
+		end
+	end
+	return out
+end
+local function dsSnapGet(id)
+	local st = dsStore()
+	if not st then return nil end
+	local ok, v = pcall(function() return st:GetAsync("arkher_proj_" .. tostring(id)) end)
+	if ok and type(v) == "table" and type(v.snapshot) == "string" then
+		return { data = v.snapshot, record = v.rec or { id = id } }
+	end
+	return nil
+end
+local function dsDel(id)
+	local st = dsStore()
+	if not st then return false end
+	pcall(function() st:RemoveAsync("arkher_proj_" .. tostring(id)) end)
+	local idx = dsIdxRead(st)
+	local out = {}
+	for _, r in ipairs(idx) do if not (type(r) == "table" and tostring(r.id) == tostring(id)) then out[#out + 1] = r end end
+	pcall(function() st:SetAsync(DS_IDX, out) end)
+	return true
+end
 function M.status()
 	local acc = getVault():FindFirstChild("Account")
 	return {
@@ -84,6 +143,8 @@ function M.status()
 		projects = #M.cloudList(),
 		published = #M.profileList(),
 		members = #M.team().members,
+		ds = dsState.ok,
+		backend = dsState.ok and "vault+datastore" or "vault",
 	}
 end
 
@@ -104,6 +165,7 @@ function M.cloudList()
 	for _, p in ipairs(cloud:GetChildren()) do
 		if p:IsA("Folder") and p.Name:sub(1, 5) == "proj_" then out[#out + 1] = projRecord(p) end
 	end
+	for _, r in ipairs(dsListMissing(out)) do out[#out + 1] = r end
 	table.sort(out, function(a, b) return (b.savedAt or "") > (a.savedAt or "") end)
 	return out
 end
@@ -123,18 +185,21 @@ function M.cloudPut(name, json, size, nodes)
 	snap.Value = json
 	snap.Parent = p
 	p.Parent = cloud
-	return projRecord(p)
+	local rec = projRecord(p)
+	pcall(function() local st = dsStore() if st then dsMirrorPut(st, rec, json) end end)
+	return rec
 end
 function M.cloudGet(id)
 	local p = getVault():FindFirstChild("Cloud"):FindFirstChild("proj_" .. id)
-	if not p then return nil end
+	if not p then local got = dsSnapGet(id) if got then return got end return nil end
 	local snap = p:FindFirstChild("Snapshot")
 	return { data = snap and snap.Value or "", record = projRecord(p) }
 end
 function M.cloudDelete(id)
 	local p = getVault():FindFirstChild("Cloud"):FindFirstChild("proj_" .. id)
-	if not p then return false end
+	if not p then return dsDel(id) end
 	p:Destroy()
+	pcall(function() dsDel(id) end)
 	return true
 end
 

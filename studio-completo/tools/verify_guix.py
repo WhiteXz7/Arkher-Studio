@@ -10,9 +10,9 @@ RBXL = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
     os.path.dirname(HERE), "..", "ArkherStudio_Completo_GUIX.rbxl")
 RBXL = os.path.normpath(RBXL)
 
-NODES = ["LangPy", "Suggest", "Sug0", "Sug7", "NewPlace", "SaveAcct",
+NODES = ["LangPy", "Suggest", "Sug0", "Sug7", "NewPlace", "SaveAcct", "Abrir", "Export", "Conta",
          "Publish", "V2_ArkherSaveOpen", "V2_ArkherScriptEditor"]
-CODE = ["ArkherSEBridge", "doPaidSearch", "buyPaid", "ToolboxPaidSearch",
+CODE = ["ArkherSEBridge", "doPaidSearch", "buyPaid", "ToolboxPaidSearch", "TeleportTo", "PublishReal", "AccountPlaces", "1-CLIQUE", "dsMirrorPut",
         "code grande demais", "FASE 3"]
 SCRIPTS = ["Arkher_01_Nucleo", "Arkher_02_Icones", "Arkher_03_Menus",
            "Arkher_04_Gizmos", "Arkher_05_StudioX", "Arkher_06_RigX",

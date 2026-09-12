@@ -46,6 +46,18 @@ anônimos. Campos `userId/playerName/accountName/...` são rejeitados com 400.
 - `lang=csharp` — real se `dotnet` SDK instalado no host.
 - Sem toolchain → erro honesto dizendo o que instalar.
 
+## Cloud real (Open Cloud)
+
+- `GET /cloud/places?universeId=...` → places reais do universo (conta real).
+- `POST /cloud/export` `{name, tree}` → gera `.rbxlx` da cena e devolve o
+  link de download (`/exports/arkher_<ts>.rbxlx`). Abra no Studio e publique
+  de lá (caminho seguro, revisado por você).
+- Publicação direta (opcional): crie a API key no Creator Dashboard com
+  **universe-places + Write** no jogo e suba o bridge com:
+  `ARKHER_ROBLOX_API_KEY=... ARKHER_AUTO_PUBLISH=1 ARKHER_UNIVERSE_ID=... ARKHER_PLACE_ID=...`
+  → o export publica sozinho e devolve `{published, version}`.
+- A key NUNCA passa pelo jogo: só existe no host do bridge.
+
 ## Catálogo (itens pagos)
 
 - `GET /catalog/search?q=...&limit=8[&cat=...]` → busca na Creator Store

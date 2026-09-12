@@ -176,12 +176,12 @@ if bUndo then
   check(apiCalls[n0 + 1] == "Undo", "HOME_Undo chama bus Undo")
   check(host:FindFirstChild("ArkherMsg"):FindFirstChild("MsgLbl").Text == "ok (Undo)", "toast mostra msg (mock esconde na hora: delay sincrono)")
 end
--- acao menus
+-- acao open (Fase 5: Save/Open/Cloud vao p/ a janela ASSADA)
 local bSave = ribbon:FindFirstChild("Page_HOME"):FindFirstChild("RibbonBtn_HOME_Save")
-if bSave then
-  local m0 = #menusCalls
+local wSave = host:FindFirstChild("V2_ArkherSaveOpen")
+if bSave and wSave then
   bSave.MouseButton1Click:Fire()
-  check(menusCalls[m0 + 1] == "Save", "HOME_Save chama MenusBus Save")
+  check(wSave.Visible == true, "HOME_Save abre V2_ArkherSaveOpen assada")
 end
 -- popup
 local bPart = ribbon:FindFirstChild("Page_BUILD"):FindFirstChild("RibbonBtn_BUILD_Part")

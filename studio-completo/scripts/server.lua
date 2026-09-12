@@ -451,6 +451,65 @@ end
 ensureAccount()
 
 -- ============ CONTA / STATUS ============
+local DS_IDX = "arkher_cloud_idx_v1"
+local dsState = { ok = false, msg = "" }
+-- ============ ARKHER CLOUD DURAVEL (DataStore mirror; estado acima) ============
+local function dsStore()
+	local ok, svc = pcall(function() return game:GetService("DataStoreService") end)
+	if not ok or not svc then return nil end
+	local ok2, st = pcall(function() return svc:GetDataStore("arkher_cloud_v1") end)
+	if not ok2 then dsState.msg = tostring(st):sub(1, 120) return nil end
+	dsState.ok = true
+	return st
+end
+local function dsIdxRead(st)
+	local ok, v = pcall(function() return st:GetAsync(DS_IDX) end)
+	if ok and type(v) == "table" then return v end
+	return {}
+end
+local function dsMirrorPut(st, rec, json)
+	pcall(function() st:SetAsync("arkher_proj_" .. tostring(rec.id), { rec = rec, snapshot = json }) end)
+	local idx = dsIdxRead(st)
+	local out, seen = {}, {}
+	out[#out + 1] = rec seen[rec.id] = true
+	for _, r in ipairs(idx) do
+		if type(r) == "table" and r.id and not seen[r.id] then seen[r.id] = true out[#out + 1] = r end
+		if #out >= 50 then break end
+	end
+	pcall(function() st:SetAsync(DS_IDX, out) end)
+end
+local function dsListMissing(vault)
+	local have = {}
+	for _, r in ipairs(vault) do if type(r) == "table" and r.id then have[r.id] = true end end
+	local st = dsStore()
+	if not st then return {} end
+	local out = {}
+	for _, r in ipairs(dsIdxRead(st)) do
+		if type(r) == "table" and r.id and not have[r.id] then
+			r.src = "ds" out[#out + 1] = r
+		end
+	end
+	return out
+end
+local function dsSnapGet(id)
+	local st = dsStore()
+	if not st then return nil end
+	local ok, v = pcall(function() return st:GetAsync("arkher_proj_" .. tostring(id)) end)
+	if ok and type(v) == "table" and type(v.snapshot) == "string" then
+		return { data = v.snapshot, record = v.rec or { id = id } }
+	end
+	return nil
+end
+local function dsDel(id)
+	local st = dsStore()
+	if not st then return false end
+	pcall(function() st:RemoveAsync("arkher_proj_" .. tostring(id)) end)
+	local idx = dsIdxRead(st)
+	local out = {}
+	for _, r in ipairs(idx) do if not (type(r) == "table" and tostring(r.id) == tostring(id)) then out[#out + 1] = r end end
+	pcall(function() st:SetAsync(DS_IDX, out) end)
+	return true
+end
 function M.status()
 	local acc = getVault():FindFirstChild("Account")
 	return {
@@ -463,6 +522,8 @@ function M.status()
 		projects = #M.cloudList(),
 		published = #M.profileList(),
 		members = #M.team().members,
+		ds = dsState.ok,
+		backend = dsState.ok and "vault+datastore" or "vault",
 	}
 end
 
@@ -483,6 +544,7 @@ function M.cloudList()
 	for _, p in ipairs(cloud:GetChildren()) do
 		if p:IsA("Folder") and p.Name:sub(1, 5) == "proj_" then out[#out + 1] = projRecord(p) end
 	end
+	for _, r in ipairs(dsListMissing(out)) do out[#out + 1] = r end
 	table.sort(out, function(a, b) return (b.savedAt or "") > (a.savedAt or "") end)
 	return out
 end
@@ -502,18 +564,21 @@ function M.cloudPut(name, json, size, nodes)
 	snap.Value = json
 	snap.Parent = p
 	p.Parent = cloud
-	return projRecord(p)
+	local rec = projRecord(p)
+	pcall(function() local st = dsStore() if st then dsMirrorPut(st, rec, json) end end)
+	return rec
 end
 function M.cloudGet(id)
 	local p = getVault():FindFirstChild("Cloud"):FindFirstChild("proj_" .. id)
-	if not p then return nil end
+	if not p then local got = dsSnapGet(id) if got then return got end return nil end
 	local snap = p:FindFirstChild("Snapshot")
 	return { data = snap and snap.Value or "", record = projRecord(p) }
 end
 function M.cloudDelete(id)
 	local p = getVault():FindFirstChild("Cloud"):FindFirstChild("proj_" .. id)
-	if not p then return false end
+	if not p then return dsDel(id) end
 	p:Destroy()
+	pcall(function() dsDel(id) end)
 	return true
 end
 
@@ -967,6 +1032,49 @@ function handlers.ToolboxPaidSearch(player, payload)
 	return { items = data.items or {}, total = data.total or 0, query = q, paid = true }
 end
 
+local function sanitizeTree(t)
+	if type(t) ~= "table" then
+		local ty = typeof(t)
+		if ty == "Vector3" or ty == "Vector2" then return { x = t.X, y = t.Y, z = t.Z } end
+		if ty == "Color3" then return { x = t.R, y = t.G, z = t.B } end
+		if ty == "UDim" or ty == "UDim2" or ty == "Rect" or ty == "CFrame" or ty == "BrickColor" then return tostring(t) end
+		if ty == "string" or ty == "number" or ty == "boolean" then return t end
+		return nil
+	end
+	local o = {}
+	for k, v in pairs(t) do
+		if k ~= "_r" then local c = sanitizeTree(v) if c ~= nil then o[k] = c end end
+	end
+	return o
+end
+function handlers.TeleportTo(player, payload)
+	local pid = tonumber(payload.placeId or 0) or 0
+	assert(pid > 0, "placeId invalido.")
+	local ok, err = pcall(function()
+		game:GetService("TeleportService"):TeleportAsync(pid, { player })
+	end)
+	if not ok then return { error = "Teleport recusou: " .. tostring(err):sub(1, 200) } end
+	return { ok = true, placeId = pid }
+end
+function handlers.PublishReal(player, payload)
+	local data = sanitizeTree(serializeTree(workspace))
+	local body = Http:JSONEncode({ name = tostring(payload.name or "Arkher Place"), tree = data })
+	assert(#body < 3000000, "Cena grande demais p/ exportar (3MB).")
+	local res, err = pyPost("/cloud/export", body)
+	if not res then return { error = err } end
+	if res.error then return { error = tostring(res.error) } end
+	return res
+end
+function handlers.AccountPlaces(player, payload)
+	local uid = 0
+	pcall(function() uid = game.GameId or 0 end)
+	assert(uid > 0, "Universo desconhecido (jogo nao publicado?).")
+	local data, err = pyGet("/cloud/places?universeId=" .. tostring(uid))
+	if not data then return { ok = false, error = err } end
+	if data.error then return { ok = false, error = tostring(data.error) } end
+	return { places = data.places or {}, universeId = uid }
+end
+
 function handlers.Publish(player, payload)
 	needSvc()
 	local info = payload or {}
@@ -1372,16 +1480,27 @@ end
 function handlers.PlaceCreate(player, payload)
 	local name = tostring(payload.name or ""):sub(1, 80)
 	assert(#name > 2, "Nome muito curto para a place.")
-	local template = tonumber(payload.template) or 9544032260 -- baseplate do Roblox
+	-- templateChain: pedido > place atual (sua) > baseplate publica. Só online+publicado.
+	local wanted = tonumber(payload.template) or 0
+	local selfPlace = 0
+	pcall(function() selfPlace = game.PlaceId or 0 end)
+	local chain = {}
+	if wanted > 0 then chain[#chain + 1] = wanted end
+	if selfPlace > 0 and selfPlace ~= wanted then chain[#chain + 1] = selfPlace end
+	chain[#chain + 1] = 9544032260
 	local desc = tostring(payload.description or "Criado com Arkher Studio") or ""
-	local ok, ret = pcall(function()
-		return game:GetService("AssetService"):CreatePlaceAsync(name, template, desc)
-	end)
-	if not ok then
-		local msg = tostring(ret)
-		return { error = "CreatePlaceAsync recusou (" .. msg .. "). Só funciona em jogo publicado online com permissão de criação de place ativa." }
+	local ret, used, errs = nil, 0, {}
+	for _, tpl in ipairs(chain) do
+		local ok, r = pcall(function() return game:GetService("AssetService"):CreatePlaceAsync(name, tpl, desc) end)
+		if ok and tonumber(r) then ret, used = r, tpl break
+		else errs[#errs + 1] = tpl .. ": " .. tostring(r):sub(1, 100) end
 	end
-	return { placeId = ret, msg = "PLACE CRIADA no seu perfil: id " .. tostring(ret) .. "  — abra em roblox.com/games/" .. tostring(ret) }
+	if not ret then
+		return { error = "CreatePlace recusou (" .. table.concat(errs, " | ") .. "). Regras: jogo PUBLICADO + jogando online (nao funciona em Play Solo); o template precisa ser seu, publicado e com copia-permitida." }
+	end
+	return { placeId = ret, templateUsed = used,
+		url = "https://www.roblox.com/games/" .. tostring(ret),
+		msg = "PLACE CRIADA na sua conta: id " .. tostring(ret) .. " (template " .. tostring(used) .. ")" }
 end
 
 -- ============ BLOCK_X8: SCRIPTS (listar p/ o SCRIPT EDITOR X) ============
@@ -1430,6 +1549,17 @@ local function pyGet(path2)
 	end
 	local ok3, data = pcall(function() return Http:JSONDecode(res) end)
 	if not ok3 then return nil, "resposta nao-JSON do python bridge" end
+	return data
+end
+local function pyPost(path2, body)
+	local ok2, res = pcall(function()
+		return Http:PostAsync(PY_URL .. path2, body, Enum.HttpContentType.ApplicationJson, false)
+	end)
+	if not ok2 then
+		return nil, ("python bridge/offline OU HttpService desligado: ligar em Game Settings > Security > HTTP Requests. Detalhe: %s"):format(tostring(res))
+	end
+	local ok3, data = pcall(function() return Http:JSONDecode(res) end)
+	if not ok3 then return nil, "resposta nao-JSON do python bridge (POST " .. path2 .. ")" end
 	return data
 end
 

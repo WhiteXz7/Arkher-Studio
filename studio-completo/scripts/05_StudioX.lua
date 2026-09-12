@@ -146,9 +146,9 @@ local ACTIONS = {
 	HOME_Pause = { "menus", "RunPause" },
 	HOME_Stop = { "menus", "RunStop" },
 	HOME_Plugins = { "open", "V2_ArkherPluginManager" },
-	HOME_Save = { "menus", "Save" },
-	HOME_Open = { "menus", "File" },
-	HOME_Cloud = { "menus", "OpenCloud" },
+	HOME_Save = { "open", "V2_ArkherSaveOpen" },
+	HOME_Open = { "open", "V2_ArkherSaveOpen" },
+	HOME_Cloud = { "open", "V2_ArkherSaveOpen" },
 	HOME_Undo = { "bus", "Undo", {} },
 	HOME_Redo = { "bus", "Redo", {} },
 	HOME_Palette = { "open", "V2_ArkherPalette" },
@@ -419,8 +419,9 @@ do
 			return t
 		end
 		for i, row in ipairs(rows) do local b = rowBtn(row) if b then pcall(function()
-			b.MouseButton1Click:Connect(function() sel = i paint() end)
-			b.Activated:Connect(function() sel = i paint() end)
+			local function pick() if _G.ArkherSvConta and _G.ArkherSvConta.on then _G.ArkherSvConta.sel = i if _G.ArkherSvContaPaint then _G.ArkherSvContaPaint() end else sel = i paint() end end
+			b.MouseButton1Click:Connect(pick)
+			b.Activated:Connect(pick)
 		end) end end
 		local function tap(n, fn) if n and n:IsA("GuiButton") then pcall(function()
 			n.MouseButton1Click:Connect(fn) n.Activated:Connect(fn)
@@ -433,6 +434,14 @@ do
 			else local pr = res and res.project or {} say("Salvo na cloud: " .. tostring(pr.name or "?") .. " (" .. tostring(pr.nodes or 0) .. " obj).") refresh() end
 		end)
 		tap(go2, function()
+			if _G.ArkherSvConta and _G.ArkherSvConta.on then
+				local c = _G.ArkherSvConta.places[_G.ArkherSvConta.sel]
+				if not c then say("Nada selecionado na conta.", true) return end
+				say("Indo p/ " .. tostring(c.name) .. "...")
+				local _, e = busApi("TeleportTo", { placeId = c.id })
+				if e then say("Abrir: " .. tostring(e), true) end return
+			end
+			refresh()
 			local p = projects[sel]
 			if not p then say("Nada no slot " .. sel .. " (salve primeiro).", true) return end
 			say("Abrindo " .. tostring(p.name) .. " (viewport atual sera substituida)...")
@@ -443,15 +452,25 @@ do
 			local nm = curName("Place " .. os.date("%d/%m %H:%M"))
 			say("Criando place " .. nm .. "...")
 			local res, err = busApi("PlaceCreate", { name = nm })
-			if err then say("PlaceCreate: " .. tostring(err), true) else say("Place criada: " .. dump(res)) end
+			if err then say("PlaceCreate: " .. tostring(err), true)
+			else _G.ArkherLastPlace = res and res.placeId or nil
+				say("Place criada: " .. dump(res) .. " — ABRIR teleporta p/ la.") end
 		end)
 		tap(saveA, function()
 			local res, err = busApi("SavePlace", {})
 			if err then say("SavePlace: " .. tostring(err), true) else say("Place salva na conta: " .. dump(res)) end
 		end)
 		tap(pub, function()
-			local res, err = busApi("Publish", {})
-			if err then say("Publish: " .. tostring(err), true) else say("Publicado: " .. dump(res)) end
+			say("1-CLIQUE: snapshot na cloud...")
+			local snap, e1 = busApi("CloudSave", { name = "Auto " .. os.date("%d/%m %H:%M") })
+			if e1 then say("1-CLIQUE: cloud falhou: " .. tostring(e1), true) return end
+			local pr = snap and snap.project or {}
+			say("1-CLIQUE: cloud ok (" .. tostring(pr.nodes or 0) .. " obj). Salvando place...")
+			local _, e2 = busApi("SavePlace", {})
+			local pid = 0 pcall(function() pid = game.PlaceId or 0 end)
+			if e2 then say("1-CLIQUE: cloud OK; SavePlace recusou (ative o API nas settings da place): " .. tostring(e2), true)
+			else say("PUBLICADO 1-CLIQUE: cloud + place. roblox.com/games/" .. tostring(pid)) end
+			refresh()
 		end)
 		if input and input:IsA("TextBox") then pcall(function()
 			input.FocusLost:Connect(function(enter) if enter and go then pcall(function() go:Activate() end) end end)
@@ -460,6 +479,86 @@ do
 			sv:GetPropertyChangedSignal("Visible"):Connect(function() if sv.Visible then refresh() end end)
 		end)
 		paint()
+	end
+end
+
+-- ==== FASE 4 — SaveOpen: ABRIR + EXPORT + CONTA (conta real) ====
+do
+	local sv = host and host:FindFirstChild("V2_ArkherSaveOpen")
+	if sv then
+		_G.ArkherSvConta = _G.ArkherSvConta or { on = false, places = {}, sel = 1 }
+		local st = _G.ArkherSvConta
+		local input = sv:FindFirstChild("Input")
+		if input and not input:IsA("TextBox") then input = input:FindFirstChildOfClass("TextBox", true) end
+		local abrir = sv:FindFirstChild("Abrir")
+		local export = sv:FindFirstChild("Export")
+		local conta = sv:FindFirstChild("Conta")
+		local rows = { sv:FindFirstChild("R_0"), sv:FindFirstChild("R_1"), sv:FindFirstChild("R_2") }
+		local SEL_BG = Color3.fromRGB(26, 42, 74)
+		local UNS_BG = Color3.fromRGB(7, 13, 25)
+		local function rtext(row)
+			if not row then return nil end
+			if row:IsA("TextButton") or row:IsA("TextLabel") then return row end
+			return row:FindFirstChildOfClass("TextLabel", true) or row:FindFirstChildOfClass("TextButton", true)
+		end
+		_G.ArkherSvContaPaint = function()
+			for i, row in ipairs(rows) do
+				local c = st.places[i]
+				local t = rtext(row)
+				if t then pcall(function()
+					t.Text = c and ("@ " .. tostring(c.name):sub(1, 30) .. "  [id " .. tostring(c.id) .. "]"):sub(1, 44) or ("-- conta slot " .. i .. " --")
+				end) end
+				if row then pcall(function()
+					row.BackgroundColor3 = (i == st.sel) and SEL_BG or UNS_BG
+					row.BackgroundTransparency = (i == st.sel) and 0 or 0.55
+				end) end
+			end
+		end
+		local function paintCloudBack()
+			local res, err = busApi("CloudList", {})
+			local projects = (res and not err) and (res.projects or {}) or {}
+			for i, row in ipairs(rows) do
+				local p = projects[i]
+				local t = rtext(row)
+				if t then pcall(function()
+					t.Text = p and (tostring(p.name):sub(1, 24) .. "  [" .. tostring(p.nodes or 0) .. " obj]"):sub(1, 44) or ("-- slot " .. i .. " --")
+				end) end
+			end
+		end
+		local function tap(n, fn) if n and n:IsA("GuiButton") then pcall(function()
+			n.MouseButton1Click:Connect(fn) n.Activated:Connect(fn)
+		end) end end
+		tap(conta, function()
+			st.on = not st.on
+			if not st.on then paintCloudBack() say("Modo CLOUD (snapshots).") return end
+			say("Listando places reais da conta...")
+			local res, err = busApi("AccountPlaces", {})
+			if err then st.on = false say("Conta: " .. tostring(err), true) return end
+			st.places = (res and res.places) or {}
+			st.sel = 1
+			_G.ArkherSvContaPaint()
+			say("CONTA: " .. #st.places .. " places reais. Go2/ABRIR teleporta.")
+		end)
+		tap(abrir, function()
+			local target, nm = nil, nil
+			if st.on then local c = st.places[st.sel] if c then target, nm = c.id, c.name end
+			else target = _G.ArkherLastPlace end
+			if not target then say(st.on and "Nada selecionado na conta." or "Crie uma place (NEW PLACE) ou entre na CONTA primeiro.", true) return end
+			say("Abrindo " .. tostring(nm or ("place " .. tostring(target))) .. "...")
+			local _, err = busApi("TeleportTo", { placeId = target })
+			if err then say("ABRIR: " .. tostring(err), true) end
+		end)
+		tap(export, function()
+			local t = input and input.Text or ""
+			t = t:match("^%s*(.-)%s*$")
+			local nm = (#t >= 3) and t or ("Arkher " .. os.date("%d/%m %H:%M"))
+			say("EXPORT: gerando .rbxlx de " .. nm .. "...")
+			local res, err = busApi("PublishReal", { name = nm })
+			if err then say("EXPORT: " .. tostring(err), true) return end
+			if res and res.published then say("PUBLICADO NA CONTA: versao " .. tostring(res.version) .. " (" .. tostring((res.stats or {}).parts or 0) .. " parts).")
+			elseif res and res.url then say("RBXLX pronto: " .. tostring(res.url) .. " (" .. tostring((res.stats or {}).parts or 0) .. " parts, " .. tostring((res.stats or {}).bytes or 0) .. " bytes). Baixe e publique pelo Studio.")
+			else say("EXPORT: " .. tostring(res and res.file or "?")) end
+		end)
 	end
 end
 
