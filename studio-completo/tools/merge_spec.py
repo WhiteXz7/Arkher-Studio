@@ -25,7 +25,9 @@ def main():
     for w in wins:
         w["props"]["ZIndex"] = 30 if w["name"] == "V2_ArkherStatusBar" else 40
         if w["name"] == "V2_ArkherStatusBar":
-            w["props"]["Visible"] = True
+            # default ESCONDIDA: o rodape proprio do Studio ja ocupa a base;
+            # o usuario mostra pelo botao HOME > Status
+            w["props"]["Visible"] = False
         else:
             w["props"]["Visible"] = False
 

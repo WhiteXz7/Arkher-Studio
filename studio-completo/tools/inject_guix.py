@@ -297,7 +297,7 @@ def main():
     # ---------- flatten da spec (ordem depth-first estável) ----------
     host = {"cls": "Frame", "name": "ArkherXDeck", "props": {
         "Size": {"u2": [1.0, 0, 1.0, 0]}, "BackgroundTransparency": 1.0,
-        "BorderSizePixel": 0, "ZIndex": 1, "Active": False, "Selectable": False,
+        "BorderSizePixel": 0, "ZIndex": 50, "Active": False, "Selectable": False,
         "Visible": True, "ClipsDescendants": False}, "kids": []}
     host_scale = {"cls": "UIScale", "name": "DeckScale",
                   "props": {"Scale": float(spec.get("host_scale", 1.0))}, "kids": []}
@@ -312,6 +312,15 @@ def main():
 
     walk(host, "CANVAS")
     ordered.append((host_scale, host))
+    # Container canvas-level p/ dropdowns/dialogs do 03_Menus + paineis do 10:
+    # sem ele o 03 trava em WaitForChild("ServerEditorPopups"). ZIndex=500 p/
+    # ficar ACIMA do host (50): menus/dialogs sempre clicaveis. (Nao confundir
+    # com o ServerEditorPopups filho do host, que guarda o popup de formas.)
+    canvas_popups = {"cls": "Frame", "name": "ServerEditorPopups", "props": {
+        "Size": {"u2": [1.0, 0, 1.0, 0]}, "BackgroundTransparency": 1.0,
+        "BorderSizePixel": 0, "ZIndex": 500, "Active": False, "Selectable": False,
+        "Visible": True, "ClipsDescendants": False}, "kids": []}
+    ordered.append((canvas_popups, "CANVAS"))
     new_by_class = {}
     for n, _ in ordered:
         new_by_class.setdefault(n["cls"], []).append(n)

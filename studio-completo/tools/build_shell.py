@@ -253,7 +253,7 @@ def main():
         "ZIndex": 30, "Active": True, "ClipsDescendants": True,
     }, pages)
     top = N("Frame", "ArkherTop", {
-        "Size": U2(1, 0, 0, 148), "Position": U2(0, 0, 0, 0),
+        "Size": U2(1, 0, 0, 148), "Position": U2(0, 0, 0, 68),
         "BackgroundColor3": TOP_BG, "BorderSizePixel": 0,
         "ZIndex": 30, "Active": True, "ClipsDescendants": True,
     }, [strip,

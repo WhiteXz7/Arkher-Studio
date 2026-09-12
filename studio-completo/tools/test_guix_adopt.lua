@@ -194,7 +194,12 @@ end
 local bStatus = ribbon:FindFirstChild("Page_HOME"):FindFirstChild("RibbonBtn_HOME_Status")
 local wStatus = host:FindFirstChild("V2_ArkherStatusBar")
 if bStatus and wStatus then
-  check(wStatus.Visible == true, "statusbar comeca visivel")
+  check(wStatus.Visible == false, "statusbar comeca escondida")
+  bStatus.MouseButton1Click:Fire()
+  check(wStatus.Visible == true, "toggle mostra statusbar")
+  -- o dedupe 0.12s do 05 (Activated+Click) exige espera real entre 2 cliques
+  local _t0 = os.clock()
+  while os.clock() - _t0 < 0.15 do end
   bStatus.MouseButton1Click:Fire()
   check(wStatus.Visible == false, "toggle esconde statusbar")
 end
