@@ -153,51 +153,38 @@ if ribbon12 then for _, pg in ipairs(ribbon12:GetChildren()) do
     end
   end
 end end
-check(nTabs12 == 11 and nPages12 == 11 and nBtns12 == 88,
-  "11 abas + 11 paginas + 88 botoes (" .. nTabs12 .. "/" .. nPages12 .. "/" .. nBtns12 .. ")")
-local tabB = strip12 and strip12:FindFirstChild("Tab_BUILD")
+check(nTabs12 == 7 and nPages12 == 7 and nBtns12 == 23,
+  "7 abas + 7 paginas + 23 botoes antigos (" .. nTabs12 .. "/" .. nPages12 .. "/" .. nBtns12 .. ")")
+local tabB = strip12 and strip12:FindFirstChild("Tab_INSERT")
 if tabB then
   tabB.Activated:Fire()
-  check(ribbon12:FindFirstChild("Page_BUILD").Visible == true, "aba BUILD mostra Page_BUILD")
-  check(ribbon12:FindFirstChild("Page_HOME").Visible == false, "Page_HOME esconde")
+  check(ribbon12:FindFirstChild("Page_INSERT").Visible == true, "aba INSERT mostra Page_INSERT")
+  check(ribbon12:FindFirstChild("Page_FILE").Visible == false, "Page_FILE esconde")
 end
 
-print("\n== Submenu PART (7 formas reais, via ribbon) ==")
-local hostPopups = host:FindFirstChild("ServerEditorPopups")
-local partBtn = ribbon12 and ribbon12:FindFirstChild("Page_BUILD"):FindFirstChild("RibbonBtn_BUILD_Part")
-if partBtn then
-  partBtn.Activated:Fire()
-  local sh = hostPopups and hostPopups:FindFirstChild("ArkherShapesPopup")
-  check(sh ~= nil and sh.Visible == true, "PART mostra o popup de formas real")
-  if sh then
-    local rows = {}
-    for _, d in ipairs(sh:GetChildren()) do if d:IsA("GuiButton") then rows[#rows + 1] = d end end
-    check(#rows == 7, "popup tem 7 formas (" .. #rows .. ")")
-    local blocoBtn
-    for _, r in ipairs(rows) do if tostring(r.Text):find("loco") or tostring(r.Text):find("Block") then blocoBtn = r end end
-    if blocoBtn then
-      blocoBtn.Activated:Fire()
-      local s = snap()
-      check(findId(s, "Block_ArkherStock") ~= nil, "Block spawna no mundo via QuickPart server")
-    end
-  end
+print("\n== INSERT cria (via ribbon, bus CreateAny, server real) ==")
+local pageI = ribbon12 and ribbon12:FindFirstChild("Page_INSERT")
+local function countClass(s, cls) local n = 0 for _, x in ipairs(s.nodes) do if x.class == cls then n = n + 1 end end return n end
+local bModel = pageI and pageI:FindFirstChild("RibbonBtn_INSERT_Model")
+if bModel then
+  local n0 = countClass(snap(), "Model")
+  bModel.Activated:Fire()
+  check(countClass(snap(), "Model") == n0 + 1, "INSERT_Model cria Model no mundo")
+end
+local bText = pageI and pageI:FindFirstChild("RibbonBtn_INSERT_Text")
+if bText then
+  local n0 = countClass(snap(), "TextLabel")
+  bText.Activated:Fire()
+  check(countClass(snap(), "TextLabel") == n0 + 1, "INSERT_Text cria TextLabel no mundo")
 end
 
-print("\n== Baseplate / Union / Negate clicaveis (via ribbon) ==")
-local pageB = ribbon12 and ribbon12:FindFirstChild("Page_BUILD")
-local bBase = pageB and pageB:FindFirstChild("RibbonBtn_BUILD_Base")
-local bUnion = pageB and pageB:FindFirstChild("RibbonBtn_BUILD_Union")
-local bNeg = pageB and pageB:FindFirstChild("RibbonBtn_BUILD_Negate")
-if bBase then
-  bBase.Activated:Fire()
-  check(true, "Baseplate clique nao explode (mock ja tem Baseplate)")
-end
-local msgBefore = #messages
-if bUnion then
-  invoke("QuickPart", { shape = "Block", x = 0, y = 3, z = 0 })
-  bUnion.Activated:Fire()
-  bNeg.Activated:Fire()
-  check(true, "Union/Negate respondem sem crash")
+print("\n== CloudQuick via FILE_SaveToArkher (bus, server real) ==")
+local pageF = ribbon12 and ribbon12:FindFirstChild("Page_FILE")
+local bCloud = pageF and pageF:FindFirstChild("RibbonBtn_FILE_SaveToArkher")
+if bCloud then
+  bCloud.Activated:Fire()
+  local tx = host:FindFirstChild("ArkherMsg") and host:FindFirstChild("ArkherMsg"):FindFirstChild("MsgLbl")
+  check(tx and tostring(tx.Text):find("Nuvem ok") ~= nil, "CloudQuick responde snapshot (toast: " .. tostring(tx and tx.Text):sub(1, 60) .. ")")
 end
 
 print("\n== Properties na dock original ==")

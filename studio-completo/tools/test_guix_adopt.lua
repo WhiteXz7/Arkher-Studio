@@ -123,9 +123,9 @@ if ribbon then for _, pg in ipairs(ribbon:GetChildren()) do
     end
   end
 end end
-check(nTabs == 11, "11 abas (" .. nTabs .. ")")
-check(nPages == 11, "11 paginas (" .. nPages .. ")")
-check(nBtns == 88, "88 botoes ribbon (" .. nBtns .. ")")
+check(nTabs == 7, "7 abas antigas (" .. nTabs .. ")")
+check(nPages == 7, "7 paginas (" .. nPages .. ")")
+check(nBtns == 23, "23 botoes antigos (" .. nBtns .. ")")
 local S1 = census()
 print("   census bake total=" .. total(S1))
 
@@ -142,67 +142,42 @@ local ok3, diff3 = same(S2, S3)
 check(ok3, "05 cria ZERO instancias" .. (ok3 and "" or (" diff=" .. diff3)))
 check(rawget(_G, "ArkherShell") ~= nil, "_G.ArkherShell exposto")
 -- troca de aba
-local tabT = strip:FindFirstChild("Tab_TERRAIN")
+local tabT = strip:FindFirstChild("Tab_TRANSFORM")
 if tabT then
   tabT.MouseButton1Click:Fire()
-  check(ribbon:FindFirstChild("Page_TERRAIN").Visible == true, "aba TERRAIN mostra Page_TERRAIN")
-  check(ribbon:FindFirstChild("Page_HOME").Visible == false, "Page_HOME esconde")
+  check(ribbon:FindFirstChild("Page_TRANSFORM").Visible == true, "aba TRANSFORM mostra Page_TRANSFORM")
+  check(ribbon:FindFirstChild("Page_FILE").Visible == false, "Page_FILE esconde")
   check(tabT:FindFirstChild("ActivePill").Visible == true, "pill ativa na aba")
-  check(strip:FindFirstChild("Tab_HOME"):FindFirstChild("ActivePill").Visible == false, "pill HOME apaga")
+  check(strip:FindFirstChild("Tab_FILE"):FindFirstChild("ActivePill").Visible == false, "pill FILE apaga")
 end
--- botao abre v2 + traz p/ frente + fecha pelo X
-local bTerr = ribbon:FindFirstChild("Page_TERRAIN"):FindFirstChild("RibbonBtn_TERRAIN_Terrain")
-local wTerr = host:FindFirstChild("V2_ArkherTerrainEditor")
-if bTerr and wTerr then
-  check(wTerr.Visible == false, "v2 comeca fechada")
-  bTerr.MouseButton1Click:Fire()
-  check(wTerr.Visible == true, "botao abre V2_ArkherTerrainEditor")
-  check(wTerr.ZIndex >= 100, "traz p/ frente (Z=" .. tostring(wTerr.ZIndex) .. ")")
-  local cls = wTerr:FindFirstChild("Head") and wTerr:FindFirstChild("Head"):FindFirstChild("Close")
-  if cls then cls.MouseButton1Click:Fire() check(wTerr.Visible == false, "X da janela fecha") end
+-- acao menus (RUN_Play -> 03 RunToggle)
+local bPlay = ribbon:FindFirstChild("Page_RUN"):FindFirstChild("RibbonBtn_RUN_Play")
+if bPlay then
+  local m0 = #menusCalls
+  bPlay.MouseButton1Click:Fire()
+  check(menusCalls[m0 + 1] == "RunToggle", "RUN_Play chama menus RunToggle")
 end
--- deck-first
-local bTX = ribbon:FindFirstChild("Page_TERRAIN"):FindFirstChild("RibbonBtn_TERRAIN_TerrainX")
-local wTX = host:FindFirstChild("Deck_terrain")
-if bTX and wTX then
-  bTX.MouseButton1Click:Fire()
-  check(wTX.Visible == true, "botao abre Deck_terrain (deck-first)")
-end
--- acao bus
-local bUndo = ribbon:FindFirstChild("Page_HOME"):FindFirstChild("RibbonBtn_HOME_Undo")
-if bUndo then
+-- acao core (TRANSFORM_Select -> modo do nucleo 01)
+local bSel = ribbon:FindFirstChild("Page_TRANSFORM"):FindFirstChild("RibbonBtn_TRANSFORM_Select")
+if bSel then bSel.MouseButton1Click:Fire() check(true, "TRANSFORM_Select sem crash (modo do nucleo)") end
+-- acao bus (INSERT_Model -> CreateAny)
+local bModel = ribbon:FindFirstChild("Page_INSERT"):FindFirstChild("RibbonBtn_INSERT_Model")
+if bModel then
   local n0 = #apiCalls
-  bUndo.MouseButton1Click:Fire()
-  check(apiCalls[n0 + 1] == "Undo", "HOME_Undo chama bus Undo")
-  check(host:FindFirstChild("ArkherMsg"):FindFirstChild("MsgLbl").Text == "ok (Undo)", "toast mostra msg (mock esconde na hora: delay sincrono)")
+  bModel.MouseButton1Click:Fire()
+  check(apiCalls[n0 + 1] == "CreateAny", "INSERT_Model chama bus CreateAny")
+  check(host:FindFirstChild("ArkherMsg"):FindFirstChild("MsgLbl").Text == "ok (CreateAny)", "toast mostra msg (mock esconde na hora: delay sincrono)")
 end
--- acao open (Fase 5: Save/Open/Cloud vao p/ a janela ASSADA)
-local bSave = ribbon:FindFirstChild("Page_HOME"):FindFirstChild("RibbonBtn_HOME_Save")
-local wSave = host:FindFirstChild("V2_ArkherSaveOpen")
-if bSave and wSave then
-  bSave.MouseButton1Click:Fire()
-  check(wSave.Visible == true, "HOME_Save abre V2_ArkherSaveOpen assada")
+-- acao bus CloudQuick (FILE_SaveToArkher)
+local bCloud = ribbon:FindFirstChild("Page_FILE"):FindFirstChild("RibbonBtn_FILE_SaveToArkher")
+if bCloud then
+  local n1 = #apiCalls
+  bCloud.MouseButton1Click:Fire()
+  check(apiCalls[n1 + 1] == "CloudQuick", "FILE_SaveToArkher chama bus CloudQuick")
 end
--- popup
-local bPart = ribbon:FindFirstChild("Page_BUILD"):FindFirstChild("RibbonBtn_BUILD_Part")
+-- popup de formas: assado mas ORFAO no set antigo (sem gatilho no ribbon)
 local shapes = host:FindFirstChild("ServerEditorPopups"):FindFirstChild("ArkherShapesPopup")
-if bPart and shapes then
-  bPart.MouseButton1Click:Fire()
-  check(shapes.Visible == true, "BUILD_Part mostra popup de formas")
-end
--- toggle statusbar
-local bStatus = ribbon:FindFirstChild("Page_HOME"):FindFirstChild("RibbonBtn_HOME_Status")
-local wStatus = host:FindFirstChild("V2_ArkherStatusBar")
-if bStatus and wStatus then
-  check(wStatus.Visible == false, "statusbar comeca escondida")
-  bStatus.MouseButton1Click:Fire()
-  check(wStatus.Visible == true, "toggle mostra statusbar")
-  -- o dedupe 0.12s do 05 (Activated+Click) exige espera real entre 2 cliques
-  local _t0 = os.clock()
-  while os.clock() - _t0 < 0.15 do end
-  bStatus.MouseButton1Click:Fire()
-  check(wStatus.Visible == false, "toggle esconde statusbar")
-end
+check(shapes ~= nil, "popup de formas assado (orfo no set antigo)")
 
 print("\n== 06/07 fiacao (zero novas) ==")
 check(loadClient("studio-completo/scripts/06_RigX.lua", "Arkher_06_RigX"), "06 ok")

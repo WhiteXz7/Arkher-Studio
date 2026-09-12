@@ -33,6 +33,8 @@ ENUMS = {
     "AutomaticSize": {"None": 0, "X": 1, "Y": 2, "XY": 3},
     "ApplyStrokeMode": {"Contextual": 0, "Border": 1},
     "ScrollingDirection": {"X": 1, "Y": 2, "XY": 4},
+    "FillDirection": {"Horizontal": 0, "Vertical": 1},
+    "SortOrder": {"Name": 0, "LayoutOrder": 1, "LayoutIndex": 2},
 }
 FAM_GOTH = "rbxasset://fonts/families/GothamSSm.json"
 FAM_SSP = "rbxasset://fonts/families/SourceSansPro.json"
@@ -156,7 +158,7 @@ def build_prop_values(cls, nodes):
             "AutoButtonColor": (0x2, col("AutoButtonColor", bool, True)),
             "Selectable": (0x2, col("Selectable", bool, True)),
             "AttributesSerialize": (0x1, [b""] * N),
-            "LayoutOrder": (0x3, [0] * N),
+            "LayoutOrder": (0x3, col("LayoutOrder", int, 0)),
             "FontFace": (0x20, col("Font", lambda v: as_font(v["en"]), (FAM_SSP, 400, b"\x00" * 5))),
             "TextSize": (0x4, col("TextSize", float, 14.0)),
             "TextColor3": (0xC, col("TextColor3", lambda v: as_c3(v["c3"]), BLACK)),
@@ -257,6 +259,8 @@ def build_prop_values(cls, nodes):
     elif cls == "UIListLayout":
         P = {
             "Name": (0x1, [n["name"] for n in nodes]),
+            "FillDirection": (0x12, col("FillDirection", lambda v: as_enum(v["en"]), 1)),
+            "SortOrder": (0x12, col("SortOrder", lambda v: as_enum(v["en"]), 0)),
             "Padding": (0x6, [as_u1(n["props"]["Padding"]["u1"]) for n in nodes]),
         }
     elif cls == "ImageLabel":
@@ -284,6 +288,7 @@ OLDFILL = {
     "TextLabel": {"TextTruncate": 0, "ClipsDescendants": False, "Visible": True},
     "TextBox": {"MultiLine": False, "TextYAlignment": 1},
     "ScrollingFrame": {"AutomaticCanvasSize": 0, "Visible": True},
+    "UIListLayout": {"FillDirection": 1, "SortOrder": 0},
 }
 
 

@@ -1,7 +1,7 @@
 ================================================================
 ARKHER STUDIO — INVENTÁRIO COMPLETO (texto)
 Gerado no ciclo Fase 4 + Fase 5. Placa: ArkherStudio_Completo_GUIX.rbxl
-9547 instâncias, 35 tipos, 205 checks de teste verdes (6/6 suítes).
+8787 instâncias, 35 tipos, 197 checks de teste verdes (6/6 suítes).
 ================================================================
 
 1) SCRIPTS (tudo assado dentro do rbxl, zero criação em runtime na shell)
@@ -13,19 +13,20 @@ LocalScripts (10): Arkher_01_Nucleo, 02_Icones, 03_Menus, 04_Gizmos,
 Scripts servidor (2): ArkherEditorServer (82 handlers), ArkherEngineServer.
 PyBridge externo: pybridge.py + rbxlx.py + test_rbxlx.py + README.
 
-2) RIBBON (abertura automática por aba; 11 abas, 11 páginas, 88 botões)
+2) RIBBON (topbar ANTIGA em abas; 7 abas, 7 páginas, 23 botões)
 ------------------------------------------------------------
-HOME: Play Pause Stop | Plugins Save Open | Undo Redo Palette (Cloud -> aba DATA)
-Feedback a prova de "nada aparece": todo toast (say) tambem imprime no log ([ArkherX] SAY ...); boot imprime build MOVE-CLOUD-DATA.
-  Search Toolbox Settings | Status Places History
-BUILD: Select Move Rotate Scale | Part Model Folder Script | Material
-  Mesh Modeler Fabricar | Insert Base Union Negate
-TERRAIN: Terrain TerrainX Sculpt Water Atmos Clima
-ANIMATE: Animator AnimX Timeline Rig
-FX/VIEW/AI/WORLD/DATA/SCRIPT/CITY: partículas, shaders, VFX, câmera,
-  console, UTS, mundo, dados, scripts, cidade (todos abrindo painéis).
-Auditoria tools/audit_buttons.py: 88/88 botões resolvem p/ algo real,
-0 mortos (janela assada / handler real / cmd menus real).
+FILE: Save Open Cloud(acao direta: snapshot+publish+place nova)
+INSERT: Model Folder Script Text (criam na hora, sem janela)
+RUN: Play Pause
+TRANSFORM: Select Move Rotate Scale Transform Lock LocalGlobal (nucleo 01)
+SETTINGS: Data Lang Settings (paineis 03)
+PLUGINS: CloudInfo Plugins (paineis 03)
+TEAM: Collab Toolbox (paineis 03)
+Layouts: UIL horizontal + SortOrder LayoutOrder (PROVADO no bake).
+Icones: 02 pinta os ORIGINAIS no boot via IconsBus (assados = fallback).
+Feedback: todo toast espelha no log ([ArkherX] SAY ...); boot: OLD-BUTTONS.
+Auditoria tools/audit_buttons.py: 23/23 botões resolvem p/ algo real,
+0 mortos (handler real / cmd menus real / modo nucleo).
 
 3) JANELAS V2 ASSADAS (40; Login removida, Insert assada)
 ------------------------------------------------------------
@@ -82,7 +83,7 @@ Privacidade: nunca recebe player/dev; key Open Cloud só no host.
 
 7) FLUXOS PRONTOS DE PONTA A PONTA
 ------------------------------------------------------------
-- Publicar fácil: botao CLOUD (aba DATA) = 1 clique (snapshot + SavePlace + cria place
+- Publicar fácil: botao CLOUD (aba FILE) = 1 clique (snapshot + SavePlace + cria place
   nova na conta, com anti-spam 5s). PUBLISH na Places = 1-CLIQUE idem.
 - Place nova REAL: NEW PLACE (cria na conta) > ABRIR (teleporta) >
   constrói > SAVE ACCOUNT (persiste; places criadas já vêm c/ API on).
@@ -115,9 +116,40 @@ h) TERRA (places por região + Teleport): só após o studio pronto.
 9) COMO TESTAR AGORA
 ------------------------------------------------------------
 1. python3 studio-completo/pybridge/pybridge.py
-2. Abra o GUIX no Studio > Play. 3. HOME > Places: SAVE, NEW PLACE,
-   ABRIR, EXPORT, CONTA. 4. ScriptEditor: troque LU>PY>C+, rode.
-5. Toolbox: busca normal + "$castle". 6. PUBLISH = 1-clique.
+2. Abra o GUIX no Studio > Play. 3. FILE: Save/Open/Cloud.
+   INSERT: Model/Folder/Script/Text criam na hora. 4. RUN: Play/Pause.
+5. TRANSFORM: modos do nucleo (Select/Move/Rotate/Scale/Transform/
+   Lock/LocalGlobal). 6. SETTINGS/PLUGINS/TEAM: paineis do 03.
 7. python3 studio-completo/tools/run_tests.py (esperado: 6/6 verdes,
-   205 checks: server 45 + services 29 + cliente 18 + paineis 27 +
-   round12 37 + adopt 49).
+   197 checks: server 45 + services 29 + cliente 18 + paineis 27 +
+   round12 35 + adopt 43).
+
+================================================================
+8) O QUE NAO FUNCIONA / NAO FOI PROVADO (2026-09-12, sem mentir)
+------------------------------------------------------------
+PROVADO no Roblox real ate hoje: boot sem erro + prints/DIAG no log.
+Todo o resto abaixo foi validado no MOCK (lupa), nao no Studio real.
+
+a) UIL vertical (CAUSA do "nada aparece"): ASSADO vertical ate o build
+   OLD-BUTTONS por omissao no bake + inject ignorando a prop. CORRIGIDO
+   e PROVADO no bake (Fill=0/Sort=1 nas 8 listas + LayoutOrder).
+b) Workspace/Hierarchy e Properties "nao atualizam sempre": QUEBRADO
+   (report do usuario). Causa ainda NAO investigada (nucleo 01? 10?).
+   Proximo passo: instrumentar + diagnosticar com log real.
+c) Publish/places reais (CreatePlaceAsync/SavePlaceAsync/Open Cloud):
+   NUNCA testados contra o Roblox real (so mock). Podem falhar por
+   permissao/template/chave. CloudQuick idem (fim-a-fim nao provado).
+d) Janelas V2 (40) + Decks (25) + popup de formas: ORFAS no set antigo
+   (continuam assadas, sem botao no ribbon). Religo quais pedirem.
+e) Menus 03 (File/Edit/... + paineis modais): alvo dos botoes antigos;
+   funcionam no mock; no real, a VERIFICAR um por um com o usuario.
+f) Modos TRANSFORM (core 01/04 gizmos): sem prova no real; 01 minificado
+   nao e totalmente auditavel. A VERIFICAR (gizmo aparece? move?).
+g) Icones: ate OLD-BUTTONS eram redesenhos ("molde sintetico"). Agora o
+   02 pinta os ORIGINAIS no boot (log: "icones originais: N/23").
+h) "88/88" e "16/16" antigos mediam EXISTENCIA/flag Visible, nao pixels
+   na tela. Metrica honesta agora: dump do bake + log do Play real.
+i) Botao Open antigo: no original caia em "Em desenvolvimento" (01 sem
+   case p/ Open). Aqui abre o menu File (melhor que o original).
+j) Stop/Undo/Redo/Palette/Search/Places: nao existiam na ribbon antiga;
+   sairam com o set novo. Undo/Redo seguem no menu Edit; Stop no Run.

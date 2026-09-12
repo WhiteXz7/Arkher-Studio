@@ -69,14 +69,15 @@ for name, kind, arg in actions:
 
 # ribbon x ACTIONS (chave = TAB_Nome)
 shell = load("tools/build_shell.py")
-tabs = re.findall(r'\(\s*"([A-Z0-9]+)"\s*,\s*\[', shell)
+shell = shell[shell.index("TABS = ["):shell.index("def C3(r, g, b):")]
 rib_keys = set()
 cur = None
-for m in re.finditer(r'\(\s*"([A-Z0-9]+)"\s*,\s*\[|\(\s*"([A-Za-z0-9_ ]+)"\s*,\s*"', shell):
-    if m.group(1):
-        cur = m.group(1)
-    elif cur and m.group(2) and " " not in m.group(2):
-        rib_keys.add(f"{cur}_{m.group(2)}")
+for m in re.finditer(r'(?m)^(\s*)\("([A-Za-z0-9_]+)",\s*(\[|")', shell):
+    ind, name, nxt = m.group(1), m.group(2), m.group(3)
+    if len(ind) == 4 and nxt == "[":
+        cur = name
+    elif len(ind) == 8 and nxt == '"' and cur:
+        rib_keys.add(f"{cur}_{name}")
 act_names = {a[0] for a in actions}
 only_ribbon = sorted(k for k in rib_keys if k not in act_names)
 only_actions = sorted(a for a in act_names if a not in rib_keys)

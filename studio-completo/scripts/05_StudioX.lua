@@ -156,94 +156,36 @@ end
 -- ---------- ações (espelho de build_shell.TABS) ----------
 -- { kind, arg, payload? } kind: open/toggle/popup/menus/bus
 local ACTIONS = {
-	HOME_Play = { "menus", "RunToggle" },
-	HOME_Pause = { "menus", "RunPause" },
-	HOME_Stop = { "menus", "RunStop" },
-	HOME_Plugins = { "open", "V2_ArkherPluginManager" },
-	HOME_Save = { "open", "V2_ArkherSaveOpen" },
-	HOME_Open = { "open", "V2_ArkherSaveOpen" },
-	HOME_Undo = { "bus", "Undo", {} },
-	HOME_Redo = { "bus", "Redo", {} },
-	HOME_Palette = { "open", "V2_ArkherPalette" },
-	HOME_Search = { "open", "V2_ArkherSearch" },
-	HOME_Toolbox = { "open", "V2_ArkherToolbox" },
-	HOME_Settings = { "open", "V2_ArkherSettings" },
-	HOME_Status = { "toggle", "V2_ArkherStatusBar" },
-	HOME_Places = { "open", "V2_ArkherSaveOpen" },
-	HOME_History = { "open", "V2_ArkherUndoRedo" },
-	BUILD_Select = { "core", "Select" },
-	BUILD_Move = { "core", "Move" },
-	BUILD_Rotate = { "core", "Rotate" },
-	BUILD_Scale = { "core", "Scale" },
-	BUILD_Part = { "popup", "ArkherShapesPopup" },
-	BUILD_Model = { "bus", "CreateAny", { class = "Model" } },
-	BUILD_Folder = { "bus", "CreateAny", { class = "Folder" } },
-	BUILD_Script = { "bus", "CreateAny", { class = "Script" } },
-	BUILD_Text = { "open", "V2_ArkherInsert" },
-	BUILD_Material = { "open", "V2_ArkherMaterialEditor" },
-	BUILD_Mesh = { "open", "Deck_mesh" },
-	BUILD_Modeler = { "open", "Deck_modeler" },
-	BUILD_Fabricar = { "open", "Deck_fabricar" },
-	BUILD_Insert = { "open", "V2_ArkherInsert" },
-	BUILD_Base = { "bus", "EnsureBase", {} },
-	BUILD_Union = { "bus", "CsgDo", { op = "union" } },
-	BUILD_Negate = { "bus", "CsgDo", { op = "negate" } },
-	TERRAIN_Terrain = { "open", "V2_ArkherTerrainEditor" },
-	TERRAIN_TerrainX = { "open", "Deck_terrain" },
-	TERRAIN_Sculpt = { "open", "Deck_sculpt" },
-	TERRAIN_Water = { "open", "Deck_water" },
-	TERRAIN_Atmos = { "open", "Deck_atmos" },
-	TERRAIN_Clima = { "open", "Deck_clima" },
-	ANIMATE_Animator = { "open", "V2_ArkherAnimationEditor" },
-	ANIMATE_AnimX = { "open", "Deck_animator" },
-	ANIMATE_Timeline = { "open", "V2_ArkherTimeline" },
-	ANIMATE_Rig = { "open", "Deck_rig" },
-	FX_Particles = { "open", "V2_ArkherParticleEditor" },
-	FX_VFX = { "open", "V2_ArkherVFXEditor" },
-	FX_FXLab = { "open", "Deck_fx" },
-	FX_Cordas = { "open", "Deck_cordas" },
-	AUDIO_Audio = { "open", "V2_ArkherAudioEditor" },
-	AUDIO_AudioX = { "open", "Deck_audio" },
-	WORLD_World = { "open", "V2_ArkherWorldEditor" },
-	WORLD_Space = { "open", "Deck_espaco" },
-	WORLD_Vida = { "open", "Deck_vida" },
-	WORLD_City = { "open", "Deck_cidade" },
-	WORLD_Physics = { "open", "V2_ArkherPhysicsEditor" },
-	WORLD_Navigate = { "open", "V2_ArkherNavigationEditor" },
-	SCRIPT_Scripts = { "open", "V2_ArkherScriptEditor" },
-	SCRIPT_Console = { "open", "V2_ArkherConsole" },
-	SCRIPT_Debug = { "open", "V2_ArkherDebugger" },
-	SCRIPT_Profiler = { "open", "V2_ArkherProfiler" },
-	SCRIPT_Terminal = { "open", "Deck_comando" },
-	SCRIPT_ScriptsX = { "open", "Deck_scripts" },
-	SCRIPT_Output = { "open", "Deck_output" },
-	SCRIPT_Py = { "open", "Deck_py" },
-	DATA_Data = { "open", "V2_ArkherDataManager" },
-	DATA_Lang = { "open", "V2_ArkherLocalization" },
-	DATA_Packages = { "open", "V2_ArkherPackageManager" },
-	DATA_Versions = { "open", "V2_ArkherVersionControl" },
-	DATA_Props = { "open", "Deck_props" },
-	DATA_Colors = { "open", "Deck_cores" },
-	DATA_Cloud = { "bus", "CloudQuick" },
-	AI_Singularity = { "open", "V2_ArkherAIEditor" },
-	AI_UTS = { "open", "V2_ArkherUTSAI" },
-	AI_Graph = { "open", "V2_ArkherGraphEditor" },
-	AI_Nodes = { "open", "V2_ArkherNodeEditor" },
-	AI_Visual = { "open", "V2_ArkherVisualScripting" },
-	AI_Shader = { "open", "V2_ArkherShaderEditor" },
-	AI_Docs = { "open", "V2_ArkherDocs" },
-	VIEW_UIEdit = { "open", "V2_ArkherUIEditor" },
-	VIEW_Layouts = { "open", "V2_ArkherLayouts" },
-	VIEW_Alerts = { "open", "V2_ArkherNotifications" },
-	VIEW_Collab = { "open", "V2_ArkherCollaboration" },
-	VIEW_Project = { "open", "V2_ArkherProjectSettings" },
-	VIEW_Build = { "open", "V2_ArkherBuildSettings" },
-	VIEW_Plugins = { "open", "V2_ArkherPluginManager" },
-	VIEW_Groups = { "open", "Deck_grupos" },
-	VIEW_PluginsX = { "open", "Deck_plugins" },
-	VIEW_ToolX = { "open", "Deck_toolbox" },
-	VIEW_Play = { "menus", "RunToggle" },
-	VIEW_Pause = { "menus", "RunPause" },
+	-- FILE (antiga FileTools)
+	FILE_Save = { "menus", "Save" },
+	FILE_Open = { "menus", "File" },
+	FILE_SaveToArkher = { "bus", "CloudQuick" },
+	-- INSERT (antiga InsertTools)
+	INSERT_Model = { "bus", "CreateAny", { class = "Model" } },
+	INSERT_Folder = { "bus", "CreateAny", { class = "Folder" } },
+	INSERT_Script = { "bus", "CreateAny", { class = "Script" } },
+	INSERT_Text = { "bus", "CreateAny", { class = "TextLabel" } },
+	-- RUN (antiga RunTools)
+	RUN_Play = { "menus", "RunToggle" },
+	RUN_Pause = { "menus", "RunPause" },
+	-- TRANSFORM (antiga TransformTools; modos do nucleo 01)
+	TRANSFORM_Select = { "core", "Select" },
+	TRANSFORM_MoveScale = { "core", "MoveScale" },
+	TRANSFORM_Rotate = { "core", "Rotate" },
+	TRANSFORM_Scale = { "core", "Scale" },
+	TRANSFORM_Transform = { "core", "Transform" },
+	TRANSFORM_Lock = { "core", "Lock" },
+	TRANSFORM_LocalGlobal = { "core", "LocalGlobal" },
+	-- SETTINGS (antiga SettingsTools; paineis 03)
+	SETTINGS_Data = { "menus", "OpenData" },
+	SETTINGS_Localization = { "menus", "OpenLocalization" },
+	SETTINGS_Settings = { "menus", "OpenProjectSettings" },
+	-- PLUGINS (antiga PluginTools)
+	PLUGINS_ArkherCloud = { "menus", "OpenCloud" },
+	PLUGINS_PluginToolbar = { "menus", "OpenPlugins" },
+	-- TEAM (antiga CollaborationTools)
+	TEAM_CollaborationSettings = { "menus", "OpenCollaboration" },
+	TEAM_Toolbox = { "menus", "OpenToolbox" },
 }
 
 local lastQuick = 0
@@ -262,7 +204,7 @@ local function runAction(key)
 		if err then say(tostring(err)) end
 	elseif a[1] == "bus" then
 		if a[2] == "CloudQuick" then
-			local nowQ = os.clock()
+			local nowQ = os.time()
 			if nowQ - lastQuick < 5 then say("Aguarde " .. math.ceil(5 - (nowQ - lastQuick)) .. "s (publicando...).") return end
 			lastQuick = nowQ
 			say("Publicando + criando place...")
@@ -338,12 +280,52 @@ if strip and ribbon then
 			end
 		end
 	end
+	-- icones ORIGINAIS (02 pinta via IconsBus; assados ficam de fallback)
+	pcall(function()
+		local rt = uiRoot:FindFirstChild("ArkherServerClientRuntime")
+		local ib = rt and rt:FindFirstChild("IconsBus") or nil
+		if ib then
+			local ir = rt:FindFirstChild("IconsReady")
+			local t0, tries = os.clock(), 0
+			while tries < 30 and (not ir or not ir.Value) and os.clock() - t0 < 3 do
+				tries = tries + 1
+				task.wait(0.1)
+			end
+			if ir and ir.Value then
+				local kinds = { FILE_Save = "Save", FILE_Open = "Open", FILE_SaveToArkher = "Cloud",
+					INSERT_Folder = "Folder", INSERT_Model = "Model", INSERT_Script = "Script", INSERT_Text = "Text",
+					RUN_Play = "Play", RUN_Pause = "Pause", TRANSFORM_Select = "Select",
+					TRANSFORM_MoveScale = "Move", TRANSFORM_Rotate = "Rotate", TRANSFORM_Scale = "Scale",
+					TRANSFORM_Transform = "Scale", TRANSFORM_Lock = "Lock", TRANSFORM_LocalGlobal = "Move",
+					SETTINGS_Data = "Data", SETTINGS_Localization = "Localization", SETTINGS_Settings = "Settings",
+					PLUGINS_ArkherCloud = "Info", PLUGINS_PluginToolbar = "Plugin",
+					TEAM_CollaborationSettings = "Collaboration", TEAM_Toolbox = "Tool" }
+				local n = 0
+				for _, pg in pairs(pages) do
+					for _, ch in ipairs(pg:GetChildren()) do
+						if ch:IsA("GuiButton") and ch.Name:sub(1, 10) == "RibbonBtn_" then
+							local k = kinds[ch.Name:sub(11)]
+							local ic = ch:FindFirstChild("Icon")
+							if k and ic then
+								local ok = pcall(function() ib:Invoke("Draw", { object = ic, kind = k, size = 40 }) end)
+								if ok then n = n + 1 end
+							end
+						end
+					end
+				end
+				print("[ArkherX] 05 icones originais: " .. n .. "/23 pintados.")
+			else
+				print("[ArkherX] 05 icones: 02 indisponivel, usando assados.")
+			end
+		end
+	end)
+
 	_G.ArkherShell = { select = selectTab, run = runAction, say = say }
 	-- auto-cura de boot: garante topbar visivel e UMA pagina (HOME)
 	pcall(function() top.Visible = true end)
-	selectTab("HOME")
+	selectTab("FILE")
 	print("[ArkherX] 05_Shell: abas + ribbon ligados.")
-	print("[ArkherX] 05 build 2026-09-12/MOVE-CLOUD-DATA (HOME sem cloud, DATA_Cloud=CloudQuick).")
+	print("[ArkherX] 05 build 2026-09-12/OLD-BUTTONS (7 abas x 23 botoes antigos, UIL horizontal, icones 02).")
 else
 	warn("[ArkherX] 05: TabStrip/Ribbon ausentes.")
 end
@@ -365,8 +347,8 @@ task.delay(1, function()
 		"viewport=" .. fld(function() local z = uiRoot.AbsoluteSize return z.X .. "x" .. z.Y end),
 		"canvasScale=" .. fld(function() local c = canvas and canvas:FindFirstChild("ResponsiveScale") return c and c.Scale end),
 		"deckSize=" .. fld(function() local z = host.AbsoluteSize return z.X .. "x" .. z.Y end),
-		"homeBtns=" .. fld(function()
-			local pg = ribbon and ribbon:FindFirstChild("Page_HOME")
+		"fileBtns=" .. fld(function()
+			local pg = ribbon and ribbon:FindFirstChild("Page_FILE")
 			local v, t = 0, 0
 			if pg then for _, ch in ipairs(pg:GetChildren()) do
 				if ch:IsA("GuiButton") and ch.Name:sub(1, 10) == "RibbonBtn_" then

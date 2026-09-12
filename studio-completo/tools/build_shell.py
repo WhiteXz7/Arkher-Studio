@@ -20,115 +20,42 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 # (tab, id, label, icon, acao...)
 TABS = [
-    ("HOME", [
-        ("Play", "Play", "play", ("menus", "RunToggle")),
-        ("Pause", "Pause", "pause", ("menus", "RunPause")),
-        ("Stop", "Stop", "square", ("menus", "RunStop")),
-        ("Plugins", "Plugins", "plugin", ("open", "V2_ArkherPluginManager")),
+    ("FILE", [
         ("Save", "Save", "save", ("menus", "Save")),
         ("Open", "Open", "open", ("menus", "File")),
-        ("Undo", "Undo", "rotate", ("bus", "Undo", {})),
-        ("Redo", "Redo", "chevR", ("bus", "Redo", {})),
-        ("Palette", "Command\nPalette", "chevD", ("open", "V2_ArkherPalette")),
-        ("Search", "Search", "search", ("open", "V2_ArkherSearch")),
-        ("Toolbox", "Toolbox", "toolbox", ("open", "V2_ArkherToolbox")),
-        ("Settings", "Settings", "settings", ("open", "V2_ArkherSettings")),
-        ("Status", "Status\nBar", "check", ("toggle", "V2_ArkherStatusBar")),
-        ("Places", "Places", "folder", ("open", "V2_ArkherSaveOpen")),
-        ("History", "Undo\nHistory", "square", ("open", "V2_ArkherUndoRedo")),
+        ("SaveToArkher", "Cloud", "cloud", ("bus", "CloudQuick", {})),
     ]),
-    ("BUILD", [
-        ("Select", "Select", "select", ("core", "Select")),
-        ("Move", "Move", "move", ("core", "Move")),
-        ("Rotate", "Rotate", "rotate", ("core", "Rotate")),
-        ("Scale", "Scale", "scaleI", ("core", "Scale")),
-        ("Part", "Part", "cubeW", ("popup", "ArkherShapesPopup")),
+    ("INSERT", [
         ("Model", "Model", "model", ("bus", "CreateAny", {"class": "Model"})),
         ("Folder", "Folder", "folder", ("bus", "CreateAny", {"class": "Folder"})),
         ("Script", "Script", "script", ("bus", "CreateAny", {"class": "Script"})),
-        ("Text", "Text", "textA", ("open", "V2_ArkherInsert")),
-        ("Material", "Material", "plate", ("open", "V2_ArkherMaterialEditor")),
-        ("Mesh", "Mesh", "cubeT", ("open", "Deck_mesh")),
-        ("Modeler", "Modeler", "move", ("open", "Deck_modeler")),
-        ("Fabricar", "Fabricar", "plus", ("open", "Deck_fabricar")),
-        ("Insert", "Insert...", "chevD", ("open", "V2_ArkherInsert")),
-        ("Base", "Baseplate", "square", ("bus", "EnsureBase", {})),
-        ("Union", "Union", "scaleI", ("bus", "CsgDo", {"op": "union"})),
-        ("Negate", "Negate", "minus", ("bus", "CsgDo", {"op": "negate"})),
+        ("Text", "Text", "textA", ("bus", "CreateAny", {"class": "TextLabel"})),
     ]),
-    ("TERRAIN", [
-        ("Terrain", "Terrain", "terrain", ("open", "V2_ArkherTerrainEditor")),
-        ("TerrainX", "Terrain\nX", "globe", ("open", "Deck_terrain")),
-        ("Sculpt", "Sculpt", "scaleI", ("open", "Deck_sculpt")),
-        ("Water", "Water", "gem", ("open", "Deck_water")),
-        ("Atmos", "Atmos", "bulb", ("open", "Deck_atmos")),
-        ("Clima", "Clima", "share", ("open", "Deck_clima")),
-    ]),
-    ("ANIMATE", [
-        ("Animator", "Animator", "play", ("open", "V2_ArkherAnimationEditor")),
-        ("AnimX", "Anim\nX", "pause", ("open", "Deck_animator")),
-        ("Timeline", "Timeline", "minus", ("open", "V2_ArkherTimeline")),
-        ("Rig", "Rig", "pin", ("open", "Deck_rig")),
-    ]),
-    ("FX", [
-        ("Particles", "Particles", "plus", ("open", "V2_ArkherParticleEditor")),
-        ("VFX", "VFX", "emblem", ("open", "V2_ArkherVFXEditor")),
-        ("FXLab", "FX\nLab", "dock", ("open", "Deck_fx")),
-        ("Cordas", "Cordas", "share", ("open", "Deck_cordas")),
-    ]),
-    ("AUDIO", [
-        ("Audio", "Audio", "play", ("open", "V2_ArkherAudioEditor")),
-        ("AudioX", "Audio\nX", "pause", ("open", "Deck_audio")),
-    ]),
-    ("WORLD", [
-        ("World", "World", "ws", ("open", "V2_ArkherWorldEditor")),
-        ("Space", "Space", "camera", ("open", "Deck_espaco")),
-        ("Vida", "Vida", "people", ("open", "Deck_vida")),
-        ("City", "City", "boxG", ("open", "Deck_cidade")),
-        ("Physics", "Physics", "transform", ("open", "V2_ArkherPhysicsEditor")),
-        ("Navigate", "Navigate", "globe", ("open", "V2_ArkherNavigationEditor")),
-    ]),
-    ("SCRIPT", [
-        ("Scripts", "Script\nEditor", "script", ("open", "V2_ArkherScriptEditor")),
-        ("Console", "Console", "textA", ("open", "V2_ArkherConsole")),
-        ("Debug", "Debug", "bulb", ("open", "V2_ArkherDebugger")),
-        ("Profiler", "Profiler", "data", ("open", "V2_ArkherProfiler")),
-        ("Terminal", "Terminal", "minus", ("open", "Deck_comando")),
-        ("ScriptsX", "Scripts\nX", "folderP", ("open", "Deck_scripts")),
-        ("Output", "Output", "chat", ("open", "Deck_output")),
-        ("Py", "Python", "info", ("open", "Deck_py")),
-    ]),
-    ("DATA", [
-        ("Data", "Data", "data", ("open", "V2_ArkherDataManager")),
-        ("Lang", "Language", "globe", ("open", "V2_ArkherLocalization")),
-        ("Packages", "Packages", "boxG", ("open", "V2_ArkherPackageManager")),
-        ("Versions", "Versions", "chevD", ("open", "V2_ArkherVersionControl")),
-        ("Props", "Props", "check", ("open", "Deck_props")),
-        ("Colors", "Colors", "gem", ("open", "Deck_cores")),
-        ("Cloud", "Cloud", "cloud", ("bus", "CloudQuick", {})),
-    ]),
-    ("AI", [
-        ("Singularity", "Singularity", "emblem", ("open", "V2_ArkherAIEditor")),
-        ("UTS", "UTS AI", "share", ("open", "V2_ArkherUTSAI")),
-        ("Graph", "Graph", "transform", ("open", "V2_ArkherGraphEditor")),
-        ("Nodes", "Nodes", "pin", ("open", "V2_ArkherNodeEditor")),
-        ("Visual", "Visual", "lock", ("open", "V2_ArkherVisualScripting")),
-        ("Shader", "Shader", "camera", ("open", "V2_ArkherShaderEditor")),
-        ("Docs", "Docs", "info", ("open", "V2_ArkherDocs")),
-    ]),
-    ("VIEW", [
-        ("UIEdit", "UI\nEditor", "select", ("open", "V2_ArkherUIEditor")),
-        ("Layouts", "Layouts", "dock", ("open", "V2_ArkherLayouts")),
-        ("Alerts", "Alerts", "playersI", ("open", "V2_ArkherNotifications")),
-        ("Collab", "Collab", "people", ("open", "V2_ArkherCollaboration")),
-        ("Project", "Project", "folder", ("open", "V2_ArkherProjectSettings")),
-        ("Build", "Build", "plus", ("open", "V2_ArkherBuildSettings")),
-        ("Plugins", "Plugins", "plugin", ("open", "V2_ArkherPluginManager")),
-        ("Groups", "Groups", "lock", ("open", "Deck_grupos")),
-        ("PluginsX", "Plugins\nX", "boxG", ("open", "Deck_plugins")),
-        ("ToolX", "Tool\nX", "toolbox", ("open", "Deck_toolbox")),
+    ("RUN", [
         ("Play", "Play", "play", ("menus", "RunToggle")),
         ("Pause", "Pause", "pause", ("menus", "RunPause")),
+    ]),
+    ("TRANSFORM", [
+        ("Select", "Select", "select", ("core", "Select")),
+        ("MoveScale", "Move", "move", ("core", "MoveScale")),
+        ("Rotate", "Rotate", "rotate", ("core", "Rotate")),
+        ("Scale", "Scale", "scaleI", ("core", "Scale")),
+        ("Transform", "Transform", "transform", ("core", "Transform")),
+        ("Lock", "Lock", "lock", ("core", "Lock")),
+        ("LocalGlobal", "Local\nGlobal", "globe", ("core", "LocalGlobal")),
+    ]),
+    ("SETTINGS", [
+        ("Data", "Data", "data", ("menus", "OpenData")),
+        ("Localization", "Lang", "globe", ("menus", "OpenLocalization")),
+        ("Settings", "Settings", "settings", ("menus", "OpenProjectSettings")),
+    ]),
+    ("PLUGINS", [
+        ("ArkherCloud", "Cloud\nInfo", "info", ("menus", "OpenCloud")),
+        ("PluginToolbar", "Plugins", "plugin", ("menus", "OpenPlugins")),
+    ]),
+    ("TEAM", [
+        ("CollaborationSettings", "Collab", "people", ("menus", "OpenCollaboration")),
+        ("Toolbox", "Toolbox", "toolbox", ("menus", "OpenToolbox")),
     ]),
 ]
 
@@ -173,6 +100,8 @@ def stroke(color, th=1):
 
 def hlist(pad=6):
     return N("UIListLayout", "UIListLayout", {
+        "FillDirection": {"en": "FillDirection.Horizontal"},
+        "SortOrder": {"en": "SortOrder.LayoutOrder"},
         "Padding": U1(0, pad)})
 
 
@@ -197,6 +126,7 @@ def main():
         active = (i == 0)
         tab = N("TextButton", f"Tab_{t}", {
             "Size": U2(0, 92, 0, 26), "Position": U2(0, 0, 0, 0),
+            "LayoutOrder": float(i),
             "BackgroundColor3": TAB_ACTIVE_BG if active else STRIP_BG,
             "BackgroundTransparency": 0.0 if active else 1.0,
             "BorderSizePixel": 0, "ZIndex": 31, "Text": t,
@@ -222,10 +152,11 @@ def main():
     n_btns = 0
     for i, (t, btns) in enumerate(TABS):
         items = []
-        for bid, label, icon, _act in btns:
+        for j, (bid, label, icon, _act) in enumerate(btns):
             n_btns += 1
             btn = N("TextButton", f"RibbonBtn_{t}_{bid}", {
                 "Size": U2(0, 66, 0, 100), "Position": U2(0, 0, 0, 0),
+                "LayoutOrder": float(j),
                 "BackgroundColor3": BTN_BG, "BorderSizePixel": 0,
                 "ZIndex": 31, "Text": "",
                 "AutoButtonColor": False, "Active": True,
