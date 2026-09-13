@@ -183,6 +183,34 @@ check(caW and caW.id and caW.parent and caW.parent:find("Workspace"), "CreateAny
 local caX = invokeWait("CreateAny", { class = "Folder", parentName = "ServicoInexistenteZZZ" })
 check(caX and caX.id, "CreateAny parentName desconhecido: cai no default sem erro")
 
+print("\n== R3 terreno voxel real ==")
+local terCalls = {}
+METHODS.FillBall = function(self, c, r, mt) terCalls[#terCalls+1] = { shape = "ball", r = r, mat = mt and mt.Name } end
+METHODS.FillBlock = function(self, cf, sz, mt) terCalls[#terCalls+1] = { shape = "block", sz = sz, mat = mt and mt.Name } end
+METHODS.FillCylinder = function(self, cf, h, r, mt) terCalls[#terCalls+1] = { shape = "cylinder", h = h, r = r, mat = mt and mt.Name } end
+METHODS.Clear = function(self) terCalls[#terCalls+1] = { shape = "clear" } end
+METHODS.CountCells = function(self) return 42 end
+local ter0 = Instance.new("Terrain")
+ter0.Parent = game:GetService("Workspace")
+local ti = invokeWait("TerrainInfo", {})
+check(ti and ti.cells == 42, "TerrainInfo: cells do Terrain real")
+local f1 = invokeWait("TerrainFill", { shape = "ball", center = { x = 0, y = 10, z = 0 }, radius = 16, material = "Grass" })
+check(f1 and f1.ok and #terCalls == 1 and terCalls[1].shape == "ball" and terCalls[1].r == 16 and terCalls[1].mat == "Grass", "TerrainFill ball: FillBall(centro, 16, Grass)")
+local f2 = invokeWait("TerrainFill", { shape = "block", center = { x = 1, y = 2, z = 3 }, size = { x = 32, y = 8, z = 32 }, material = "Rock" })
+check(f2 and f2.ok and terCalls[#terCalls].shape == "block" and terCalls[#terCalls].mat == "Rock", "TerrainFill block: FillBlock ok")
+local f3 = invokeWait("TerrainFill", { shape = "cylinder", center = { x = 0, y = 0, z = 0 }, radius = 8, height = 24, material = "Sand" })
+check(f3 and f3.ok and terCalls[#terCalls].shape == "cylinder", "TerrainFill cylinder: FillCylinder ok")
+local fr = invokeWait("TerrainFill", { shape = "ball", center = { x = 0, y = 0, z = 0 }, radius = 8, material = "Grass", op = "remove" })
+check(fr and fr.ok and terCalls[#terCalls].mat == "Air", "TerrainFill remove: vira Air")
+local fb = invokeWait("TerrainFill", { shape = "x", center = { x = 0, y = 0, z = 0 }, material = "Grass" })
+check(fb and fb.error, "TerrainFill shape invalido: rejeita")
+local fbig = invokeWait("TerrainFill", { shape = "ball", center = { x = 0, y = 0, z = 0 }, radius = 9999, material = "Grass" })
+check(fbig and fbig.error, "TerrainFill radius gigante: rejeita")
+local fmat = invokeWait("TerrainFill", { shape = "ball", center = { x = 0, y = 0, z = 0 }, radius = 8, material = "Adamantium" })
+check(fmat and fmat.error, "TerrainFill material falso: rejeita")
+local cl = invokeWait("TerrainClear", {})
+check(cl and cl.ok and terCalls[#terCalls].shape == "clear", "TerrainClear: Clear ok")
+
 print("\n================================")
 print(string.format("RESULTADO: %d passaram, %d falharam", pass, fail))
 if fail > 0 then os.exit(1) else os.exit(0) end

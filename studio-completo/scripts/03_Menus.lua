@@ -1427,6 +1427,8 @@ MENUS.MUNDO = {
   { sep = true },
   { icon = "plus", label = "Gerar planeta (sócio tectônico)…", act = "XOpenTerrainGen" },
   { icon = "Data", label = "Sonda do mundo (bioma/clima/matéria)", act = "XOpenTerrainProbe" },
+  { sep = true },
+  { icon = "Part", label = "Terreno VOXEL real (brush)…", act = "XOpenTerrainVoxel" },
 }
 MENUS.LUGARES = {
   { icon = "Save", label = "SALVAR ESTA PLACE na conta…", act = "SavePlaceAccount", tip = "AssetService:SavePlaceAsync — grava a place ATUAL na sua conta (precisa estar publicada)." },
@@ -1569,6 +1571,88 @@ local function deckCmd(op, params)
   say("Deck X indisponível p/ backend.", true)
 end
 
+local function openTerrainVoxelPanel()
+  local d, body = modalDialog("Terreno VOXEL real — brush no Terrain", 680, 520)
+  label("T", body, "PINCEL NO TERRAIN DO WORKSPACE (FillBall/FillBlock/FillCylinder reais)", 0, 8, 660, 18, 14, m.cyan, true)
+  local infoL = label("I", body, "info: …", 0, 32, 660, 18, 12, m.muted)
+  local function refreshInfo()
+    local r, e = api("TerrainInfo", {})
+    if e then infoL.Text = "info: " .. tostring(e)
+    elseif r and r.result then
+      local w = r.result.water or {}
+      infoL.Text = ("info: %s voxels · agua transp=%s onda=%s"):format(
+        tostring(r.result.cells), tostring(w.transparency), tostring(w.waveSize))
+    end
+  end
+  refreshInfo()
+  local shapes = { "ball", "block", "cylinder" }
+  local si = 1
+  local shapeB = actionBtn(body, 0, 58, 200, 30, "forma: ball", m.cyan)
+  shapeB.Activated:Connect(function()
+    si = si % #shapes + 1
+    shapeB.Text = "forma: " .. shapes[si]
+  end)
+  local mats = { "Grass", "Rock", "Sand", "Snow", "Dirt", "Concrete", "WoodPlanks", "Water" }
+  local mi = 1
+  local matB = actionBtn(body, 210, 58, 220, 30, "material: Grass", m.cyan)
+  matB.Activated:Connect(function()
+    mi = mi % #mats + 1
+    matB.Text = "material: " .. mats[mi]
+  end)
+  local refB = actionBtn(body, 440, 58, 120, 30, "atualizar info", m.muted)
+  refB.Activated:Connect(refreshInfo)
+  label("C", body, "CENTRO (studs)", 0, 100, 200, 16, 12, m.text, true)
+  local cx = input(body, "Cx", 0, 120, 100, "X (0)")
+  local cy = input(body, "Cy", 108, 120, 100, "Y (10)")
+  local cz = input(body, "Cz", 216, 120, 100, "Z (0)")
+  local selB = actionBtn(body, 324, 120, 180, 30, "USAR SELECAO", m.gold)
+  selB.Activated:Connect(function()
+    local sg, se = api("SelectedGet", {})
+    if se or not (sg and sg.result and sg.result.id) then say("Nada selecionado.", true) return end
+    local pr, pe = api("PropsAll", { id = sg.result.id })
+    if pe or not (pr and pr.result and pr.result.fields) then say("Props da selecao indisponiveis.", true) return end
+    for _, f in ipairs(pr.result.fields) do
+      if f.key == "Position" and typeof(f.value) == "Vector3" then
+        cx.Text = tostring(math.floor(f.value.X))
+        cy.Text = tostring(math.floor(f.value.Y))
+        cz.Text = tostring(math.floor(f.value.Z))
+        say("Centro = selecao.")
+        return
+      end
+    end
+    say("Selecao sem Position.", true)
+  end)
+  label("S", body, "TAMANHO (radius 1-128 · size 1-256 · height 1-256)", 0, 160, 500, 16, 12, m.text, true)
+  local rIn = input(body, "R", 0, 180, 100, "radius (16)")
+  local sx = input(body, "Sx", 108, 180, 80, "sx (32)")
+  local sy = input(body, "Sy", 196, 180, 80, "sy (8)")
+  local sz = input(body, "Sz", 284, 180, 80, "sz (32)")
+  local hIn = input(body, "H", 372, 180, 100, "height (24)")
+  local function center()
+    return { x = tonumber(cx.Text) or 0, y = tonumber(cy.Text) or 10, z = tonumber(cz.Text) or 0 }
+  end
+  local function doFill(op)
+    local payload = { shape = shapes[si], material = mats[mi], center = center(), op = op,
+      radius = tonumber(rIn.Text) or 16, height = tonumber(hIn.Text) or 24,
+      size = { x = tonumber(sx.Text) or 32, y = tonumber(sy.Text) or 8, z = tonumber(sz.Text) or 32 } }
+    local r, e = api("TerrainFill", payload)
+    if e then say(tostring(e), true)
+    elseif r and r.result and r.result.error then say(r.result.error, true)
+    elseif r and r.result then say(r.result.msg or "Terreno aplicado.") refreshInfo() end
+  end
+  local apB = actionBtn(body, 0, 224, 200, 36, "APLICAR", m.blue)
+  apB.Activated:Connect(function() doFill("add") end)
+  local rmB = actionBtn(body, 210, 224, 200, 36, "REMOVER (Ar)", m.error)
+  rmB.Activated:Connect(function() doFill("remove") end)
+  local clB = actionBtn(body, 420, 224, 200, 36, "LIMPAR TUDO", m.error)
+  clB.Activated:Connect(function()
+    local r, e = api("TerrainClear", {})
+    if e then say(tostring(e), true)
+    elseif r and r.result then say(r.result.msg or "Terreno limpo.") refreshInfo() end
+  end)
+  label("Hint", body, "V1: sem desfazer no terreno — confira o centro antes de aplicar. Voxels de 4 studs.", 0, 270, 660, 30, 11, m.muted)
+end
+actions.XOpenTerrainVoxel = function() openTerrainVoxelPanel() end
 actions.XOpenTerrain      = function() deckOpen("terrain", "ferramentas") end
 actions.XOpenTerrainGen   = function() deckOpen("terrain", "gerar") end
 actions.XOpenTerrainProbe = function() deckOpen("terrain", "sonda") end

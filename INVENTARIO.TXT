@@ -162,3 +162,10 @@ original escondida recebia, overlay nao). Fixes assados: notifyCreated (10
 x2 + 05), poll de assinatura de valores c/ guarda de foco, refresh apos
 commit, PipeStats+contadores, parentName. 205 testes verdes. AGUARDA PROVA
 NO PLAY: inserir classe -> aparece revelada + props acompanham.
+
+R3 (PACK TERRAIN, terreno voxel real): TERRAIN X auditado — eh CUSTOM de
+propósito (parts, "nao usa Terrain do Roblox" no proprio header) — segue
+intacto. NOVO: editor do Terrain voxel REAL (menu MUNDO > Terreno VOXEL):
+TerrainInfo/Fill/Clear no server (whitelist 40 materiais, limites radius
+128/size 256, MUTATING) + painel 03 (forma/material/centro+X/Y/Z+usar
+selecao). 214 testes. AGUARDA PROVA NO PLAY: bola de Grama no terreno.

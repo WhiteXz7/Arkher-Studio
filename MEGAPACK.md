@@ -55,3 +55,18 @@ Blocos: 5 por rodada, no automático; pedir pra continuar ao fim.
 - Placar MANTIDO 13/100: fix só conta com prova no Play real (regra).
 - Prova pedida: inserir classe → nó revelado + props acompanham + saída
   de `_G.ArkherPipe()` no Output.
+
+## R3 — PACK TERRAIN (voxel real) ENTREGUE, aguardando prova Play
+- Auditoria: TERRAIN X é custom de propósito (heightmap→parts, header
+  `terrainx.luau` diz "não usa Terrain do Roblox") — intacto; 03→08→RRX/WLDX
+  verificado. Faltava: editor do Terrain voxel REAL.
+- Novo (pesquisa docs: FillBall/Block/Cylinder, CountCells, voxels 4³):
+  server `TerrainInfo`/`TerrainFill` (ball/block/cylinder + remove=Air)/
+  `TerrainClear` (whitelist 40 materiais, caps, MUTATING); painel 03 em
+  MUNDO > "Terreno VOXEL real" (forma/material/centro/usar seleção).
+- 214 testes (62+29+18+27+35+43), VERIFY OK, audits 0/0/0, markers R3
+  provados no bake (316508B).
+- Placar MANTIDO 13/100: conta com prova no Play real (regra).
+- Prova pedida: MUNDO > Terreno VOXEL > APLICAR → bola de Grama no terreno.
+- Nota infra: `studio-completo/build/` + pip resetam entre turnos (exclusão
+  de snapshot); pipeline agora regenera (reskin→inject→patch→verify).

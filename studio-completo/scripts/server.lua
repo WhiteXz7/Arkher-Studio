@@ -250,6 +250,69 @@ function handlers.Redo(player)
     return { label = e.label }
 end
 
+-- ============ R3: TERRENO VOXEL REAL (workspace.Terrain de verdade) ============
+local TERRAIN_MATS = { Air=true, Asphalt=true, Basalt=true, Brick=true, Cardboard=true, Carpet=true, CeramicTiles=true, Clay=true, Cobblestone=true, Concrete=true, CorrodedMetal=true, CrackedLava=true, DiamondPlate=true, Dirt=true, Fabric=true, Foil=true, Glacier=true, Glass=true, Granite=true, Grass=true, Ground=true, Ice=true, LeafyGrass=true, Limestone=true, Marble=true, Metal=true, Mud=true, Obsidian=true, PackedIce=true, Pavement=true, Pebble=true, Plastic=true, Plank=true, Rock=true, Rubber=true, Salt=true, Sand=true, Sandstone=true, Slate=true, SmoothPlastic=true, Snow=true, Wood=true, WoodPlanks=true, Water=true }
+local function terrainOrFail()
+	local ter = workspace:FindFirstChildOfClass("Terrain")
+	assert(ter, "Sem Terrain no Workspace (File > Novo > Terrain).")
+	return ter
+end
+local function terrainMat(name)
+	assert(type(name) == "string" and TERRAIN_MATS[name], "Material de terreno invalido: " .. tostring(name))
+	return Enum.Material[name]
+end
+local function terrainCenter(c)
+	assert(type(c) == "table", "Centro invalido.")
+	local x, y, z = tonumber(c.x), tonumber(c.y), tonumber(c.z)
+	assert(x and y and z and finite(x) and finite(y) and finite(z), "Centro invalido.")
+	assert(math.abs(x) <= 100000 and math.abs(y) <= 100000 and math.abs(z) <= 100000, "Centro fora do limite.")
+	return Vector3.new(x, y, z)
+end
+function handlers.TerrainInfo(player)
+	local ter = terrainOrFail()
+	local cells = 0
+	pcall(function() cells = ter:CountCells() end)
+	local w = {}
+	pcall(function()
+		w.transparency = ter.WaterTransparency
+		w.reflectance = ter.WaterReflectance
+		w.waveSize = ter.WaterWaveSize
+		w.waveSpeed = ter.WaterWaveSpeed
+		local wc = ter.WaterColor
+		w.color = { math.floor(wc.R * 255), math.floor(wc.G * 255), math.floor(wc.B * 255) }
+	end)
+	return { cells = cells, water = w, id = idOf[ter] }
+end
+function handlers.TerrainFill(player, payload)
+	local shape = tostring(payload.shape or "ball")
+	assert(shape == "ball" or shape == "block" or shape == "cylinder", "shape: ball, block ou cylinder.")
+	local matName = (payload.op == "remove") and "Air" or payload.material
+	local mat = terrainMat(matName)
+	local ctr = terrainCenter(payload.center)
+	local ter = terrainOrFail()
+	if shape == "ball" then
+		local r = tonumber(payload.radius) or 0
+		assert(r >= 1 and r <= 128, "radius 1..128.")
+		ter:FillBall(ctr, r, mat)
+	elseif shape == "block" then
+		local sz = payload.size or {}
+		local x, y, z = tonumber(sz.x) or 0, tonumber(sz.y) or 0, tonumber(sz.z) or 0
+		assert(x >= 1 and x <= 256 and y >= 1 and y <= 256 and z >= 1 and z <= 256, "size 1..256 por eixo.")
+		ter:FillBlock(CFrame.new(ctr), Vector3.new(x, y, z), mat)
+	else
+		local h = tonumber(payload.height) or 0
+		local r = tonumber(payload.radius) or 0
+		assert(h >= 1 and h <= 256 and r >= 1 and r <= 128, "height 1..256, radius 1..128.")
+		ter:FillCylinder(CFrame.new(ctr), h, r, mat)
+	end
+	return { msg = ("Terreno: %s %s aplicado."):format(shape, tostring(matName)) }
+end
+function handlers.TerrainClear(player)
+	local ter = terrainOrFail()
+	ter:Clear()
+	return { msg = "Terreno limpo (voxels removidos)." }
+end
+
 function handlers.PipeStats(player)
 	local sel2 = selected[player]
 	return { deltaFlush = pipeStats.deltaFlush, deltaNodes = pipeStats.deltaNodes, propsPush = pipeStats.propsPush, selRemoved = pipeStats.selRemoved, selects = pipeStats.selects, creates = pipeStats.creates, skippedCap = pipeStats.skippedCap, skippedParent = pipeStats.skippedParent, nodeCount = nodeCount, maxNodes = CONFIG.MAX_NODES, subscribed = subscribed[player] == true, selectedId = (sel2 ~= nil) and idOf[sel2] or nil }
@@ -2373,7 +2436,7 @@ end
 
 -- ============ RUN REAL (Play/Pause/Stop de verdade) ============
 local RUN = { running = false, frozen = false, parts = {}, vels = {}, sounds = {} }
-local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, Undo=true }
+local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, Undo=true }
 local function runRestore()
 	for part, was in pairs(RUN.parts) do
 		if part and part.Parent then
