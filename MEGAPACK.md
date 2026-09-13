@@ -147,3 +147,34 @@ Blocos: 5 por rodada, no automático; pedir pra continuar ao fim.
   Fixture regenerada com shell2; adopt/round12 reescritos p/ nova shell.
 - Limpeza GitHub: builds velhos/junk/legacy-v3 removidos; teses/lore/TXTs em
   docs/lore; mockup em studio-completo/docs/UI_REFERENCE.png.
+
+## R8 — ARKHER Input System (PC/Mobile/Console/VR) + Desktop completo
+- 4 layouts ASSADOS (zero GUI via script): DesktopRoot (shell2 embrulhada,
+  mesmos nomes/posições) + MobileRoot (topbar compacta, strip 8 modos,
+  drawer 13 categorias, painel numérico POS/ROT/SIZE, bottom bar contextual,
+  indicador de modo) + ConsoleRoot (topbar, radial 6 slots, cursor virtual,
+  painel numérico, legenda gamepad) + VRoot (painel central + mira).
+  Spec 332→572 nós; placa 329053→342051B, 9121→9362 inst.
+- 11_Input.lua (LocalScript novo, 36KB assado): detect UMA vez no boot
+  (VR→Console→Mobile→PC) + override `_G.ArkherInput.setPlatform`; camada
+  Action fina traduzindo p/ endpoints reais (ClientBus/MenusBus/API server).
+- PC: teclas 1-5, F frame, WASDQE fly + Shift/Ctrl velocidade, RMB orbit,
+  MMB pan, wheel dolly, Ctrl+D/Z/Y/G; guarda anti-digitação.
+- Mobile: modos Select/Move/Rotate/Scale/Camera, tap-duplo enquadra,
+  long-press abre props, pinça zoom, 2-dedos pan, precisão 0.1/1.
+- Console: bumpers ciclam ferramenta, Y radial contextual, DPad foco
+  (GuiService.SelectedObject), A confirma (GUI focada ou raycast 3D +
+  SelectInstance), sticks câmera/cursor, gatilhos orbitam.
+- VR: gatilhos R1/R2 (digital+analógico) raycast selecionam, grip arrasta
+  (SetAny throttled), A/B confirm/cancel, X snap, teleport=enquadrar.
+  Painel 2D clicável pelo pointer nativo do VR; spatial ancorado = fase C.
+- Server: Group/Ungroup/AlignKids/DistributeKids/MirrorKids/PivotReset
+  (todos com Undo) + CsgDo separate (Undo re-une) + Select por instância
+  (espelho SelectedId p/ console/VR). Props MESH/Surface via kind e:.
+- 03_Menus: 26 actions + 30 linhas (Models/Physics/Tools); ribbon +3
+  (Anchor/Snap/Group). F2_LogLine vira dica de PC no boot do 11.
+- Testes: 330 verdes (131+29+18+27+41+43+41), VERIFY OK (+15 marcadores R8),
+  audits 0/0/0. test_input.lua (41) full-stack onde importa.
+- HONESTO/FASE B: box/lasso/multi-select (exige cirurgia no modelo de
+  seleção do 01); remap UI (bindings editáveis em código + override global);
+  painel VR espacial ancorado (precisa device p/ prova); i18n PT-BR.

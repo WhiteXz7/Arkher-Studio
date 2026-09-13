@@ -36,7 +36,8 @@ end
 local function autoenum(name)
   local last = name:match("([^.]+)$") or name
   local items = {}
-  local t = { __name = name, Name = last }
+  local _, dots = name:gsub("%.", ".")
+  local t = { __name = name, Name = last, __t = (dots >= 2 and "EnumItem" or "Enum") }
   function t:GetEnumItems()
     local out = {}
     for _, v in ipairs(items) do out[#out + 1] = v end
@@ -108,7 +109,19 @@ function BrickColor.new(nm)
   return { Name = nm, Number = 0, Color = Color3.fromRGB(rgb[1], rgb[2], rgb[3]), __t = "BrickColor" }
 end
 Vector3 = {}
-local V3MT = { __index=Vector3,
+local V3MT = { __index=function(self, k)
+    if k == "Magnitude" then
+      local x, y, z = rawget(self, "X") or 0, rawget(self, "Y") or 0, rawget(self, "Z") or 0
+      return math.sqrt(x * x + y * y + z * z)
+    end
+    if k == "Unit" then
+      local x, y, z = rawget(self, "X") or 0, rawget(self, "Y") or 0, rawget(self, "Z") or 0
+      local m2 = math.sqrt(x * x + y * y + z * z)
+      if m2 == 0 then return Vector3.new(0, 0, 0) end
+      return Vector3.new(x / m2, y / m2, z / m2)
+    end
+    return Vector3[k]
+  end,
   __mul=function(a,b)
     if type(b)=="number" then return Vector3.new(a.X*b,a.Y*b,a.Z*b) end
     if type(a)=="number" then return Vector3.new(b.X*a,b.Y*a,b.Z*a) end
@@ -132,6 +145,11 @@ function CFrame.lookAt(a,b) return CFrame.new(0,0,0) end
 function CFrame:ToEulerAnglesYXZ() return 0,0,0 end
 function CFrame:ToOrientation() return 0,0,0 end
 function CFrame:GetComponents() return 0,0,0,0,0,0,0,0,0,0,0,0 end
+CFrame.LookVector = Vector3.new(0,0,-1)
+CFrame.RightVector = Vector3.new(1,0,0)
+CFrame.UpVector = Vector3.new(0,1,0)
+function CFrame.Angles(x,y,z) return CFrame.new(0,0,0) end
+function CFrame:Inverse() return CFrame.new(0,0,0) end
 UDim2 = {} function UDim2.new(a,b,c,d) return {X={Scale=a or 0,Offset=b or 0},Y={Scale=c or 0,Offset=d or 0},__t="UDim2"} end
 UDim2.fromOffset = function(x,y) return UDim2.new(0,x,0,y) end
 UDim2.fromScale = function(a,b) return UDim2.new(a,0,b,0) end
@@ -167,6 +185,7 @@ local CLASS_SUPER = {
   UIListLayout="Instance", UIGridLayout="Instance", UIAspectRatioConstraint="Instance", UISizeConstraint="Instance",
   Folder="Instance", Model="Instance",
   Part="BasePart", WedgePart="BasePart", CornerWedgePart="BasePart", TrussPart="BasePart",
+  UnionOperation="BasePart", MeshPart="BasePart",
   SpawnLocation="BasePart", MeshPart="BasePart", BasePart="Volume", Volume="Instance",
   Terrain="BasePart",
   Script="BaseScript", LocalScript="BaseScript", ModuleScript="BaseScript", BaseScript="LuaSourceContainer", LuaSourceContainer="Instance",
@@ -180,7 +199,8 @@ local CLASS_SUPER = {
 }
 local AUTO_EVENTS = { "AncestryChanged","Changed","Destroying","DescendantAdded","DescendantRemoving",
   "PlayerRemoving","OnServerEvent","PlayerAdded","InputBegan","InputChanged","InputEnded","SelectionChanged",
-  "Activated","MouseEnter","MouseLeave","MouseButton1Click","MouseButton2Click","TouchTap","FocusLost",
+  "Activated","MouseEnter","MouseLeave","MouseButton1Click","MouseButton2Click","TouchTap","TouchTapInWorld",
+  "TouchLongPress","TouchPinch","TouchPan","FocusLost",
   "ChildAdded","ChildRemoved","MessageOut","Heartbeat","RenderStepped","Stepped" }
 local fireDescendantAdded, fireDescendantRemoving  -- forward declarations
 local MT = {}

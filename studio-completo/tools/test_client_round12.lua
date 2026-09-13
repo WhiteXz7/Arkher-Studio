@@ -149,7 +149,7 @@ if shell12 then for _, d in ipairs(shell12:GetDescendants()) do
   end
 end end
 check(nM2 == 12, "12 menus M2_* (" .. nM2 .. ")")
-check(nR2 == 18, "18 botoes R2_* (" .. nR2 .. ")")
+check(nR2 == 21, "21 botoes R2_* (18+R8 Anchor/Snap/Group: " .. nR2 .. ")")
 local panels = { "T2_Panel", "C2_Panel", "S2_Panel", "TL2_Panel", "CV2_Panel", "SM2_Panel", "TM2_Panel", "FR2_Panel" }
 local np = 0
 if shell12 then for _, pn in ipairs(panels) do if shell12:FindFirstChild(pn, true) then np = np + 1 end end end

@@ -388,5 +388,113 @@ check(nz and nz.msg and #rwLog == 2, "TerrainNoise: write 1x")
 local nv = rwLog[2] and rwLog[2].o[1][1][2]
 check(nv and nv ~= 0, "TerrainNoise: perturba occupancy")
 
+
+print("\n== R8 Grupos / Alinhar / Distribuir / Espelhar / Pivo / Separate / Enum ==")
+local g1 = invokeWait("Create", { parentId = wsId, class = "Part", name = "Gpeca" })
+local idG = g1.node.id
+invokeWait("Select", { id = idG })
+local gr = invokeWait("Group", {})
+check(gr and gr.node and gr.node.name == "Gpeca_Group" and gr.node.class == "Model", "Group cria Model Gpeca_Group")
+local gid = gr and gr.node and gr.node.id
+local un = invokeWait("Ungroup", { id = gid })
+check(un and un.ungrouped == 1, "Ungroup devolve 1 filho")
+invokeWait("Select", { id = idG })
+local gr2 = invokeWait("Group", {})
+check(gr2 and gr2.node and gr2.node.id ~= nil, "Group 2 ok")
+local uG = invokeWait("Undo", {})
+check(uG and uG.ok ~= false, "Undo desfaz Group")
+local selAgain = invokeWait("Select", { id = idG })
+check(selAgain and selAgain.properties and selAgain.node.name == "Gpeca", "Peca selecionavel apos Undo do Group")
+
+local function fieldVal(sel, key)
+  if not (sel and sel.properties and sel.properties.fields) then return nil end
+  for _, f in ipairs(sel.properties.fields) do
+    if f.key == key then return f.value end
+  end
+  return nil
+end
+local cm = invokeWait("Create", { parentId = wsId, class = "Model", name = "Alinhar" })
+local idM = cm.node.id
+local ids = {}
+for i, x in ipairs({ 1, 2, 3 }) do
+  local c = invokeWait("Create", { parentId = idM, class = "Part", name = "A" .. i })
+  ids[i] = c.node.id
+  local s = invokeWait("SetAny", { id = ids[i], name = "Position", kind = "v", value = { x = x, y = 0, z = 0 } })
+  check(s and not s.error, "SetAny Position A" .. i)
+end
+invokeWait("Select", { id = idM })
+local al = invokeWait("AlignKids", { axis = "X" })
+check(al and al.aligned == 3 and al.axis == "X", "AlignKids alinha 3 em X")
+local pa1 = invokeWait("Select", { id = ids[1] })
+local pv1 = fieldVal(pa1, "Position")
+check(pv1 and pv1.X == 0, "AlignKids: A1.X == pivo (0)")
+local pa3 = invokeWait("Select", { id = ids[3] })
+local pv3 = fieldVal(pa3, "Position")
+check(pv3 and pv3.X == 0, "AlignKids: A3.X == pivo (0)")
+local uA = invokeWait("Undo", {})
+check(uA and uA.ok ~= false, "Undo desfaz AlignKids")
+local pa1u = invokeWait("Select", { id = ids[1] })
+check(fieldVal(pa1u, "Position") and fieldVal(pa1u, "Position").X == 1, "Undo AlignKids restaura A1.X=1")
+
+local cm2 = invokeWait("Create", { parentId = wsId, class = "Model", name = "Distrib" })
+local idD = cm2.node.id
+local idd = {}
+for i, x in ipairs({ 0, 9, 10 }) do
+  local c = invokeWait("Create", { parentId = idD, class = "Part", name = "D" .. i })
+  idd[i] = c.node.id
+  invokeWait("SetAny", { id = idd[i], name = "Position", kind = "v", value = { x = x, y = 0, z = 0 } })
+end
+invokeWait("Select", { id = idD })
+local di = invokeWait("DistributeKids", { axis = "X" })
+check(di and di.distributed == 3, "DistributeKids distribui 3")
+local pd2 = invokeWait("Select", { id = idd[2] })
+check(fieldVal(pd2, "Position") and fieldVal(pd2, "Position").X == 5, "DistributeKids: meio X=5")
+invokeWait("Select", { id = idD })
+local mi = invokeWait("MirrorKids", { axis = "X" })
+check(mi and mi.mirrored == 3, "MirrorKids espelha 3 (pivo X=0)")
+local pm1 = invokeWait("Select", { id = idd[1] })
+check(fieldVal(pm1, "Position") and fieldVal(pm1, "Position").X == 0, "MirrorKids: D1 0 -> 0 (plano)")
+local pm3 = invokeWait("Select", { id = idd[3] })
+check(fieldVal(pm3, "Position") and fieldVal(pm3, "Position").X == -10, "MirrorKids: D3 10 -> -10")
+
+invokeWait("Select", { id = idG })
+local pv = invokeWait("PivotReset", {})
+check(pv and pv.node and pv.node.id == idG, "PivotReset retorna no")
+local uP = invokeWait("Undo", {})
+check(uP and uP.ok ~= false, "Undo apos PivotReset ok")
+
+METHODS.Separate = function(self)
+  local a = Instance.new("Part") a.Name = "SepA"
+  local b = Instance.new("Part") b.Name = "SepB"
+  return { a, b }
+end
+METHODS.UnionAsync = function(self, others)
+  local u = Instance.new("UnionOperation") u.Name = "U2"
+  return u
+end
+local cu = invokeWait("CreateAny", { class = "UnionOperation", parentId = wsId })
+local idU = cu.node.id
+invokeWait("Select", { id = idU })
+local sp = invokeWait("CsgDo", { op = "separate" })
+check(sp and sp.separated == 2, "CsgDo separate devolve 2 pecas")
+local uS = invokeWait("Undo", {})
+check(uS and uS.ok ~= false, "Undo refaz union apos separate")
+
+local me = invokeWait("SetAny", { id = idG, name = "Material", kind = "e:Material", value = "Wood" })
+check(me and not me.error, "SetAny kind e:Material aceita Wood")
+local spm = invokeWait("Select", { id = idG })
+check(fieldVal(spm, "Material") == "Wood", "SetAny e:Material persiste (leitura Wood)")
+
+
+print("\n== R8b Select por instancia (console/VR raycast) ==")
+local ci = invokeWait("Create", { parentId = wsId, class = "Part", name = "InstSel" })
+local idI = ci.node.id
+local found = workspace:FindFirstChild("InstSel", true)
+check(found ~= nil, "SelectInstance: parte achada no workspace mock")
+local si = invokeWait("Select", { inst = found })
+check(si and si.node and si.node.id == idI, "SelectInstance: seleciona pelo ref (id confere)")
+local siBad = invokeWait("Select", { inst = Instance.new("Part") })
+check(siBad and siBad.error and siBad.error:find("nao registrada") ~= nil, "SelectInstance: nao registrada rejeita")
+
 print(string.format("RESULTADO: %d passaram, %d falharam", pass, fail))
 if fail > 0 then os.exit(1) else os.exit(0) end

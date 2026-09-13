@@ -54,5 +54,17 @@ seguir os itens e anotar OK/FALHA + print/log. Depois é só refinamento.
 - [ ] Gizmo: Move/Rotate/Scale/Grid(3D)/Snap(grade) funcionam
 - [ ] Curves: caption conta keys da sessão; Help (? no ribbon) abre Tools
 
+## 3c. Input System R8 (4 plataformas)
+- [ ] PC: toast "ARKHER Input: PC"; 1-5 trocam ferramenta; F enquadra seleção
+- [ ] PC: WASD voa; RMB arrasta orbita; wheel aproxima; Ctrl+D duplica
+- [ ] Ribbon: Anchor/Snap/Group novos funcionam na seleção
+- [ ] Models: MeshPart/Decal/Texture/Color/Material/Surface aplicam
+- [ ] Models: Join/Split/Group/Ungroup/Reset Pivot/Align/Distribute/Mirror
+- [ ] `_G.ArkherInput.setPlatform("Mobile")` → layout mobile; M_T_Move abre numérico
+- [ ] Mobile: steppers + APPLY movem a peça; M_Cat_Terrain abre menu Terrain
+- [ ] `_G.ArkherInput.setPlatform("Console")` → layout console; Y abre radial
+- [ ] `_G.ArkherInput.setPlatform("VR")` → painel VR; V_Snap/V_Teleport respondem
+- [ ] `_G.ArkherInput.setPlatform("PC")` → desktop volta intacta
+
 ## 4. Final
 - [ ] Anotar cada FALHA com print + trecho do Output → vira lista de refino

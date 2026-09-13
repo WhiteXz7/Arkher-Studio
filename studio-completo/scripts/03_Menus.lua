@@ -156,6 +156,33 @@ local function selectedId()
   return state().selectedId
 end
 
+-- ============ R8 edit tools: selecao/propriedades reais via server ============
+local function selId()
+  local sg, se = api("SelectedGet", {})
+  if se or not (sg and sg.result and sg.result.id) then return nil end
+  return sg.result.id
+end
+local function propOf(id, key)
+  local pr, pe = api("PropsAll", { id = id })
+  if pe or not (pr and pr.result and pr.result.fields) then return nil end
+  for _, f in ipairs(pr.result.fields) do
+    if f.key == key then return f.value end
+  end
+  return nil
+end
+local function needSel()
+  local id = selId()
+  if not id then say("Select an object first.", true) end
+  return id
+end
+local function toggleSel(key, label)
+  local id = needSel() if not id then return end
+  local cur = propOf(id, key)
+  if cur == nil then say(label .. ": property unavailable.", true) return end
+  local _, err = api("SetAny", { id = id, name = key, kind = "b", value = not cur })
+  if err then say(label .. ": " .. tostring(err), true) else say(label .. (cur and " OFF." or " ON.")) end
+end
+
 -- ============ Acoes dos itens ============
 local openSettingsDialog  -- forward declaration (definida abaixo)
 local openPublishDialog, openCloudPanel, openDataPanel, openToolboxPanel
@@ -1328,6 +1355,29 @@ MENUS.Models = {
   { sep = true },
   { icon = "plus", label = "Insert Model…", act = "InsertModel" },
   { icon = "nodeLink", label = "Duplicate", act = "Duplicate" },
+  { sep = true },
+  { icon = "plus", label = "MeshPart", act = "XMeshPart" },
+  { icon = "plus", label = "Decal", act = "XDecal" },
+  { icon = "plus", label = "Texture", act = "XTexture" },
+  { icon = "plus", label = "Color", act = "XColor" },
+  { icon = "plus", label = "Material", act = "XMaterial" },
+  { icon = "plus", label = "Surface", act = "XSurface" },
+  { sep = true },
+  { icon = "plus", label = "Join (Union)", act = "XJoin" },
+  { icon = "plus", label = "Split", act = "XSplit" },
+  { icon = "nodeLink", label = "Group", act = "XGroup" },
+  { icon = "nodeLink", label = "Ungroup", act = "XUngroup" },
+  { icon = "nodeLink", label = "Reset Pivot", act = "XPivotReset" },
+  { sep = true },
+  { icon = "nodeLink", label = "Align X", act = "XAlignX" },
+  { icon = "nodeLink", label = "Align Y", act = "XAlignY" },
+  { icon = "nodeLink", label = "Align Z", act = "XAlignZ" },
+  { icon = "nodeLink", label = "Distribute X", act = "XDistX" },
+  { icon = "nodeLink", label = "Distribute Y", act = "XDistY" },
+  { icon = "nodeLink", label = "Distribute Z", act = "XDistZ" },
+  { icon = "nodeLink", label = "Mirror X", act = "XMirrX" },
+  { icon = "nodeLink", label = "Mirror Y", act = "XMirrY" },
+  { icon = "nodeLink", label = "Mirror Z", act = "XMirrZ" },
 }
 MENUS.Terrain = {
   { icon = "Open", label = "Terrain Editor X", act = "XOpenTerrain" },
@@ -1411,6 +1461,9 @@ MENUS.Physics = {
   { icon = "Open", label = "Space", act = "XOpenEspaco" },
   { icon = "plus", label = "Solar System", act = "XEspacoSolar" },
   { icon = "plus", label = "Earth-Moon", act = "XEspacoTerraLua" },
+  { sep = true },
+  { icon = "nodeLink", label = "Anchor", act = "XAnchor" },
+  { icon = "nodeLink", label = "Collision", act = "XCollision" },
 }
 MENUS.Tools = {
   { icon = "Open", label = "Fabricate", act = "XOpenFabricar" },
@@ -1420,6 +1473,14 @@ MENUS.Tools = {
   { icon = "Open", label = "Water Tools", act = "XOpenWater" },
   { icon = "Open", label = "Modeler", act = "XOpenModeler" },
   { icon = "Open", label = "Modeler Prims", act = "XOpenModelerPrim" },
+  { sep = true },
+  { icon = "nodeLink", label = "Snap to Grid", act = "XSnap" },
+  { icon = "nodeLink", label = "Frame Camera", act = "XCamera" },
+  { icon = "nodeLink", label = "Transform Mode", act = "XTransform" },
+  { sep = true },
+  { icon = "plus", label = "Sound", act = "XSound" },
+  { icon = "plus", label = "Particles", act = "XParticles" },
+  { icon = "plus", label = "Light", act = "XLight" },
   { sep = true },
   { icon = "Open", label = "Fullscreen", act = "Fullscreen" },
   { icon = "Open", label = "Reset Layout", act = "ResetLayout" },
@@ -2007,6 +2068,129 @@ actions.XSpawnCylV        = function() spawnShape("CylinderVertical") end
 actions.XSpawnWedge       = function() spawnShape("Wedge") end
 actions.XSpawnCorner      = function() spawnShape("CornerWedge") end
 actions.XSpawnTruss       = function() spawnShape("Truss") end
+actions.XAnchor           = function() toggleSel("Anchored", "Anchor") end
+actions.XCollision        = function() toggleSel("CanCollide", "Collision") end
+actions.XSnap             = function()
+  local id = needSel() if not id then return end
+  local p = propOf(id, "Position")
+  if not p then say("Snap: no Position.", true) return end
+  local _, err = api("SetAny", { id = id, name = "Position", kind = "v",
+    value = { x = math.floor(p.X + 0.5), y = math.floor(p.Y + 0.5), z = math.floor(p.Z + 0.5) } })
+  if err then say("Snap: " .. tostring(err), true) else say("Snapped to 1-stud grid.") end
+end
+actions.XCamera           = function()
+  local id = needSel() if not id then return end
+  local p = propOf(id, "Position")
+  local c = workspace.CurrentCamera
+  if not p or not c then say("Frame: need selection + camera.", true) return end
+  c.CFrame = CFrame.new(Vector3.new(p.X + 10, p.Y + 8, p.Z + 10), Vector3.new(p.X, p.Y, p.Z))
+  say("Camera framed on selection.")
+end
+actions.XGroup            = function()
+  local _, err = api("Group", {})
+  if err then say("Group: " .. tostring(err), true) else say("Grouped into a Model.") end
+end
+actions.XUngroup          = function()
+  local r, err = api("Ungroup", {})
+  if err then say("Ungroup: " .. tostring(err), true)
+  else say("Ungrouped " .. tostring(r and r.ungrouped or "?") .. " children.") end
+end
+actions.XPivotReset       = function()
+  local _, err = api("PivotReset", {})
+  if err then say("Pivot: " .. tostring(err), true) else say("Pivot reset to center.") end
+end
+local function kidsOp(op, axis)
+  local r, err = api(op, { axis = axis })
+  if err then say(op .. ": " .. tostring(err), true)
+  else say(op .. ": " .. tostring(r and (r.aligned or r.distributed or r.mirrored) or "?") .. " children on " .. axis .. ".") end
+end
+actions.XAlignX            = function() kidsOp("AlignKids", "X") end
+actions.XAlignY            = function() kidsOp("AlignKids", "Y") end
+actions.XAlignZ            = function() kidsOp("AlignKids", "Z") end
+actions.XDistX             = function() kidsOp("DistributeKids", "X") end
+actions.XDistY             = function() kidsOp("DistributeKids", "Y") end
+actions.XDistZ             = function() kidsOp("DistributeKids", "Z") end
+actions.XMirrX             = function() kidsOp("MirrorKids", "X") end
+actions.XMirrY             = function() kidsOp("MirrorKids", "Y") end
+actions.XMirrZ             = function() kidsOp("MirrorKids", "Z") end
+actions.XJoin             = function()
+  local r, err = api("CsgDo", { op = "union" })
+  if err then say("Join: " .. tostring(err), true) else say("Joined (union).") end
+end
+actions.XSplit            = function()
+  local r, err = api("CsgDo", { op = "separate" })
+  if err then say("Split: " .. tostring(err), true)
+  else say("Split into " .. tostring(r and r.separated or "?") .. " parts.") end
+end
+actions.XMeshPart         = function()
+  local _, err = api("CreateAny", { class = "MeshPart" })
+  if err then say("MeshPart: " .. tostring(err), true)
+  else say("MeshPart inserted: set MeshId in Properties.") end
+end
+actions.XDecal            = function()
+  local id = needSel() if not id then return end
+  local _, err = api("CreateAny", { class = "Decal", parentId = id })
+  if err then say("Decal: " .. tostring(err), true)
+  else say("Decal added: set Texture in Properties.") end
+end
+actions.XTexture          = function()
+  local id = needSel() if not id then return end
+  local _, err = api("CreateAny", { class = "Texture", parentId = id })
+  if err then say("Texture: " .. tostring(err), true)
+  else say("Texture added: set Texture in Properties.") end
+end
+local colorCycle = { { r = 1, g = 0.2, b = 0.2 }, { r = 0.2, g = 0.8, b = 0.3 },
+  { r = 0.2, g = 0.5, b = 1 }, { r = 1, g = 0.8, b = 0.2 }, { r = 0.7, g = 0.3, b = 1 },
+  { r = 1, g = 1, b = 1 } }
+local colorIdx = 0
+actions.XColor            = function()
+  local id = needSel() if not id then return end
+  colorIdx = colorIdx % #colorCycle + 1
+  local _, err = api("SetAny", { id = id, name = "Color", kind = "c", value = colorCycle[colorIdx] })
+  if err then say("Color: " .. tostring(err), true) else say("Color " .. colorIdx .. "/" .. #colorCycle .. ".") end
+end
+local matCycle = { "Plastic", "Wood", "Metal", "Glass", "Neon", "Brick" }
+local matIdx = 0
+actions.XMaterial         = function()
+  local id = needSel() if not id then return end
+  matIdx = matIdx % #matCycle + 1
+  local _, err = api("SetAny", { id = id, name = "Material", kind = "e:Material", value = matCycle[matIdx] })
+  if err then say("Material: " .. tostring(err), true) else say("Material: " .. matCycle[matIdx] .. ".") end
+end
+local surfCycle = { "Smooth", "Studs", "Universal" }
+local surfIdx = 0
+actions.XSurface          = function()
+  local id = needSel() if not id then return end
+  surfIdx = surfIdx % #surfCycle + 1
+  local _, err = api("SetAny", { id = id, name = "TopSurface", kind = "e:SurfaceType", value = surfCycle[surfIdx] })
+  if err then say("Surface: " .. tostring(err), true) else say("TopSurface: " .. surfCycle[surfIdx] .. ".") end
+end
+actions.XSound            = function()
+  local id = selId()
+  local r, err = api("CreateAny", { class = "Sound", parentId = id })
+  if err or not (r and r.id) then say("Sound: " .. tostring(err), true) return end
+  api("SetAny", { id = r.id, name = "Volume", kind = "n", value = 3 })
+  say("Sound inserted (set SoundId in Properties).")
+end
+actions.XParticles        = function()
+  local id = selId()
+  local r, err = api("CreateAny", { class = "ParticleEmitter", parentId = id })
+  if err or not (r and r.id) then say("Particles: " .. tostring(err), true) return end
+  api("SetAny", { id = r.id, name = "Rate", kind = "n", value = 50 })
+  say("ParticleEmitter inserted (Rate 50).")
+end
+actions.XLight            = function()
+  local id = selId()
+  local r, err = api("CreateAny", { class = "PointLight", parentId = id })
+  if err or not (r and r.id) then say("Light: " .. tostring(err), true) return end
+  api("SetAny", { id = r.id, name = "Brightness", kind = "n", value = 2 })
+  api("SetAny", { id = r.id, name = "Range", kind = "n", value = 16 })
+  say("PointLight inserted (Brightness 2, Range 16).")
+end
+actions.XTransform        = function()
+  W("SetMode", { key = "Move" })
+  say("Transform: move/rotate/scale via gizmo handles (X cycles axis).")
+end
 actions.XOpenToolbox      = function() deckOpen("toolbox", "loja") end
 actions.XToolboxArkher    = function() deckOpen("toolbox", "arkher") end
 actions.XOpenProps        = function()

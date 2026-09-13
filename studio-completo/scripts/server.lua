@@ -229,7 +229,7 @@ local function buildTemplate(kind)
     end
     return nil
 end
-local handlers={}function handlers.Hello(player)subscribed[player]=true return snapshot()end function handlers.Snapshot(player)subscribed[player]=true;return snapshot()end function handlers.Identify(_,payload)assert(typeof(payload.object)=="Instance"and inspectable(payload.object),"Objeto não disponível ao editor.")local o=payload.object;register(o);assert(idOf[o],"Limite de objetos da Hierarchy atingido.");local chain={};local p=o while p and inspectable(p)do register(p);chain[#chain+1]=record(p);p=p.Parent end return{id=idOf[o],nodes=chain}end function handlers.Select(player,payload)if not payload.id then selected[player]=nil;return{}end pipeStats.selects=pipeStats.selects+1;local o=getObject(payload.id);selected[player]=o return{properties=properties(o),node=record(o)}end function handlers.Catalog(_,payload)local parent=getObject(payload.parentId);local result={}for _,entry in ipairs(catalog)do local allowed,reason=canCreate(parent,entry)result[#result+1]={class=entry.class,category=entry.category,description=entry.description,aliases=entry.aliases,allowed=allowed,reason=allowed and""or reason}end return{items=result,parent=record(parent)}end function handlers.Create(player,payload)pipeStats.creates=pipeStats.creates+1;assert(type(payload.class)=="string"and#payload.class<60,"Classe inválida.")local o=create(player,getObject(payload.parentId),payload.class,payload.name)selected[player]=o hCreate(player,o) return{node=record(o),properties=properties(o)}end function handlers.Delete(player,payload) return handlers.Delete_(player,payload) end function handlers.Set(player,payload)assert(type(payload.key)=="string"and#payload.key<80,"Propriedade inválida.")local o=getObject(payload.id);assert(not conflictingLock(o),"Termine o arraste antes de editar este objeto/contêiner.")local arkOld=read(o,payload.key)setProperty(o,payload.key,payload.value)local arkNew=read(o,payload.key)if arkOld~=arkNew then hSet(player,o,payload.key,arkOld,arkNew)end return{node=record(o),properties=properties(o)}end function handlers.Begin(player,payload)release(player,true)local o=getObject(payload.id)assert(editable(o)and o:IsDescendantOf(workspace)and not containsProtected(o),"Selecione uma peça/Model no Workspace.")assert(payload.mode=="Move"or payload.mode=="Scale"or payload.mode=="Rotate","Ferramenta inválida.")assert(not conflictingLock(o),"Objeto ou descendente em edição por outro usuário.")local parts=allParts(o);assert(#parts>0,"Objeto sem peças manipuláveis.")for _,p in ipairs(parts)do assert(not p.Locked and not characterPart(p),"Peça bloqueada ou pertencente a um personagem.")end local token=Http:GenerateGUID(false)local t={object=o,token=token,mode=payload.mode,time=os.clock(),anchors={},cf=getPivot(o),size=o:IsA("BasePart")and o.Size or nil,scale=o.ClassName=="Model"and o:GetScale()or nil}transactions[player]=t;locks[o]=player for _,p in ipairs(parts)do t.anchors[p]=p.Anchored;p.Anchored=true end return{token=token}end function handlers.End(player,payload)local t=transactions[player];assert(t and t.token==payload.token,"Arraste expirado.")if payload.cancel then release(player,true);return{}end applyTransform(t,payload);local o=t.object;hTransform(player,o,t.cf,t.size,t.scale,getPivot(o),o:IsA("BasePart")and o.Size or nil,o.ClassName=="Model"and o:GetScale()or nil);release(player,false)return{properties=properties(o),node=record(o)}end function handlers.Close(player)subscribed[player]=nil;selected[player]=nil;release(player,true);return{}end 
+local handlers={}function handlers.Hello(player)subscribed[player]=true return snapshot()end function handlers.Snapshot(player)subscribed[player]=true;return snapshot()end function handlers.Identify(_,payload)assert(typeof(payload.object)=="Instance"and inspectable(payload.object),"Objeto não disponível ao editor.")local o=payload.object;register(o);assert(idOf[o],"Limite de objetos da Hierarchy atingido.");local chain={};local p=o while p and inspectable(p)do register(p);chain[#chain+1]=record(p);p=p.Parent end return{id=idOf[o],nodes=chain}end function handlers.Select(player,payload)if not payload.id and payload.inst==nil then selected[player]=nil;return{}end pipeStats.selects=pipeStats.selects+1;local o if payload.inst~=nil then o=payload.inst assert(typeof(o)=="Instance"and idOf[o] and inspectable(o),"Instancia invalida ou nao registrada.")else o=getObject(payload.id)end;selected[player]=o return{properties=properties(o),node=record(o)}end function handlers.Catalog(_,payload)local parent=getObject(payload.parentId);local result={}for _,entry in ipairs(catalog)do local allowed,reason=canCreate(parent,entry)result[#result+1]={class=entry.class,category=entry.category,description=entry.description,aliases=entry.aliases,allowed=allowed,reason=allowed and""or reason}end return{items=result,parent=record(parent)}end function handlers.Create(player,payload)pipeStats.creates=pipeStats.creates+1;assert(type(payload.class)=="string"and#payload.class<60,"Classe inválida.")local o=create(player,getObject(payload.parentId),payload.class,payload.name)selected[player]=o hCreate(player,o) return{node=record(o),properties=properties(o)}end function handlers.Delete(player,payload) return handlers.Delete_(player,payload) end function handlers.Set(player,payload)assert(type(payload.key)=="string"and#payload.key<80,"Propriedade inválida.")local o=getObject(payload.id);assert(not conflictingLock(o),"Termine o arraste antes de editar este objeto/contêiner.")local arkOld=read(o,payload.key)setProperty(o,payload.key,payload.value)local arkNew=read(o,payload.key)if arkOld~=arkNew then hSet(player,o,payload.key,arkOld,arkNew)end return{node=record(o),properties=properties(o)}end function handlers.Begin(player,payload)release(player,true)local o=getObject(payload.id)assert(editable(o)and o:IsDescendantOf(workspace)and not containsProtected(o),"Selecione uma peça/Model no Workspace.")assert(payload.mode=="Move"or payload.mode=="Scale"or payload.mode=="Rotate","Ferramenta inválida.")assert(not conflictingLock(o),"Objeto ou descendente em edição por outro usuário.")local parts=allParts(o);assert(#parts>0,"Objeto sem peças manipuláveis.")for _,p in ipairs(parts)do assert(not p.Locked and not characterPart(p),"Peça bloqueada ou pertencente a um personagem.")end local token=Http:GenerateGUID(false)local t={object=o,token=token,mode=payload.mode,time=os.clock(),anchors={},cf=getPivot(o),size=o:IsA("BasePart")and o.Size or nil,scale=o.ClassName=="Model"and o:GetScale()or nil}transactions[player]=t;locks[o]=player for _,p in ipairs(parts)do t.anchors[p]=p.Anchored;p.Anchored=true end return{token=token}end function handlers.End(player,payload)local t=transactions[player];assert(t and t.token==payload.token,"Arraste expirado.")if payload.cancel then release(player,true);return{}end applyTransform(t,payload);local o=t.object;hTransform(player,o,t.cf,t.size,t.scale,getPivot(o),o:IsA("BasePart")and o.Size or nil,o.ClassName=="Model"and o:GetScale()or nil);release(player,false)return{properties=properties(o),node=record(o)}end function handlers.Close(player)subscribed[player]=nil;selected[player]=nil;release(player,true);return{}end 
 function handlers.Undo(player)
     local h = hist[player]
     assert(h and #h.undo > 0, "Nada para desfazer.")
@@ -1970,12 +1970,42 @@ end
 
 function handlers.CsgDo(player, payload)
     local op = tostring(payload.op or "union")
-    assert(op == "union" or op == "negate", "op deve ser 'union' ou 'negate'")
+    assert(op == "union" or op == "negate" or op == "separate", "op deve ser 'union', 'negate' ou 'separate'")
     local main
     if payload.mainId then main = getObject(payload.mainId) end
     if not main then main = selected[player] end
     assert(main and main:IsA("BasePart") and not main:IsA("Terrain"), "Selecione a PEÇA principal (BasePart) primeiro.")
     assert(editable(main), "Peça principal somente leitura.")
+    if op == "separate" then
+        assert(main:IsA("UnionOperation"), "Separate precisa de um UnionOperation selecionado.")
+        local parent = main.Parent
+        local okS, pieces = pcall(function() return main:Separate() end)
+        assert(okS and type(pieces) == "table" and #pieces > 0, "Separate recusou.")
+        local mId = idOf[main]
+        for _, pc in ipairs(pieces) do pc.Parent = parent register(pc) created[pc] = true queueObject(pc) end
+        main.Parent = nil unregister(main)
+        selected[player] = pieces[1]
+        pushHist(player, {
+            label = "Separate " .. #pieces .. " parts",
+            undo = function()
+                local uOk, u = pcall(function() return pieces[1]:UnionAsync({ unpack(pieces, 2) }) end)
+                assert(uOk and u, "Undo separate recusou.")
+                u.Name = "Union_RESTORED" u.Parent = parent register(u) created[u] = true
+                for _, pc in ipairs(pieces) do pc.Parent = nil unregister(pc) end
+                selected[player] = u queueObject(u)
+            end,
+            redo = function()
+                local u = selected[player]
+                if u and u:IsA("UnionOperation") then
+                    local _, p2 = pcall(function() return u:Separate() end)
+                    if type(p2) == "table" then for _, pc in ipairs(p2) do pc.Parent = parent register(pc) created[pc] = true queueObject(pc) end end
+                    u.Parent = nil unregister(u)
+                    if type(p2) == "table" and #p2 > 0 then selected[player] = p2[1] end
+                end
+            end,
+        })
+        return { separated = #pieces, removed = mId }
+    end
     -- outra: ids explicitos ou a peça valida mais proxima da main (escopo 80 studs)
     local others = {}
     if type(payload.otherIds) == "table" then
@@ -2804,7 +2834,7 @@ function handlers.TerrainNoise(player, payload)
 	ter:WriteVoxels(region, 4, mats, occs)
 	return { msg = ("Noise r=%s f=%s aplicado."):format(tostring(r), tostring(force)) }
 end
-local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, TerrainGenFlat=true, TerrainReplace=true, TerrainWater=true, TerrainSmooth=true, TerrainNoise=true, ScriptSet=true, Undo=true }
+local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, TerrainGenFlat=true, TerrainReplace=true, TerrainWater=true, TerrainSmooth=true, TerrainNoise=true, ScriptSet=true, Undo=true, Group=true, Ungroup=true, AlignKids=true, DistributeKids=true, MirrorKids=true, PivotReset=true }
 local function runRestore()
 	for part, was in pairs(RUN.parts) do
 		if part and part.Parent then
@@ -2826,6 +2856,144 @@ local function runRestore()
 	RUN.sounds = {}
 	RUN.frozen = false
 end
+local function selOrId(player, id)
+    local o = nil
+    if type(id) == "string" and objects[id] then o = objects[id] end
+    if (not o or not inspectable(o)) then o = selected[player] end
+    if o and not inspectable(o) then o = nil end
+    return o
+end
+
+function handlers.Group(player, payload)
+    local o = selOrId(player, payload.id)
+    assert(o and editable(o) and not rootSet[o] and not containsProtected(o), "Selecione um objeto editável para agrupar.")
+    assert(not conflictingLock(o, player), "Objeto em edição por outro usuário.")
+    local parent = o.Parent or workspace
+    local g = Instance.new("Model")
+    g.Name = o.Name .. "_Group"
+    g.Parent = parent
+    register(g) created[g] = true
+    o.Parent = g
+    selected[player] = g
+    queueObject(g) queueObject(o)
+    pushHist(player, {
+        label = "Group " .. g.Name,
+        undo = function() o.Parent = parent g.Parent = nil selected[player] = o queueObject(o) end,
+        redo = function() g.Parent = parent o.Parent = g selected[player] = g queueObject(g) end,
+    })
+    return { node = record(g) }
+end
+
+function handlers.Ungroup(player, payload)
+    local g = selOrId(player, payload.id)
+    assert(g and (g:IsA("Model") or g:IsA("Folder")) and editable(g) and not rootSet[g], "Selecione um Model ou Folder para desagrupar.")
+    local parent = g.Parent or workspace
+    local kids = g:GetChildren()
+    assert(#kids > 0, "O grupo está vazio.")
+    for _, k in ipairs(kids) do k.Parent = parent queueObject(k) end
+    g.Parent = nil
+    selected[player] = kids[1]
+    queueObject(g)
+    pushHist(player, {
+        label = "Ungroup " .. g.Name,
+        undo = function() g.Parent = parent for _, k in ipairs(kids) do k.Parent = g end selected[player] = g queueObject(g) end,
+        redo = function() for _, k in ipairs(kids) do k.Parent = parent end g.Parent = nil selected[player] = kids[1] end,
+    })
+    return { ungrouped = #kids }
+end
+
+local function kidsParts(g)
+    local parts = {}
+    for _, k in ipairs(g:GetChildren()) do
+        if k:IsA("BasePart") and not k:IsA("Terrain") and editable(k) then parts[#parts + 1] = k end
+    end
+    return parts
+end
+
+local AXES = { X = "X", Y = "Y", Z = "Z" }
+local function axisOf(payload)
+    local a = tostring(payload.axis or "X"):upper()
+    assert(AXES[a], "axis deve ser X, Y ou Z.")
+    return a
+end
+
+function handlers.AlignKids(player, payload)
+    local g = selOrId(player, payload.id)
+    assert(g and (g:IsA("Model") or g:IsA("Folder") or g == workspace), "Selecione um Model/Folder para alinhar os filhos.")
+    local parts = kidsParts(g)
+    assert(#parts >= 2, "Precisa de 2+ peças filhas para alinhar.")
+    local a = axisOf(payload)
+    local target = g:GetPivot().Position[a]
+    local old = {}
+    for _, p in ipairs(parts) do old[p] = p.Position p.Position = Vector3.new(a == "X" and target or p.Position.X, a == "Y" and target or p.Position.Y, a == "Z" and target or p.Position.Z) queueObject(p) end
+    pushHist(player, {
+        label = "Align " .. #parts .. " on " .. a,
+        undo = function() for _, p in ipairs(parts) do if old[p] then p.Position = old[p] queueObject(p) end end end,
+        redo = function() for _, p in ipairs(parts) do p.Position = Vector3.new(a == "X" and target or p.Position.X, a == "Y" and target or p.Position.Y, a == "Z" and target or p.Position.Z) end end,
+    })
+    return { aligned = #parts, axis = a }
+end
+
+function handlers.DistributeKids(player, payload)
+    local g = selOrId(player, payload.id)
+    assert(g and (g:IsA("Model") or g:IsA("Folder") or g == workspace), "Selecione um Model/Folder para distribuir os filhos.")
+    local parts = kidsParts(g)
+    assert(#parts >= 3, "Precisa de 3+ peças filhas para distribuir.")
+    local a = axisOf(payload)
+    table.sort(parts, function(p1, p2) return p1.Position[a] < p2.Position[a] end)
+    local lo, hi = parts[1].Position[a], parts[#parts].Position[a]
+    assert(hi > lo, "Peças já coincidem no eixo " .. a .. ".")
+    local old = {}
+    for i, p in ipairs(parts) do
+        old[p] = p.Position
+        local v = lo + (hi - lo) * (i - 1) / (#parts - 1)
+        p.Position = Vector3.new(a == "X" and v or p.Position.X, a == "Y" and v or p.Position.Y, a == "Z" and v or p.Position.Z)
+        queueObject(p)
+    end
+    pushHist(player, {
+        label = "Distribute " .. #parts .. " on " .. a,
+        undo = function() for _, p in ipairs(parts) do if old[p] then p.Position = old[p] queueObject(p) end end end,
+        redo = function() end,
+    })
+    return { distributed = #parts, axis = a }
+end
+
+function handlers.MirrorKids(player, payload)
+    local g = selOrId(player, payload.id)
+    assert(g and (g:IsA("Model") or g:IsA("Folder") or g == workspace), "Selecione um Model/Folder para espelhar os filhos.")
+    local parts = kidsParts(g)
+    assert(#parts >= 1, "Sem peças filhas para espelhar.")
+    local a = axisOf(payload)
+    local plane = g:GetPivot().Position[a]
+    local old = {}
+    for _, p in ipairs(parts) do
+        old[p] = p.Position
+        local v = 2 * plane - p.Position[a]
+        p.Position = Vector3.new(a == "X" and v or p.Position.X, a == "Y" and v or p.Position.Y, a == "Z" and v or p.Position.Z)
+        queueObject(p)
+    end
+    pushHist(player, {
+        label = "Mirror " .. #parts .. " on " .. a,
+        undo = function() for _, p in ipairs(parts) do if old[p] then p.Position = old[p] queueObject(p) end end end,
+        redo = function() for _, p in ipairs(parts) do local v = 2 * plane - p.Position[a] p.Position = Vector3.new(a == "X" and v or p.Position.X, a == "Y" and v or p.Position.Y, a == "Z" and v or p.Position.Z) end end,
+    })
+    return { mirrored = #parts, axis = a }
+end
+
+function handlers.PivotReset(player, payload)
+    local o = selOrId(player, payload.id)
+    assert(o and (o:IsA("Model") or o:IsA("BasePart")) and editable(o) and not rootSet[o], "Selecione um Model ou peça para resetar o pivô.")
+    local old = o.PivotOffset
+    o.PivotOffset = CFrame.new()
+    queueObject(o)
+    pushHist(player, {
+        label = "Pivot reset " .. o.Name,
+        undo = function() o.PivotOffset = old queueObject(o) end,
+        redo = function() o.PivotOffset = CFrame.new() end,
+    })
+    return { node = record(o) }
+end
+
 function handlers.RunPlay(player, payload)
 	runRestore()
 	RUN.running = true

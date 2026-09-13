@@ -137,6 +137,9 @@ for item in RIBBON:
     name, text, w = item
     ribbon_kids.append(B(name, rx, 38, w, 78, text, PANEL, TEXT, 12, FG))
     rx += w + 4
+ribbon_kids.append(B("R2_Anchor", 1242, 38, 70, 78, "⚓\nAnchor", PANEL, TEXT, 12, FG))
+ribbon_kids.append(B("R2_Snap", 1316, 38, 70, 78, "🧲\nSnap", PANEL, TEXT, 12, FG))
+ribbon_kids.append(B("R2_Group", 1390, 38, 70, 78, "🗂\nGroup", PANEL, TEXT, 12, FG))
 ribbon_kids.append(B("R2_Help", 1480, 38, 70, 78, "❓\nHelp", PANEL, TEXT, 12, FG))
 ribbon = N("Frame", "Ribbon2",
            {"Position": P(0, 34), "Size": S(1568, 86),
@@ -295,9 +298,134 @@ footer = [B("F2_Out", 8, 823, 70, 26, "☰ Output", BTN, TEXT, 12),
           L("F2_Mem", 1378, 823, 60, 26, "0MB", TEXT, 12, FB, CENTER),
           B("F2_Publish", 1442, 823, 118, 26, "☁ Publish", ACCENT, TEXT, 13, FB)]
 
-roots = ([menu, ribbon, terrain, console, selection, crumb, compass, coords,
+desktop_kids = ([menu, ribbon, terrain, console, selection, crumb, compass, coords,
           play, layers, region, mapp, gizmo, timeline, curves, sim, team,
           farright, farhelp] + footer)
+desktop = N("Frame", "DesktopRoot",
+            {"Position": P(0, 0), "Size": S(1568, 882),
+             "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
+             "ClipsDescendants": False, "Visible": True}, desktop_kids)
+
+# ---------------- 13. mobile layout (touch-first, baked) ----------------
+mtop_kids = [B("M_MenuBtn", 8, 8, 64, 48, "☰", BTN, TEXT, 22),
+             L("M_Title", 80, 8, 300, 48, "⬢ ARKHER · MOBILE", GOLD, 16, FB),
+             L("M_Mode", 400, 8, 340, 48, "MODE: SELECT", GREEN, 16, FB),
+             B("M_Undo", 1150, 8, 64, 48, "↩", BTN, TEXT, 20),
+             B("M_Redo", 1218, 8, 64, 48, "↪", BTN, TEXT, 20),
+             B("M_Save", 1286, 8, 64, 48, "💾", BTN, TEXT, 20),
+             B("M_Play", 1354, 8, 64, 48, "▶", ACCENT, TEXT, 20),
+             B("M_Stop", 1422, 8, 64, 48, "⏹", BTN, TEXT, 20)]
+mtop = F("M_Top", 0, 0, 1568, 64, MENU_BG, mtop_kids)
+mtool_defs = [("M_T_Select", "⌖\nSELECT"), ("M_T_Move", "✥\nMOVE"),
+              ("M_T_Rotate", "⟳\nROTATE"), ("M_T_Scale", "⛶\nSCALE"),
+              ("M_T_Camera", "🎥\nCAMERA"), ("M_T_Insert", "＋\nINSERT"),
+              ("M_T_Snap", "🧲\nSNAP"), ("M_T_Props", "⚙\nPROPS")]
+mtool_kids = []
+for i, (nm, tx) in enumerate(mtool_defs):
+    mtool_kids.append(B(nm, 6, 6 + i * 78, 88, 72, tx, BTN, TEXT, 13, FB))
+mtools = F("M_Tools", 0, 70, 100, 640, PANEL, mtool_kids)
+mdrawer_kids = [title("TOOLS"), B("M_DrawerClose", 296, 4, 56, 26, "✕", BTN, TEXT, 14)]
+mcat_defs = ["Select", "Build", "Terrain", "Model", "Paint", "Light", "FX",
+             "Sound", "UI", "Animate", "Physics", "Game", "Cloud"]
+for i, cnm in enumerate(mcat_defs):
+    mdrawer_kids.append(B("M_Cat_" + cnm, 8 + (i % 2) * 172, 34 + (i // 2) * 56,
+                          168, 50, cnm, BTN, TEXT, 14, FB))
+mdrawer = F("M_Drawer", 104, 70, 360, 640, PANEL, mdrawer_kids,
+            {"Visible": False})
+mprops = F("M_PropsP", 1144, 70, 424, 640, PANEL,
+           [title("PROPERTIES"), B("M_PropsClose", 356, 4, 60, 26, "✕", BTN, TEXT, 14),
+            B("M_PropsOpen", 8, 34, 408, 64, "OPEN PROPERTIES +", ACCENT, TEXT, 16, FB),
+            L("M_PropsHint", 8, 106, 408, 60, "opens the real Properties panel (same data as desktop)", MUTED, 12)], {"Visible": False})
+mnum_kids = [title("TRANSFORM"), B("M_N_Close", 492, 4, 60, 26, "✕", BTN, TEXT, 14)]
+for i, ax in enumerate(["X", "Y", "Z"]):
+    mnum_kids += [L("M_N_%sL" % ax, 8, 34 + i * 40, 30, 32, ax, GOLD, 16, FB, CENTER),
+                  B("M_N_%sMinus" % ax, 44, 34 + i * 40, 60, 32, "−", BTN, TEXT, 20),
+                  L("M_N_%sVal" % ax, 108, 34 + i * 40, 120, 32, "0", TEXT, 16, FC, CENTER, INSET),
+                  B("M_N_%sPlus" % ax, 232, 34 + i * 40, 60, 32, "+", BTN, TEXT, 20)]
+mnum_kids += [B("M_N_Rot", 304, 34, 120, 32, "ROTATE", BTN, TEXT, 13, FB),
+              B("M_N_Size", 428, 34, 120, 32, "SIZE", BTN, TEXT, 13, FB),
+              B("M_N_Axis", 304, 74, 244, 32, "AXIS: X", BTN, TEXT, 14, FB),
+              B("M_N_Apply", 304, 114, 120, 40, "✓ APPLY", ACCENT, TEXT, 15, FB),
+              B("M_N_Cancel", 428, 114, 120, 40, "✕", BTN, TEXT, 18),
+              B("M_N_Reset", 304, 158, 244, 32, "RESET", BTN, MUTED, 13)]
+mnum = F("M_Numeric", 504, 566, 560, 210, PANEL, mnum_kids, {"Visible": False})
+msel = L("M_Sel", 108, 716, 500, 34, "Selection: —", TEXT, 14, FC, LEFT, INSET)
+mhelp = L("M_Help", 1050, 716, 510, 34, "tap=select · 2×tap=frame · pinch=zoom", MUTED, 12, FG)
+mbot_kids = [B("M_B_Confirm", 8, 8, 200, 80, "✓ CONFIRM", ACCENT, TEXT, 18, FB),
+             B("M_B_Cancel", 212, 8, 140, 80, "✕", BTN, RED, 24),
+             B("M_B_Undo", 356, 8, 110, 80, "↩", BTN, TEXT, 22),
+             B("M_B_Prec", 470, 8, 190, 80, "🎯 PRECISION", BTN, TEXT, 15, FB),
+             B("M_B_Snap", 664, 8, 150, 80, "🧲 SNAP", BTN, TEXT, 15, FB),
+             B("M_B_Axis", 818, 8, 170, 80, "AXIS: X", BTN, TEXT, 16, FB),
+             B("M_B_Space", 992, 8, 170, 80, "SPACE: LOCAL", BTN, TEXT, 14, FB),
+             L("M_B_Hint", 1170, 8, 390, 80, "contextual actions appear here", MUTED, 12, FG)]
+mbot = F("M_Bottom", 0, 786, 1568, 96, MENU_BG, mbot_kids)
+mobile = N("Frame", "MobileRoot",
+           {"Position": P(0, 0), "Size": S(1568, 882),
+            "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
+            "ClipsDescendants": False, "Visible": False},
+           [mtop, mtools, mdrawer, mprops, mnum, msel, mhelp, mbot])
+
+# ---------------- 14. console layout (gamepad-first, baked) ----------------
+ctop = F("C_Top", 0, 0, 1568, 56, MENU_BG,
+         [B("C_Menu", 8, 6, 130, 44, "☰ MENU", BTN, TEXT, 15, FB),
+          L("C_Title", 146, 6, 320, 44, "⬢ ARKHER · CONSOLE", GOLD, 15, FB),
+          L("C_Tool", 600, 6, 340, 44, "TOOL: SELECT", GREEN, 15, FB),
+          L("C_Mode", 960, 6, 340, 44, "MODE: EDITOR", TEXT, 15, FB),
+          B("C_Props", 1430, 6, 130, 44, "⚙ PROPS", BTN, TEXT, 15, FB)])
+crad_kids = [L("C_R_Title", 80, 8, 200, 30, "RADIAL", GOLD, 14, FB, CENTER)]
+crad_pos = [(130, 44), (220, 100), (220, 200), (130, 256), (40, 200), (40, 100)]
+for i, (cx, cy) in enumerate(crad_pos):
+    crad_kids.append(B("C_R_%d" % i, cx, cy, 100, 52, "···", BTN, TEXT, 13, FB))
+cradial = F("C_Radial", 604, 200, 360, 330, PANEL, crad_kids, {"Visible": False})
+ccursor = L("C_Cursor", 770, 425, 32, 32, "＋", GREEN, 24, FB, CENTER)
+cpanel = F("C_Panel", 1180, 160, 388, 500, PANEL,
+           [title("PROPERTIES"), B("C_PropsOpen", 8, 34, 372, 64, "OPEN PROPERTIES +", ACCENT, TEXT, 16, FB),
+            L("C_P_Hint", 8, 106, 372, 60, "same Properties data as desktop · ▲▼ navigate · Ⓐ edit", MUTED, 12)],
+           {"Visible": False})
+clegend = F("C_Legend", 0, 826, 1568, 56, MENU_BG,
+            [L("C_Leg1", 8, 6, 760, 44, "Ⓐ confirm · Ⓑ cancel · Ⓧ tool · Ⓨ menu", TEXT, 14),
+             L("C_Leg2", 800, 6, 760, 44, "LB/RB cycle · LT/RT orbit · sticks move", MUTED, 14)])
+cnum_kids = [title("TRANSFORM")]
+for i, ax in enumerate(["X", "Y", "Z"]):
+    cnum_kids += [L("C_N_%sL" % ax, 8, 34 + i * 40, 30, 32, ax, GOLD, 16, FB, CENTER),
+                  B("C_N_%sMinus" % ax, 44, 34 + i * 40, 60, 32, "\u2212", BTN, TEXT, 20),
+                  L("C_N_%sVal" % ax, 108, 34 + i * 40, 120, 32, "0", TEXT, 16, FC, CENTER, INSET),
+                  B("C_N_%sPlus" % ax, 232, 34 + i * 40, 60, 32, "+", BTN, TEXT, 20)]
+cnum_kids += [B("C_N_Mode", 304, 34, 244, 40, "MODE: POS", BTN, TEXT, 14, FB),
+              B("C_N_Apply", 304, 82, 120, 40, "\u2713 APPLY", ACCENT, TEXT, 15, FB),
+              B("C_N_Cancel", 428, 82, 120, 40, "\u2715", BTN, TEXT, 18)]
+cnumeric = F("C_Numeric", 504, 566, 560, 210, PANEL, cnum_kids, {"Visible": False})
+cons = N("Frame", "ConsoleRoot",
+         {"Position": P(0, 0), "Size": S(1568, 882),
+          "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
+          "ClipsDescendants": False, "Visible": False},
+         [ctop, cradial, ccursor, cpanel, clegend, cnumeric])
+
+# ---------------- 15. vr layout (minimal spatial-ready, baked) ----------------
+vtool_defs = [("V_T_Select", "⌖ SELECT"), ("V_T_Move", "✥ MOVE"),
+              ("V_T_Rotate", "⟳ ROTATE"), ("V_T_Scale", "⛶ SCALE"),
+              ("V_T_Camera", "🎥 CAMERA"), ("V_T_Insert", "＋ INSERT")]
+vpanel_kids = [L("V_Title", 10, 6, 500, 28, "🥽 ARKHER VR", GOLD, 16, FB, CENTER),
+               L("V_Status", 10, 36, 500, 24, "right hand: ray · left hand: panel", MUTED, 12, FG, CENTER)]
+for i, (nm, tx) in enumerate(vtool_defs):
+    vpanel_kids.append(B(nm, 14 + (i % 3) * 168, 66 + (i // 3) * 72, 160, 64, tx, BTN, TEXT, 14, FB))
+vpanel_kids += [B("V_Confirm", 14, 216, 244, 56, "✓ CONFIRM", ACCENT, TEXT, 16, FB),
+                B("V_Cancel", 262, 216, 244, 56, "✕ CANCEL", BTN, RED, 16, FB),
+                B("V_Prec", 14, 280, 160, 52, "🎯 PRECISION", BTN, TEXT, 13, FB),
+                B("V_Snap", 178, 280, 160, 52, "🧲 SNAP", BTN, TEXT, 13, FB),
+                B("V_Teleport", 342, 280, 164, 52, "📍 TELEPORT", BTN, TEXT, 13, FB),
+                L("V_Sel", 14, 340, 492, 28, "Selection: —", TEXT, 13, FC, CENTER),
+                L("V_Hint", 14, 372, 492, 28, "trigger=select · grip=move · A=confirm", MUTED, 12, FG, CENTER)]
+vpanel = F("V_Panel", 524, 220, 520, 408, PANEL, vpanel_kids)
+vcross = L("V_Cross", 772, 431, 24, 24, "·", GREEN, 20, FB, CENTER)
+vr = N("Frame", "VRoot",
+       {"Position": P(0, 0), "Size": S(1568, 882),
+        "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
+        "ClipsDescendants": False, "Visible": False}, [vpanel, vcross])
+
+roots = [desktop, mobile, cons, vr]
+
 
 spec = {"host_scale": 1.0, "roots": roots}
 out = os.path.join(HERE, "shell2spec.json")
