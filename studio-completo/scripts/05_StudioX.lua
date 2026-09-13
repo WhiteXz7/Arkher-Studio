@@ -210,6 +210,12 @@ local function runAction(key)
 			say("Publicando + criando place...")
 		end
 		local res, err = busApi(a[2], a[3])
+		if a[2] == "CreateAny" and not err and type(res) == "table" and res.id and clientBus then
+			local nd = (type(res.node) == "table" and res.node.id) and res.node or { id = res.id }
+			local pid = (type(res.node) == "table" and res.node.parentId) or (type(a[3]) == "table" and a[3].parentId) or res.id
+			pcall(function() clientBus:Invoke("Created", { node = nd, parentId = pid }) end)
+			print("[ArkherX] 05: Created notificado id=" .. tostring(res.id))
+		end
 		if err then
 			say(tostring(err))
 		elseif type(res) == "table" and res.msg then
@@ -656,3 +662,14 @@ do
 	end
 end
 
+-- R2: diagnostico do pipeline workspace/props (server PipeStats + overlay 10)
+_G.ArkherPipe = function()
+	local ps = busApi("PipeStats", {}) or {}
+	local p10 = _G.ArkherProps10 or {}
+	print(("[ArkherPipe] delta: flush=%s nodes=%s | props: push=%s selRemoved=%s | selects=%s creates=%s | skip: cap=%s parent=%s | nodes=%s/%s sub=%s sel=%s | 10: refresh=%s trig=%s n=%s sigHits=%s"):format(
+		tostring(ps.deltaFlush), tostring(ps.deltaNodes), tostring(ps.propsPush), tostring(ps.selRemoved),
+		tostring(ps.selects), tostring(ps.creates), tostring(ps.skippedCap), tostring(ps.skippedParent),
+		tostring(ps.nodeCount), tostring(ps.maxNodes), tostring(ps.subscribed), tostring(ps.selectedId),
+		tostring(p10.refresh), tostring(p10.lastTrig), tostring(p10.lastN), tostring(p10.sigHits)))
+	return { server = ps, overlay = p10 }
+end

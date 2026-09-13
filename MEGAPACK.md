@@ -41,3 +41,17 @@ Blocos: 5 por rodada, no automático; pedir pra continuar ao fim.
 - Terrain real: `studio-completo/docs/PESQUISA_TERRAIN.md` (docs oficiais).
 - Próximas: Terrain script API, ChangeHistoryService/undo, Selection API,
   Plugin API (modo Edit), Open Cloud universes/places, Toolbox API real.
+
+## R2 — PACK 2 (pipeline workspace/props) ENTREGUE, aguardando prova Play
+- Causa-raiz provada no código: `Created` do 01 nunca era chamado após
+  `CreateAny` (10 goB/doInsert + 05 INSERT_*); overlay da 10 só recarregava
+  em troca de id (surda aos pushes 0.3s, que iam p/ UI original escondida).
+- Transporte provado íntegro (RemoteEvent = canal reliable+ordered [docs]).
+- Fixes: `notifyCreated` (10 x2 + 05), poll de assinatura de valores com
+  guarda de foco, refresh após commit, `PipeStats` + 8 contadores,
+  `parentName` no CreateAny, guarda parent inválido.
+- 205 testes (53+29+18+27+35+43), VERIFY OK, audits 0/0/0, markers R2
+  provados nas Sources decodificadas do bake (314471B).
+- Placar MANTIDO 13/100: fix só conta com prova no Play real (regra).
+- Prova pedida: inserir classe → nó revelado + props acompanham + saída
+  de `_G.ArkherPipe()` no Output.

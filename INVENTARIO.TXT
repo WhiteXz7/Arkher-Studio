@@ -154,3 +154,11 @@ i) Botao Open antigo: no original caia em "Em desenvolvimento" (01 sem
    case p/ Open). Aqui abre o menu File (melhor que o original).
 j) Stop/Undo/Redo/Palette/Search/Places: nao existiam na ribbon antiga;
    sairam com o set novo. Undo/Redo seguem no menu Edit; Stop no Run.
+
+R2 (PACK 2, pipeline workspace/props): causa-raiz PROVADA no codigo — ninguem
+chamava o "Created" do 01 apos CreateAny (insert nao revelava/selecionava/
+atualizava props) + overlay da 10 surda aos pushes 0.3s do server (UI
+original escondida recebia, overlay nao). Fixes assados: notifyCreated (10
+x2 + 05), poll de assinatura de valores c/ guarda de foco, refresh apos
+commit, PipeStats+contadores, parentName. 205 testes verdes. AGUARDA PROVA
+NO PLAY: inserir classe -> aparece revelada + props acompanham.

@@ -104,7 +104,29 @@ local function stroke(o, c, t2) mk("UIStroke", o, { Color = c or th.border, Thic
 -- =============================================================
 -- PARTE 1 — PROPERTIES NA DOCK ORIGINAL
 -- =============================================================
-local propsState = { objId = nil, fields = nil, filter = "", list = nil, scroll = nil, colorTarget = nil, enumTarget = nil }
+local propsState = { objId = nil, fields = nil, filter = "", list = nil, scroll = nil, colorTarget = nil, enumTarget = nil, sig = "" }
+
+-- R2: assinatura deterministica dos valores (push 0.3s do server alimenta a UI original,
+-- que esta overlay esconde — o poll abaixo detecta mudanca de valor no MESMO id)
+local function sval(v, depth)
+	if depth > 3 then return "#" end
+	local t = type(v)
+	if t == "table" then
+		local ks = {}
+		for k in pairs(v) do ks[#ks + 1] = k end
+		table.sort(ks, function(a, b) return tostring(a) < tostring(b) end)
+		local parts = {}
+		for _, k in ipairs(ks) do parts[#parts + 1] = tostring(k) .. "=" .. sval(v[k], depth + 1) end
+		return "{" .. table.concat(parts, ",") .. "}"
+	end
+	return tostring(v)
+end
+local function sigOf(fields)
+	local parts = {}
+	for _, f in ipairs(fields or {}) do parts[#parts + 1] = tostring(f.name) .. "=" .. sval(f.value, 0) end
+	return table.concat(parts, ";")
+end
+_G.ArkherProps10 = _G.ArkherProps10 or { refresh = 0, lastTrig = "-", lastN = 0, lastId = "-", sigHits = 0 }
 
 local function selectedId()
 	local a2 = i:FindFirstChild("SelectedId")
@@ -288,6 +310,7 @@ local function commitField(field, payloadVal)
 		elseif err then say(tostring(err), true)
 		elseif res and res.ok then
 			say(field.name .. " = " .. tostring(res.now))
+			refreshProps(true, "commit")
 		end
 	end)
 end
@@ -464,7 +487,7 @@ local function renderProps()
 	if propsState.countLbl then propsState.countLbl.Text = tostring(count) .. " props" end
 end
 
-local function refreshProps(force)
+local function refreshProps(force, trig)
 	local id2 = selectedId()
 	if not id2 then
 		propsState.objId = nil
@@ -490,6 +513,13 @@ local function refreshProps(force)
 			end
 		end
 		propsState.fields = res.fields or {}
+		propsState.sig = sigOf(propsState.fields)
+		local P10 = _G.ArkherProps10
+		P10.refresh = P10.refresh + 1
+		P10.lastTrig = trig or "?"
+		P10.lastN = #(propsState.fields or {})
+		P10.lastId = id2
+		print(("[ArkherX] 10 props: trig=%s id=%s n=%d"):format(P10.lastTrig, tostring(id2), P10.lastN))
 		if propsState.titleLbl then
 			propsState.titleLbl.Text = (res.name or "?") .. "  ·  " .. (res.className or "?")
 		end
@@ -541,7 +571,7 @@ local function takeOverPropertiesDock()
 		BackgroundColor3 = th.panel, Text = "↻", TextColor3 = th.acc2, Font = Enum.Font.GothamBold, TextSize = 14,
 		BorderSizePixel = 0, ZIndex = 8, AutoButtonColor = true })
 	corner(refB, 5) stroke(refB, th.border, 1)
-	onTap(refB, function() refreshProps(true) end)
+	onTap(refB, function() refreshProps(true, "manual") end)
 	local scr = mk("ScrollingFrame", overlay, { Size = UDim2.new(1, 0, 1, -54), Position = UDim2.fromOffset(0, 52),
 		BackgroundTransparency = 1, ScrollBarThickness = 5, ZIndex = 7, CanvasSize = UDim2.fromOffset(0, 0),
 		ScrollingDirection = Enum.ScrollingDirection.Y, ElasticBehavior = Enum.ElasticBehavior.Never })
@@ -550,14 +580,23 @@ local function takeOverPropertiesDock()
 	propsState.list = lst
 	-- seleção muda → refaz
 	local a2 = i:FindFirstChild("SelectedId")
-	if a2 then a2:GetPropertyChangedSignal("Value"):Connect(function() refreshProps(false) end) end
+	if a2 then a2:GetPropertyChangedSignal("Value"):Connect(function() refreshProps(false, "sel") end) end
 	task.spawn(function()
 		while task.wait(1.5) do
 			local id2 = selectedId()
-			if id2 ~= propsState.objId then refreshProps(false) end
+			if id2 ~= propsState.objId then refreshProps(false, "poll")
+			elseif id2 and propsState.scroll and propsState.scroll.Parent then
+				if not UIS:GetFocusedTextBox() then
+					local res = apiResult("PropsAll", { id = id2 })
+					if res and res.fields and sigOf(res.fields) ~= propsState.sig then
+						_G.ArkherProps10.sigHits = _G.ArkherProps10.sigHits + 1
+						refreshProps(true, "pollval")
+					end
+				end
+			end
 		end
 	end)
-	refreshProps(true)
+	refreshProps(true, "init")
 	say("PROPERTIES na dock original: TODAS as props do objeto + color picker (clique no quadradinho de cor).")
 end
 
@@ -571,6 +610,16 @@ local function resolveInsertParent(payload)
 	if target == "Selecionado" then return nil end -- servidor usa seleção
 	local ok, svc = pcall(function() return game:GetService(target) end)
 	return nil -- ids não trafegam services; servidor decide por nome
+end
+
+-- R2: avisa o nucleo 01 (Created = merge + expandir pai + selecionar + revelar + props)
+local function notifyCreated(res, fallbackParent)
+	if not (res and res.id) then return end
+	local nd = (type(res.node) == "table" and res.node.id) and res.node or { id = res.id }
+	local pid = (type(res.node) == "table" and res.node.parentId) or fallbackParent or selectedId() or res.id
+	local r = W("Created", { node = nd, parentId = pid })
+	print(("[ArkherX] 10 insert: Created id=%s pid=%s%s"):format(tostring(res.id), tostring(pid),
+		(r and r.error) and (" ERR=" .. tostring(r.error)) or ""))
 end
 
 local function buildInsertPanel(hostBtn)
@@ -683,7 +732,10 @@ local function buildInsertPanel(hostBtn)
 			local res, err = apiResult("CreateAny", payload)
 			if res and res.error then say(res.error, true)
 			elseif err then say(tostring(err), true)
-			elseif res and res.msg then say(res.msg) end
+			else
+				if res and res.msg then say(res.msg) else say(cls .. " inserido.") end
+				notifyCreated(res, payload.parentId)
+			end
 		end)
 	end
 	local function renderList(items)
@@ -1355,8 +1407,10 @@ do
 			local res, err = apiResult("CreateAny", payload)
 			if res and res.error then say(res.error, true)
 			elseif err then say(tostring(err), true)
-			elseif res and res.msg then say(res.msg)
-			else say(picked .. " inserido.") end
+			else
+				if res and res.msg then say(res.msg) else say(picked .. " inserido.") end
+				notifyCreated(res, payload.parentId)
+			end
 		end) end
 		if input then pcall(function() input:GetPropertyChangedSignal("Text"):Connect(applyFilter) end) end
 		pcall(function() iw:GetPropertyChangedSignal("Visible"):Connect(function() if iw.Visible then refresh() end end) end)
