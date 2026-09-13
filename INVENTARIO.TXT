@@ -1,7 +1,7 @@
 ================================================================
 ARKHER STUDIO — INVENTÁRIO COMPLETO (texto)
 Gerado no ciclo Fase 4 + Fase 5. Placa: ArkherStudio_Completo_GUIX.rbxl
-9362 instâncias, 35 tipos, 330 checks de teste verdes (7/7 suítes).
+9422 instâncias, 35 tipos, 384 checks de teste verdes (7/7 suítes).)
 ================================================================
 
 1) SCRIPTS (tudo assado dentro do rbxl, zero criação em runtime na shell)
@@ -10,7 +10,7 @@ LocalScripts (11): Arkher_01_Nucleo, 02_Icones, 03_Menus, 04_Gizmos,
   05_StudioX (shell: abas+ribbon+janelas), 06_RigX, 07_MeshX,
   08_RealityX (decks), 09_Topbar, 10_Studio (properties/insert/
   toolbox/scripteditor), 11_Input (Input System: PC/Mobile/Console/VR).
-Scripts servidor (2): ArkherEditorServer (108 handlers), ArkherEngineServer.
+Scripts servidor (2): ArkherEditorServer (113 handlers), ArkherEngineServer.
 PyBridge externo: pybridge.py + rbxlx.py + test_rbxlx.py + README.
 
 2) RIBBON (topbar ANTIGA em abas; 7 abas, 7 páginas, 23 botões)
@@ -176,3 +176,8 @@ executam de verdade + Script Studio + Run lock + Ajuda + agua/troca/flat.
 R6 (FINAL): 7 TRANSFORM no-ops religados (SetMode/SetSpace/Lock) +
 AnimKey/Go/Stop + VFX + centro=player + ineditos. 249 testes. 100/100.
 PROXIMO: UM teste unico no Play (CHECKLIST_PLAY.md) + refinamento.
+
+R9 (30% multi/input): set SelectedSet + SelectMany/DeleteMany/DuplicateMany/
+SelAdd/SelClear + Group ids[]; B/L/K/Ctrl+Delete; remap+escala+i18n PT-BR;
+A-drag/X2/radial-editores/DPad-deck (console); trigger-duplo/X-hold/spatial
+(VR); 03 +terrain ops +XPublishBridge; pybridge forward corrigido. 384/384.

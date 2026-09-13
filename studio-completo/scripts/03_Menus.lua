@@ -959,7 +959,7 @@ openCloudPanel = function()
   local sr = (st and st.result) or {}
   local projects = (r.result and r.result.projects) or {}
   local d, body = modalDialog("Arkher Cloud", 660, 560)
-  label("Acc", body, "Conta @" .. (sr.owner or "dev") .. "  ·  " .. (sr.plan or "Creator") .. "  ·  região " .. (sr.region or "—") .. "\nRegistros persistem no seu place (caminho custom, sem Cloud API real).", 0, 8, 620, 40, 14, m.cyan, true)
+  label("Acc", body, "Conta @" .. (sr.owner or "dev") .. "  ·  " .. (sr.plan or "Creator") .. "  ·  região " .. (sr.region or "—") .. "\nVault local + espelho DataStore quando a API está ativa (nuvem híbrida real).", 0, 8, 620, 40, 14, m.cyan, true)
   rowLabel(body, "Salvar cópia do projeto na cloud", 0, 54, 300, 15)
   local cname = input(body, "CName", 0, 76, 420, "Nome da cópia")
   local saveBtn = actionBtn(body, 430, 76, 190, 34, "Salvar na Cloud", m.blue)
@@ -1387,6 +1387,13 @@ MENUS.Terrain = {
   { sep = true },
   { icon = "Cloud", label = "Ocean Water", act = "XAguaOceano" },
   { icon = "Cloud", label = "Buoyancy Demo", act = "XAguaFlutua" },
+  { sep = true },
+  { icon = "plus", label = "Generate", act = "XTerrGen" },
+  { icon = "plus", label = "Erosion", act = "XTerrErode" },
+  { icon = "plus", label = "Crater", act = "XTerrCrater" },
+  { icon = "plus", label = "Flatten 64", act = "XTerrFlat" },
+  { icon = "nodeLink", label = "Smooth", act = "XTerrSmooth" },
+  { icon = "nodeLink", label = "Noise", act = "XTerrNoise" },
 }
 MENUS.Animation = {
   { icon = "Open", label = "Animator", act = "XOpenAnimator" },
@@ -1481,6 +1488,13 @@ MENUS.Tools = {
   { icon = "plus", label = "Sound", act = "XSound" },
   { icon = "plus", label = "Particles", act = "XParticles" },
   { icon = "plus", label = "Light", act = "XLight" },
+  { sep = true },
+  { icon = "Open", label = "Terrain Editor", act = "XOpenTerrain" },
+  { icon = "Open", label = "Animator", act = "XOpenAnimator" },
+  { icon = "Cloud", label = "Publish (Bridge)", act = "XPublishBridge" },
+  { sep = true },
+  { icon = "nodeLink", label = "Settings", act = "XSettings" },
+  { icon = "nodeLink", label = "Idioma: PT-BR", act = "XLangPT" },
   { sep = true },
   { icon = "Open", label = "Fullscreen", act = "Fullscreen" },
   { icon = "Open", label = "Reset Layout", act = "ResetLayout" },
@@ -2186,6 +2200,52 @@ actions.XLight            = function()
   api("SetAny", { id = r.id, name = "Brightness", kind = "n", value = 2 })
   api("SetAny", { id = r.id, name = "Range", kind = "n", value = 16 })
   say("PointLight inserted (Brightness 2, Range 16).")
+end
+local function frontPos03(dist, up)
+  local c = workspace.CurrentCamera
+  if not c then return { x = 0, y = 3, z = -16 } end
+  local ok, cf = pcall(function() return c.CFrame * CFrame.new(0, up or 3, -(dist or 16)) end)
+  if not ok or not cf then return { x = 0, y = 3, z = -16 } end
+  local p = cf.Position
+  return { x = math.floor(p.X), y = math.floor(p.Y), z = math.floor(p.Z) }
+end
+local function terr03(action, payload, what)
+  local r, err = api(action, payload)
+  if err then say(what .. ": " .. tostring(err), true)
+  else say(r and r.msg or (what .. " done.")) end
+end
+actions.XTerrGen          = function()
+  terr03("TerrainFill", { shape = "ball", material = "Grass", radius = 16, center = frontPos03(24, 0) }, "Generate")
+end
+actions.XTerrErode        = function()
+  terr03("TerrainFill", { op = "remove", shape = "ball", radius = 8, center = frontPos03(24, 0) }, "Erosion")
+end
+actions.XTerrCrater       = function()
+  terr03("TerrainFill", { op = "remove", shape = "ball", radius = 16, center = frontPos03(24, 0) }, "Crater")
+end
+actions.XTerrFlat         = function()
+  terr03("TerrainGenFlat", { size = 64, material = "Grass" }, "Flatten 64x64 at origin")
+end
+actions.XTerrSmooth       = function()
+  terr03("TerrainSmooth", { center = frontPos03(24, 0), radius = 16 }, "Smooth")
+end
+actions.XTerrNoise        = function()
+  terr03("TerrainNoise", { center = frontPos03(24, 0), radius = 16, force = 50 }, "Noise")
+end
+actions.XPublishBridge    = function()
+  local r, err = api("PublishReal", {})
+  if err then say("Publish: " .. tostring(err) .. " (is pybridge.py running?)", true)
+  else say("Published: " .. tostring(r and (r.url or r.msg) or "ok")) end
+end
+actions.XSettings         = function()
+  local I11 = _G.ArkherInput
+  if I11 and I11.openSettings then I11.openSettings()
+  else say("Settings need the Input System (11).", true) end
+end
+actions.XLangPT           = function()
+  local I11 = _G.ArkherInput
+  if I11 and I11.toggleLang then I11.toggleLang()
+  else say("Language needs the Input System (11).", true) end
 end
 actions.XTransform        = function()
   W("SetMode", { key = "Move" })

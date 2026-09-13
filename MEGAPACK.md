@@ -178,3 +178,33 @@ Blocos: 5 por rodada, no automático; pedir pra continuar ao fim.
 - HONESTO/FASE B: box/lasso/multi-select (exige cirurgia no modelo de
   seleção do 01); remap UI (bindings editáveis em código + override global);
   painel VR espacial ancorado (precisa device p/ prova); i18n PT-BR.
+
+## R9 — Multi-select + Remap/Escala/i18n + Editores no gamepad + VR espacial (30%)
+- Server: set SelectedSet (selSet + espelho SelectedId) + SelAdd/SelClear/
+  SelectMany (ids[]+id+insts[], tolerante) + DeleteMany (Undo por item) +
+  DuplicateMany (retorna clones) + Group ids[] (1 Undo). +5 handlers (113).
+  BUG REAL corrigido: pyGet/pyPost eram `local` depois do uso → PublishReal
+  quebraria em produção; forward declaration + 3 testes de ponte offline.
+- 11_Input: B box / L lasso (point-in-polygon) / K filhos / Ctrl+Delete set /
+  Ctrl+D/G no set / numérico multi-delta (POS relativo, ROT/SIZE absoluto);
+  remap captura tecla (Esc cancela, reset restaura, sessão); escala 70-160%
+  (Ctrl+=/-); PT-BR ~110 labels + 14 títulos por path + radial traduzido.
+- Mobile: tap no selecionado = filhos; drag touch = caixa (M_Marquee);
+  M_B_Del + M_Cat_Assets (14ª categoria).
+- Console: A press/release (tap confirma, drag = caixa C_Marquee); X duplo =
+  filhos; Back = radial EDITORES (Terrain/Models/Animate/UI/Assets/Tools);
+  DPad percorre console + deck inteiro (só visíveis; ciclo corrigido).
+- VR: trigger duplo = filhos; X hold 0.6s = deleta, X rápido = snap;
+  V_Editors abre Tools; V_Spatial ancora V_Panel (464px) em SurfaceGui no
+  mundo e devolve (posição restaurada).
+- 03_Menus: XTerrGen/Erode/Crater/Flat/Smooth/Noise (geração+erosão+crateras
+  na Terrain) + XPublishBridge (PublishReal honesto: erro sem ponte) +
+  XSettings/XLangPT. Cloud: 1 botão dentro da aba, label honesto.
+- Spec 572→632 nós; placa 342051→350721B, 9362→9422 inst.
+- Testes: 384 verdes (141+32+18+27+41+43+82), VERIFY OK (+27 marcadores R9),
+  audits 0/0/0. test_input 41→82 (box/lasso/kids/delete/remap/escala/idioma/
+  numérico-multi/touch/A-drag/editores/foco-deck/trigger-duplo/X-hold/spatial).
+- HONESTO/RESTANTE (70% p/ superar indústria): cirurgia do 01 p/ multi nativo
+  (set vive no 11+server; gizmo/01 seguem single); títulos dinâmicos ficam EN
+  (S2/O2/SM2/TM2 reescrevem); prova em device VR físico; persistência do
+  remap (hoje sessão); lasso no touch/gamepad (só PC tem L).

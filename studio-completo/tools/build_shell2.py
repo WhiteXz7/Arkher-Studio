@@ -301,6 +301,26 @@ footer = [B("F2_Out", 8, 823, 70, 26, "☰ Output", BTN, TEXT, 12),
 desktop_kids = ([menu, ribbon, terrain, console, selection, crumb, compass, coords,
           play, layers, region, mapp, gizmo, timeline, curves, sim, team,
           farright, farhelp] + footer)
+dmarquee = F("D_Marquee", 0, 0, 10, 10, INSET, [], {"Visible": False, "BackgroundTransparency": 0.45})
+desktop_kids.append(dmarquee)
+dset_kids = [title("SETTINGS"), B("D_S_Close", 392, 4, 60, 26, "\u2715", BTN, TEXT, 14),
+             L("D_S_KeyTitle", 8, 32, 444, 20, "KEYBOARD (click a key, press new)", MUTED, 12, FB)]
+dset_rows = [("D_S_B1", "Select tool"), ("D_S_B2", "Move tool"), ("D_S_B3", "Rotate tool"),
+             ("D_S_B4", "Scale tool"), ("D_S_B5", "Frame"), ("D_S_B6", "Box select"),
+             ("D_S_B7", "Lasso select"), ("D_S_B8", "Snap")]
+for i, (nm, tx) in enumerate(dset_rows):
+    dset_kids += [L(nm + "L", 8, 56 + i * 38, 220, 32, tx, TEXT, 13),
+                  B(nm, 232, 56 + i * 38, 220, 32, "···", BTN, TEXT, 14, FB)]
+dset_kids += [B("D_S_Reset", 8, 366, 444, 34, "RESET DEFAULTS", BTN, TEXT, 14, FB),
+              L("D_S_LangTitle", 8, 408, 444, 20, "LANGUAGE", MUTED, 12, FB),
+              B("D_S_Lang", 8, 430, 444, 34, "IDIOMA: EN", BTN, TEXT, 14, FB),
+              L("D_S_ScaleTitle", 8, 472, 444, 20, "UI SCALE", MUTED, 12, FB),
+              B("D_S_ScaleMinus", 8, 494, 60, 32, "\u2212", BTN, TEXT, 20),
+              L("D_S_ScaleVal", 72, 494, 120, 32, "100%", TEXT, 14, FC, CENTER, INSET),
+              B("D_S_ScalePlus", 196, 494, 60, 32, "+", BTN, TEXT, 20),
+              L("D_S_Hint", 8, 534, 444, 56, "remap + language apply instantly (this session)", MUTED, 11)]
+dsettings = F("D_Settings", 554, 140, 460, 600, PANEL, dset_kids, {"Visible": False})
+desktop_kids.append(dsettings)
 desktop = N("Frame", "DesktopRoot",
             {"Position": P(0, 0), "Size": S(1568, 882),
              "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
@@ -326,7 +346,7 @@ for i, (nm, tx) in enumerate(mtool_defs):
 mtools = F("M_Tools", 0, 70, 100, 640, PANEL, mtool_kids)
 mdrawer_kids = [title("TOOLS"), B("M_DrawerClose", 296, 4, 56, 26, "✕", BTN, TEXT, 14)]
 mcat_defs = ["Select", "Build", "Terrain", "Model", "Paint", "Light", "FX",
-             "Sound", "UI", "Animate", "Physics", "Game", "Cloud"]
+             "Sound", "UI", "Animate", "Physics", "Game", "Cloud", "Assets"]
 for i, cnm in enumerate(mcat_defs):
     mdrawer_kids.append(B("M_Cat_" + cnm, 8 + (i % 2) * 172, 34 + (i // 2) * 56,
                           168, 50, cnm, BTN, TEXT, 14, FB))
@@ -358,13 +378,16 @@ mbot_kids = [B("M_B_Confirm", 8, 8, 200, 80, "✓ CONFIRM", ACCENT, TEXT, 18, FB
              B("M_B_Snap", 664, 8, 150, 80, "🧲 SNAP", BTN, TEXT, 15, FB),
              B("M_B_Axis", 818, 8, 170, 80, "AXIS: X", BTN, TEXT, 16, FB),
              B("M_B_Space", 992, 8, 170, 80, "SPACE: LOCAL", BTN, TEXT, 14, FB),
-             L("M_B_Hint", 1170, 8, 390, 80, "contextual actions appear here", MUTED, 12, FG)]
+             B("M_B_Del", 1170, 8, 150, 80, "\U0001F5D1 DEL", BTN, RED, 16, FB),
+             L("M_B_Hint", 1324, 8, 236, 80, "contextual actions appear here", MUTED, 12, FG)]
 mbot = F("M_Bottom", 0, 786, 1568, 96, MENU_BG, mbot_kids)
+mmarquee = F("M_Marquee", 0, 0, 10, 10, INSET, [], {"Visible": False, "BackgroundTransparency": 0.45})
 mobile = N("Frame", "MobileRoot",
+
            {"Position": P(0, 0), "Size": S(1568, 882),
             "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
             "ClipsDescendants": False, "Visible": False},
-           [mtop, mtools, mdrawer, mprops, mnum, msel, mhelp, mbot])
+           [mtop, mtools, mdrawer, mprops, mnum, msel, mhelp, mbot, mmarquee])
 
 # ---------------- 14. console layout (gamepad-first, baked) ----------------
 ctop = F("C_Top", 0, 0, 1568, 56, MENU_BG,
@@ -396,11 +419,12 @@ cnum_kids += [B("C_N_Mode", 304, 34, 244, 40, "MODE: POS", BTN, TEXT, 14, FB),
               B("C_N_Apply", 304, 82, 120, 40, "\u2713 APPLY", ACCENT, TEXT, 15, FB),
               B("C_N_Cancel", 428, 82, 120, 40, "\u2715", BTN, TEXT, 18)]
 cnumeric = F("C_Numeric", 504, 566, 560, 210, PANEL, cnum_kids, {"Visible": False})
+cmarquee = F("C_Marquee", 0, 0, 10, 10, INSET, [], {"Visible": False, "BackgroundTransparency": 0.45})
 cons = N("Frame", "ConsoleRoot",
          {"Position": P(0, 0), "Size": S(1568, 882),
           "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
           "ClipsDescendants": False, "Visible": False},
-         [ctop, cradial, ccursor, cpanel, clegend, cnumeric])
+         [ctop, cradial, ccursor, cpanel, clegend, cnumeric, cmarquee])
 
 # ---------------- 15. vr layout (minimal spatial-ready, baked) ----------------
 vtool_defs = [("V_T_Select", "⌖ SELECT"), ("V_T_Move", "✥ MOVE"),
@@ -417,7 +441,9 @@ vpanel_kids += [B("V_Confirm", 14, 216, 244, 56, "✓ CONFIRM", ACCENT, TEXT, 16
                 B("V_Teleport", 342, 280, 164, 52, "📍 TELEPORT", BTN, TEXT, 13, FB),
                 L("V_Sel", 14, 340, 492, 28, "Selection: —", TEXT, 13, FC, CENTER),
                 L("V_Hint", 14, 372, 492, 28, "trigger=select · grip=move · A=confirm", MUTED, 12, FG, CENTER)]
-vpanel = F("V_Panel", 524, 220, 520, 408, PANEL, vpanel_kids)
+vpanel_kids += [B("V_Editors", 14, 404, 244, 52, "Editors", BTN, TEXT, 14, FB),
+                B("V_Spatial", 262, 404, 244, 52, "Spatial: OFF", BTN, TEXT, 14, FB)]
+vpanel = F("V_Panel", 524, 220, 520, 464, PANEL, vpanel_kids)
 vcross = L("V_Cross", 772, 431, 24, 24, "·", GREEN, 20, FB, CENTER)
 vr = N("Frame", "VRoot",
        {"Position": P(0, 0), "Size": S(1568, 882),

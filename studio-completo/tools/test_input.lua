@@ -41,13 +41,15 @@ for _, n in ipairs({ "M_Drawer", "M_PropsP", "M_Numeric" }) do
 	local f = W(mroot, "Frame", n); f.Visible = false
 end
 -- console
-for _, n in ipairs({ "C_Menu", "C_Props", "C_R_0", "C_R_1", "C_R_2", "C_R_3", "C_R_4", "C_R_5",
+for _, n in ipairs({ "C_Menu", "C_Props",
 	"C_N_XMinus", "C_N_XPlus", "C_N_YMinus", "C_N_YPlus", "C_N_ZMinus", "C_N_ZPlus",
 	"C_N_Mode", "C_N_Apply", "C_N_Cancel", "C_PropsOpen" }) do W(croot, "TextButton", n) end
+local crad = W(croot, "Frame", "C_Radial"); crad.Visible = false
+for i = 0, 5 do W(crad, "TextButton", "C_R_" .. i) end
 for _, n in ipairs({ "C_Tool", "C_Mode", "C_R_Title", "C_N_XVal", "C_N_YVal", "C_N_ZVal" }) do
 	local l = W(croot, "TextLabel", n); l.Text = "0"
 end
-for _, n in ipairs({ "C_Radial", "C_Panel", "C_Numeric" }) do
+for _, n in ipairs({ "C_Panel", "C_Numeric" }) do
 	local f = W(croot, "Frame", n); f.Visible = false
 end
 W(croot, "TextLabel", "C_Cursor")
@@ -109,6 +111,26 @@ local ws = game:GetService("Workspace")
 local cam = Instance.new("Camera"); cam.CFrame = CFrame.new(0, 30, 60); cam.FieldOfView = 70
 cam.Focus = CFrame.new(0, 0, 0)
 ws.CurrentCamera = cam
+
+-- R9 widgets (antes do load do 11: on() liga no boot)
+for i = 1, 8 do W(desktop, "TextButton", "D_S_B" .. i) end
+for _, n in ipairs({ "D_S_Reset", "D_S_Lang", "D_S_ScaleMinus", "D_S_ScalePlus", "D_S_Close" }) do
+	W(desktop, "TextButton", n)
+end
+W(desktop, "TextLabel", "D_S_ScaleVal")
+local dset = W(desktop, "Frame", "D_Settings"); dset.Visible = false
+local sscale = W(shell, "Frame", "Shell2Scale"); sscale.Scale = 1
+local dmar = W(desktop, "Frame", "D_Marquee"); dmar.Visible = false
+local mmar = W(mroot, "Frame", "M_Marquee"); mmar.Visible = false
+local cmar = W(croot, "Frame", "C_Marquee"); cmar.Visible = false
+W(mroot, "TextButton", "M_Cat_Assets")
+W(mroot, "TextButton", "M_B_Del")
+W(vroot, "TextButton", "V_Editors")
+W(vroot, "TextButton", "V_Spatial")
+local vpanel = W(vroot, "Frame", "V_Panel"); vpanel.Position = UDim2.fromOffset(524, 220)
+local deck = W(canvas, "Frame", "ArkherXDeck")
+W(deck, "TextButton", "DeckA"); W(deck, "TextButton", "DeckB")
+local deckH = W(deck, "TextButton", "DeckHidden"); deckH.Visible = false
 
 local src11 = io.open("studio-completo/scripts/11_Input.lua"):read("*a")
 assert(pcall(assert(loadstring(src11, "[11]"))), "11 nao carregou")
@@ -213,6 +235,7 @@ ws.Raycast = function(self, o, d) return { Instance = instT, Position = Vector3.
 UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.ButtonB }, false)
 selIdVal.Value = ""; cstate.selectedId = nil
 UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.ButtonA }, false)
+UIS.InputEnded:Fire({ KeyCode = Enum.KeyCode.ButtonA })
 check(selIdVal.Value == idT, "A no cursor vazio = raycast seleciona (full-stack)")
 UIS.InputChanged:Fire({ UserInputType = Enum.UserInputType.Gamepad1, KeyCode = Enum.KeyCode.Thumbstick1, Position = { X = 0, Y = -1 } })
 local st0 = cam.CFrame.Position.Z
@@ -255,6 +278,165 @@ for _, f in ipairs(pa.properties.fields) do if f.key == "Anchored" then av = f.v
 check(av == true, "R2_Anchor liga Anchored (full-stack)")
 click("R2_Group")
 check(lastSpy().cmd == "Group", "R2_Group roteia Group")
+
+
+print("\n== Input R9: multi-select PC (box/lasso/kids) ==")
+check(IN.setPlatform("PC") == "PC", "R9 volta p/ PC")
+cam.WorldToViewportPoint = function(self, p) return { X = p.X * 10 + 700, Y = 400 }, true end
+ws.Raycast = function(self, o, d) return nil end
+local idS1 = mkSel("Sel1", 100)
+local idS2 = mkSel("Sel2", 101)
+local idS3 = mkSel("Sel3", 102)
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.B, UserInputType = Enum.UserInputType.Keyboard }, false)
+UIS.InputBegan:Fire({ UserInputType = Enum.UserInputType.MouseButton1, KeyCode = Enum.KeyCode.Unknown, Position = { X = 1695, Y = 350 } }, false)
+UIS.InputChanged:Fire({ UserInputType = Enum.UserInputType.MouseMovement, Delta = { X = 0, Y = 0 }, Position = { X = 1715, Y = 450 } })
+check(find("D_Marquee").Visible, "drag mostra D_Marquee")
+UIS.InputEnded:Fire({ UserInputType = Enum.UserInputType.MouseButton1, Position = { X = 1715, Y = 450 } })
+check(#IN.multi.members == 2 and not find("D_Marquee").Visible, "box seleciona Sel1+Sel2 e esconde marquee")
+check(#IN.multi.ids == 2, "set tem 2 ids espelhados")
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.L, UserInputType = Enum.UserInputType.Keyboard }, false)
+UIS.InputBegan:Fire({ UserInputType = Enum.UserInputType.MouseButton1, KeyCode = Enum.KeyCode.Unknown, Position = { X = 1715, Y = 390 } }, false)
+for _, q in ipairs({ { X = 1735, Y = 390 }, { X = 1735, Y = 410 }, { X = 1715, Y = 410 } }) do
+	UIS.InputChanged:Fire({ UserInputType = Enum.UserInputType.MouseMovement, Delta = { X = 0, Y = 0 }, Position = q })
+end
+UIS.InputEnded:Fire({ UserInputType = Enum.UserInputType.MouseButton1, Position = { X = 1715, Y = 410 } })
+check(#IN.multi.members == 1, "lasso seleciona so Sel3")
+local mm = serverInvoke("Create", { parentId = wsId, class = "Model", name = "Mae" })
+serverInvoke("Create", { parentId = mm.node.id, class = "Part", name = "Filho1" })
+serverInvoke("Create", { parentId = mm.node.id, class = "Part", name = "Filho2" })
+serverInvoke("Select", { id = mm.node.id })
+local instMae = ws:FindFirstChild("Mae", true)
+selInst.Value = instMae; selIdVal.Value = mm.node.id; cstate.selectedId = mm.node.id
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.K, UserInputType = Enum.UserInputType.Keyboard }, false)
+check(#IN.multi.members == 2, "K seleciona 2 filhos")
+UIS.IsKeyDown = function(self, k) return k == Enum.KeyCode.LeftControl end
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.Delete, UserInputType = Enum.UserInputType.Keyboard }, false)
+UIS.IsKeyDown = function(self, k) return false end
+check(lastSpy().cmd == "DeleteMany", "Ctrl+Delete roteia DeleteMany")
+check(ws:FindFirstChild("Filho1", true) == nil, "DeleteMany removeu Filho1 (full-stack)")
+check(#IN.multi.members == 0, "set limpo apos DeleteMany")
+
+print("\n== Input R9: remap + escala + idioma ==")
+click("D_S_B5")
+check(find("D_S_B5").Text == "...", "slot entra em captura")
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.G, UserInputType = Enum.UserInputType.Keyboard }, false)
+check(IN.bindings.frame == Enum.KeyCode.G, "remap Frame->G (sessao)")
+check(find("D_S_B5").Text == "G", "slot mostra G")
+local idRt = mkSel("RemapT", 8)
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.G, UserInputType = Enum.UserInputType.Keyboard }, false)
+check(cam.CFrame.Position.X == 18, "G enquadra (8+10)")
+click("D_S_Reset")
+check(IN.bindings.frame == Enum.KeyCode.F, "reset restaura F")
+click("D_S_ScalePlus")
+check(math.abs(find("Shell2Scale").Scale - 1.1) < 1e-6, "Scale+ -> 110%")
+UIS.IsKeyDown = function(self, k) return k == Enum.KeyCode.LeftControl end
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.Minus, UserInputType = Enum.UserInputType.Keyboard }, false)
+UIS.IsKeyDown = function(self, k) return false end
+check(math.abs(find("Shell2Scale").Scale - 1.0) < 1e-6, "Ctrl+- volta p/ 100%")
+IN.openSettings()
+check(find("D_Settings").Visible and find("D_S_B5").Text == "F", "openSettings mostra painel + bindings")
+IN.setLang("PT")
+check(find("M_T_Select").Text == "⌈\nSELECIONAR", "PT traduz M_T_Select")
+IN.setLang("EN")
+check(find("M_T_Select").Text == "M_T_Select", "EN restaura original")
+
+print("\n== Input R9: numerico multi + touch drag + mobile extras ==")
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.B, UserInputType = Enum.UserInputType.Keyboard }, false)
+UIS.InputBegan:Fire({ UserInputType = Enum.UserInputType.MouseButton1, KeyCode = Enum.KeyCode.Unknown, Position = { X = 1695, Y = 350 } }, false)
+UIS.InputEnded:Fire({ UserInputType = Enum.UserInputType.MouseButton1, Position = { X = 1715, Y = 450 } })
+serverInvoke("Select", { id = idS1 })
+selInst.Value = ws:FindFirstChild("Sel1", true); selIdVal.Value = idS1; cstate.selectedId = idS1
+check(IN.setPlatform("Mobile") == "Mobile", "R9 vai p/ Mobile")
+click("M_T_Move")
+click("M_N_XPlus"); click("M_N_XPlus")
+click("M_B_Confirm")
+local function posX(id)
+	local s = serverInvoke("Select", { id = id })
+	for _, f in ipairs(s.properties.fields) do if f.key == "Position" then return f.value.X end end
+end
+check(posX(idS1) == 102 and posX(idS2) == 103, "numerico aplica delta +2 no set (full-stack)")
+click("M_T_Select")
+ws.Raycast = function(self, o, d) return nil end
+UIS.InputBegan:Fire({ UserInputType = Enum.UserInputType.Touch, KeyCode = Enum.KeyCode.Unknown, Position = { X = 1690, Y = 350 } }, false)
+UIS.InputChanged:Fire({ UserInputType = Enum.UserInputType.Touch, Position = { X = 1720, Y = 450 } })
+check(find("M_Marquee").Visible, "touch drag mostra M_Marquee")
+UIS.InputEnded:Fire({ UserInputType = Enum.UserInputType.Touch, Position = { X = 1720, Y = 450 } })
+check(#IN.multi.members == 2, "touch drag-box seleciona 2")
+click("M_B_Del")
+check(lastSpy().cmd == "DeleteMany" and #IN.multi.members == 0, "M_B_Del deleta set")
+local nM = #menuSpy
+click("M_Cat_Assets")
+check(menuSpy[#menuSpy].cmd == "Menu" and menuSpy[#menuSpy].p.name == "Assets", "M_Cat_Assets abre menu Assets")
+local mm3 = serverInvoke("Create", { parentId = wsId, class = "Model", name = "Mae3" })
+serverInvoke("Create", { parentId = mm3.node.id, class = "Part", name = "F3a" })
+serverInvoke("Create", { parentId = mm3.node.id, class = "Part", name = "F3b" })
+serverInvoke("Select", { id = mm3.node.id })
+local instM3 = ws:FindFirstChild("Mae3", true)
+selInst.Value = instM3; selIdVal.Value = mm3.node.id; cstate.selectedId = mm3.node.id
+ws.Raycast = function(self, o, d) return { Instance = instM3, Position = Vector3.new(0, 0, 0) } end
+UIS.TouchTapInWorld:Fire({ X = 5, Y = 5 }, false)
+check(#IN.multi.members == 2, "tap no selecionado = kids")
+
+print("\n== Input R9: console (A-drag, X2, editores, foco total) ==")
+ws.Raycast = function(self, o, d) return nil end
+check(IN.redetect() == "Console" or IN.setPlatform("Console") == "Console", "R9 vai p/ Console")
+UIS.TouchEnabled = false; UIS.KeyboardEnabled = false; UIS.GamepadEnabled = true
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.ButtonSelect }, false)
+check(find("C_R_0").Text == "Terrain", "Back abre radial de editores")
+local nM2 = #menuSpy
+click("C_R_0")
+check(menuSpy[#menuSpy].cmd == "Menu" and menuSpy[#menuSpy].p.name == "Terrain", "radial editores abre Terrain")
+GuiService.SelectedObject = nil
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.DPadUp }, false)
+check(GuiService.SelectedObject and GuiService.SelectedObject.Name == "C_Props", "DPad ainda ancora em C_Props")
+local seenDeck = {}
+for i = 1, 3 do
+	UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.DPadUp }, false)
+	if GuiService.SelectedObject then seenDeck[GuiService.SelectedObject.Name] = true end
+end
+check(seenDeck["DeckA"] and seenDeck["DeckB"], "DPad alcanca botoes do deck")
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.ButtonA }, false)
+UIS.InputChanged:Fire({ UserInputType = Enum.UserInputType.Gamepad1, KeyCode = Enum.KeyCode.Thumbstick2, Position = { X = -1, Y = 1 } })
+RunService.Heartbeat:Fire(0.1)
+check(find("C_Marquee").Visible, "A+stick mostra C_Marquee")
+UIS.InputEnded:Fire({ KeyCode = Enum.KeyCode.ButtonA })
+check(#IN.multi.members >= 5, "A-drag seleciona caixa no console")
+local mm4 = serverInvoke("Create", { parentId = wsId, class = "Model", name = "Mae4" })
+serverInvoke("Create", { parentId = mm4.node.id, class = "Part", name = "F4a" })
+serverInvoke("Create", { parentId = mm4.node.id, class = "Part", name = "F4b" })
+serverInvoke("Select", { id = mm4.node.id })
+local instM4 = ws:FindFirstChild("Mae4", true)
+selInst.Value = instM4; selIdVal.Value = mm4.node.id; cstate.selectedId = mm4.node.id
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.ButtonX }, false)
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.ButtonX }, false)
+check(#IN.multi.members == 2, "X duplo = kids")
+
+print("\n== Input R9: VR (trigger duplo, X hold, spatial, editores) ==")
+VRService.VREnabled = true
+check(IN.redetect() == "VR", "R9 vai p/ VR")
+local mm5 = serverInvoke("Create", { parentId = wsId, class = "Model", name = "Mae5" })
+serverInvoke("Create", { parentId = mm5.node.id, class = "Part", name = "F5a" })
+serverInvoke("Create", { parentId = mm5.node.id, class = "Part", name = "F5b" })
+serverInvoke("Select", { id = mm5.node.id })
+local instM5 = ws:FindFirstChild("Mae5", true)
+selInst.Value = instM5; selIdVal.Value = mm5.node.id; cstate.selectedId = mm5.node.id
+ws.Raycast = function(self, o, d) return nil end
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.ButtonR1 }, false)
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.ButtonR1 }, false)
+check(#IN.multi.members == 2, "trigger duplo = kids")
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.ButtonX }, false)
+do local t0 = os.clock() while os.clock() - t0 < 0.7 do end end
+UIS.InputEnded:Fire({ KeyCode = Enum.KeyCode.ButtonX })
+check(lastSpy().cmd == "DeleteMany", "X hold deleta set")
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.ButtonX }, false)
+UIS.InputEnded:Fire({ KeyCode = Enum.KeyCode.ButtonX })
+check(lastSpy().cmd == "SetAny", "X rapido = snap")
+click("V_Spatial")
+check(vpanel.Parent.Name == "ArkherVRSurface", "spatial ancora painel no mundo")
+click("V_Spatial")
+check(vpanel.Parent.Name == "VRoot", "spatial devolve painel")
+click("V_Editors")
+check(menuSpy[#menuSpy].cmd == "Menu" and menuSpy[#menuSpy].p.name == "Tools", "V_Editors abre Tools")
 
 print(string.format("RESULTADO: %d passaram, %d falharam", pass, fail))
 if fail > 0 then os.exit(1) else os.exit(0) end

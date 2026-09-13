@@ -736,6 +736,7 @@ do
 -- Roda no server (ServerStorage/ArkherCloudVault/ArkherServices). Não usa require externo;
 -- só services globais. Todo dado aninhado vai em atributo STRING (JSON) p/ persistir no place.
 local Http = game:GetService("HttpService")
+local pyGet, pyPost -- forward: PublishReal/AccountPlaces/Py* usam antes do BLOCK_X9
 local SS = game:GetService("ServerStorage")
 local VAULT = "ArkherCloudVault"
 
@@ -1892,7 +1893,7 @@ end
 -- ============ BLOCK_X9: PYBRIDGE via SERVIDOR (HttpService so roda server-side) ============
 local PY_URL = "http://127.0.0.1:8773"
 pcall(function() local u = game:GetAttribute("ArkherPyUrl") if type(u) == "string" and #u > 8 then PY_URL = u end end)
-local function pyGet(path2)
+pyGet = function(path2)
 	local ok2, res = pcall(function()
 		return Http:GetAsync(PY_URL .. path2, true)
 	end)
@@ -1903,7 +1904,7 @@ local function pyGet(path2)
 	if not ok3 then return nil, "resposta nao-JSON do python bridge" end
 	return data
 end
-local function pyPost(path2, body)
+pyPost = function(path2, body)
 	local ok2, res = pcall(function()
 		return Http:PostAsync(PY_URL .. path2, body, Enum.HttpContentType.ApplicationJson, false)
 	end)
@@ -2834,7 +2835,7 @@ function handlers.TerrainNoise(player, payload)
 	ter:WriteVoxels(region, 4, mats, occs)
 	return { msg = ("Noise r=%s f=%s aplicado."):format(tostring(r), tostring(force)) }
 end
-local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, TerrainGenFlat=true, TerrainReplace=true, TerrainWater=true, TerrainSmooth=true, TerrainNoise=true, ScriptSet=true, Undo=true, Group=true, Ungroup=true, AlignKids=true, DistributeKids=true, MirrorKids=true, PivotReset=true }
+local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, TerrainGenFlat=true, TerrainReplace=true, TerrainWater=true, TerrainSmooth=true, TerrainNoise=true, ScriptSet=true, Undo=true, Group=true, Ungroup=true, AlignKids=true, DistributeKids=true, MirrorKids=true, PivotReset=true, SelAdd=true, SelClear=true, SelectMany=true, DeleteMany=true, DuplicateMany=true }
 local function runRestore()
 	for part, was in pairs(RUN.parts) do
 		if part and part.Parent then
@@ -2865,6 +2866,31 @@ local function selOrId(player, id)
 end
 
 function handlers.Group(player, payload)
+    if type(payload.ids) == "table" and #payload.ids > 0 then
+        local parts = {}
+        for _, id2 in ipairs(payload.ids) do
+            if type(id2) == "string" then
+                local ok, o = pcall(getObject, id2)
+                if ok and o and editable(o) and not rootSet[o] and not containsProtected(o) then parts[#parts + 1] = o end
+            end
+        end
+        assert(#parts > 0, "Nada agrupável nos ids.")
+        local gparent = parts[1].Parent or workspace
+        local g = Instance.new("Model")
+        g.Name = "Group_" .. #parts
+        g.Parent = gparent
+        register(g) created[g] = true
+        local olds = {}
+        for _, o in ipairs(parts) do olds[o] = o.Parent or workspace o.Parent = g queueObject(o) end
+        selected[player] = g
+        queueObject(g)
+        pushHist(player, {
+            label = "Group " .. #parts .. " objs",
+            undo = function() for _, o in ipairs(parts) do o.Parent = olds[o] end g.Parent = nil selected[player] = parts[1] end,
+            redo = function() g.Parent = gparent for _, o in ipairs(parts) do o.Parent = g end selected[player] = g end,
+        })
+        return { node = record(g), grouped = #parts }
+    end
     local o = selOrId(player, payload.id)
     assert(o and editable(o) and not rootSet[o] and not containsProtected(o), "Selecione um objeto editável para agrupar.")
     assert(not conflictingLock(o, player), "Objeto em edição por outro usuário.")
@@ -2978,6 +3004,100 @@ function handlers.MirrorKids(player, payload)
         redo = function() for _, p in ipairs(parts) do local v = 2 * plane - p.Position[a] p.Position = Vector3.new(a == "X" and v or p.Position.X, a == "Y" and v or p.Position.Y, a == "Z" and v or p.Position.Z) end end,
     })
     return { mirrored = #parts, axis = a }
+end
+
+local selSet = {}
+local function setGet(player)
+    local s = selSet[player]
+    if not s then s = {} selSet[player] = s end
+    return s
+end
+local function setPrune(player)
+    local out = {}
+    for _, o in ipairs(setGet(player)) do
+        if inspectable(o) and idOf[o] then out[#out + 1] = o end
+    end
+    selSet[player] = out
+    return out
+end
+local function setAddIds(player, ids)
+    local s = setGet(player)
+    local have = {}
+    for _, o in ipairs(s) do have[o] = true end
+    local added = 0
+    for _, id2 in ipairs(ids or {}) do
+        if type(id2) == "string" then
+            local ok, o = pcall(getObject, id2)
+            if ok and o and inspectable(o) and not have[o] then
+                have[o] = true s[#s + 1] = o added = added + 1
+            end
+        end
+    end
+    return added
+end
+local function setAddInsts(player, insts)
+    local s = setGet(player)
+    local have = {}
+    for _, o in ipairs(s) do have[o] = true end
+    local added = 0
+    for _, o in ipairs(insts or {}) do
+        if typeof(o) == "Instance" and idOf[o] and inspectable(o) and not have[o] then
+            have[o] = true s[#s + 1] = o added = added + 1
+        end
+    end
+    return added
+end
+local function setIds(player)
+    local out = {}
+    for _, o in ipairs(setPrune(player)) do out[#out + 1] = idOf[o] end
+    return out
+end
+
+function handlers.SelAdd(player, payload)
+    local ids = {}
+    if type(payload.ids) == "table" then ids = payload.ids end
+    if payload.id then ids[#ids + 1] = payload.id end
+    local added = setAddIds(player, ids) + setAddInsts(player, payload.insts)
+    return { added = added, count = #setGet(player), ids = setIds(player) }
+end
+
+function handlers.SelClear(player, payload)
+    selSet[player] = {}
+    return { cleared = true }
+end
+
+function handlers.SelectMany(player, payload)
+    selSet[player] = {}
+    local ids = {}
+    if type(payload.ids) == "table" then ids = payload.ids end
+    if payload.id then ids[#ids + 1] = payload.id end
+    local added = setAddIds(player, ids) + setAddInsts(player, payload.insts)
+    return { count = #setGet(player), added = added, ids = setIds(player) }
+end
+
+function handlers.DeleteMany(player, payload)
+    local s = setPrune(player)
+    local deleted, failed = 0, 0
+    for _, o in ipairs(s) do
+        local ok = pcall(handlers.Delete_, player, { id = idOf[o] })
+        if ok then deleted = deleted + 1 else failed = failed + 1 end
+    end
+    selSet[player] = {}
+    return { deleted = deleted, failed = failed }
+end
+
+function handlers.DuplicateMany(player, payload)
+    local s = setPrune(player)
+    local ids, failed = {}, 0
+    for _, o in ipairs(s) do
+        local ok = pcall(handlers.Copy, player, { id = idOf[o] })
+        if ok then
+            local ok2, r = pcall(handlers.Paste, player, {})
+            if ok2 and r and r.node and r.node.id then ids[#ids + 1] = r.node.id
+            else failed = failed + 1 end
+        else failed = failed + 1 end
+    end
+    return { duplicated = #ids, failed = failed, ids = ids }
 end
 
 function handlers.PivotReset(player, payload)

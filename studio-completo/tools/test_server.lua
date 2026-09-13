@@ -496,5 +496,40 @@ check(si and si.node and si.node.id == idI, "SelectInstance: seleciona pelo ref 
 local siBad = invokeWait("Select", { inst = Instance.new("Part") })
 check(siBad and siBad.error and siBad.error:find("nao registrada") ~= nil, "SelectInstance: nao registrada rejeita")
 
+
+;(function() -- R9 escopo proprio (limite 200 locals do chunk)
+print("\n== R9 multi-select (set + many + group[]) ==")
+local mids = {}
+for i = 1, 3 do
+  local c = invokeWait("Create", { parentId = wsId, class = "Part", name = "Multi" .. i })
+  mids[i] = c.node.id
+end
+local sm = invokeWait("SelectMany", { ids = mids })
+check(sm and sm.count == 3, "SelectMany seleciona 3")
+local c4 = invokeWait("Create", { parentId = wsId, class = "Part", name = "Multi4" })
+local sa = invokeWait("SelAdd", { id = c4.node.id })
+check(sa and sa.count == 4, "SelAdd soma (4)")
+local sb = invokeWait("SelectMany", { ids = { mids[1], "id-bogus-zzz", mids[2] } })
+check(sb and sb.count == 2, "SelectMany tolera id invalido")
+local dm = invokeWait("DuplicateMany", {})
+check(dm and dm.duplicated == 2 and dm.ids and #dm.ids == 2, "DuplicateMany duplica 2 (ids voltam)")
+local gsel = invokeWait("SelectMany", { ids = dm.ids })
+check(gsel and gsel.count == 2, "SelectMany nos clones")
+local gm = invokeWait("Group", { ids = dm.ids })
+check(gm and gm.grouped == 2 and gm.node and gm.node.class == "Model", "Group ids[] agrupa 2")
+local gid9 = gm.node.id
+local un9 = invokeWait("Ungroup", { id = gid9 })
+check(un9 and un9.ungrouped == 2, "Ungroup devolve 2")
+invokeWait("SelectMany", { ids = dm.ids })
+local del = invokeWait("DeleteMany", {})
+check(del and del.deleted == 2 and del.failed == 0, "DeleteMany apaga 2")
+local sc = invokeWait("SelClear", {})
+check(sc and sc.cleared, "SelClear limpa")
+local im1 = workspace:FindFirstChild("Multi1", true)
+local im2 = workspace:FindFirstChild("Multi2", true)
+local smi = invokeWait("SelectMany", { insts = { im1, im2, Instance.new("Part") } })
+check(smi and smi.count == 2, "SelectMany aceita insts (ignora nao registrada)")
+end)()
+
 print(string.format("RESULTADO: %d passaram, %d falharam", pass, fail))
 if fail > 0 then os.exit(1) else os.exit(0) end

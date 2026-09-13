@@ -66,5 +66,16 @@ seguir os itens e anotar OK/FALHA + print/log. Depois é só refinamento.
 - [ ] `_G.ArkherInput.setPlatform("VR")` → painel VR; V_Snap/V_Teleport respondem
 - [ ] `_G.ArkherInput.setPlatform("PC")` → desktop volta intacta
 
+## 3d. Input System R9 (multi-select + prefs + gamepad/VR)
+- [ ] PC: B arrasta caixa e seleciona vários (marquee azul some no fim)
+- [ ] PC: L desenha laço; K no Model seleciona os filhos; Ctrl+Delete apaga set
+- [ ] Settings: clicar slot + tecla remapeia; RESET volta; Ctrl+=/- escala UI
+- [ ] `_G.ArkherInput.setLang("PT")` traduz labels; `setLang("EN")` restaura
+- [ ] Mobile: arrastar na tela vazia = caixa; tap no selecionado = filhos
+- [ ] Console: segurar A + stick = caixa; X 2x = filhos; Back = radial editores
+- [ ] Console: DPad percorre radial + botões do deck sem travar em oculto
+- [ ] VR: gatilho 2x = filhos; X segurado deleta; V_Spatial ancora/devolve painel
+- [ ] Tools→Publish sem pybridge: erro honesto (sem falso sucesso)
+
 ## 4. Final
 - [ ] Anotar cada FALHA com print + trecho do Output → vira lista de refino

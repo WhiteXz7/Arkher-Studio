@@ -101,5 +101,15 @@ check(ti2 and ti2.node and ti2.count == 4, "ToolboxInsert ponte: " .. tostring(t
 local un = invoke("Undo")
 check(un and un.label and un.label:find("Toolbox") ~= nil, "Undo: desfaz toolbox (" .. tostring(un and un.label) .. ")")
 
+-- R9: cloud hibrida honesta (vault + erro explicito sem ponte/DataStore)
+local pr = invoke("PublishReal", { name = "R9 Test" })
+check(pr and pr.error and tostring(pr.error):find("bridge") ~= nil, "PublishReal sem ponte: erro honesto (" .. tostring(pr and pr.error):sub(1, 50) .. ")")
+local ap = invoke("AccountPlaces", {})
+local ape = tostring(ap and (ap.error or ""))
+check(ap and ap.ok == false and (ape:find("bridge") ~= nil or ape:find("Universo") ~= nil), "AccountPlaces sem ponte: erro honesto (" .. ape:sub(1, 50) .. ")")
+local cq = invoke("CloudQuick", {})
+local cqt = (cq and cq.msg) or ""
+check(cqt:find("Nuvem ok") ~= nil, "CloudQuick: vault salva sem DataStore (" .. cqt:sub(1, 60) .. ")")
+
 print("SERVER SERVICES: " .. pass .. " passaram, " .. fail .. " falharam")
 if fail > 0 then os.exit(1) end
