@@ -38,5 +38,21 @@ seguir os itens e anotar OK/FALHA + print/log. Depois é só refinamento.
 - [ ] SELFTEST fim: 13+ pass, 0 fail (só V2/Decks podem falhar se órfãos)
 - [ ] `_G.ArkherPipe()` → flush/nodes/creates contando
 
+## 3b. Shell2 (rebuild EN — idêntico ao mockup)
+- [ ] Menu: 12 menus abrem dropdowns EN; Terrain>Terrain Editor X abre V2
+- [ ] Ribbon: Select/Move/Scale/Rotate trocam modo; Play/Pause/Stop rodam
+- [ ] Ribbon: Undo/Redo desfazem; Save salva; Publish abre diálogo cloud
+- [ ] Terrain: Generate/Erosion/Craters/Flatten/Smooth/Noise aplicam no mundo
+- [ ] Console: erros do jogo aparecem; tabs All/Info/Warn/Error filtram
+- [ ] Timeline: ● com seleção grava key + ◆ nas lanes; ▶ toca; ⏹ para
+- [ ] Sim: Day/Physics/Water/Ambient alternam; Start avança o relógio
+- [ ] Team: lista @nomes reais; Invite abre convite
+- [ ] Assets: Tree/Crate/Lamp/Car/Coin/NPC nascem na frente da câmera
+- [ ] Library/Resources: House/… constroem; Export/Import/Backup/Sync respondem
+- [ ] Footer: FPS/Ping/Mem atualizam; Project abre cloud; Publish publica
+- [ ] Overlays: compass gira; coords seguem câmera; layers escondem pastas
+- [ ] Gizmo: Move/Rotate/Scale/Grid(3D)/Snap(grade) funcionam
+- [ ] Curves: caption conta keys da sessão; Help (? no ribbon) abre Tools
+
 ## 4. Final
 - [ ] Anotar cada FALHA com print + trecho do Output → vira lista de refino

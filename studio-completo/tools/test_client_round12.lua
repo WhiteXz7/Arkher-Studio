@@ -29,6 +29,8 @@ dofile("studio-completo/tools/baked_fixture.lua")
 for _, t in ipairs(FIXTURE_TREES) do
   if t.name == "ArkherTop" or t.name == "ArkherMsg" or t.name == "ServerEditorPopups" then
     buildFixtureTree(t, host)
+  elseif t.name == "ArkherShell2" then
+    buildFixtureTree(t, canvas)
   end
 end
 -- MenuBar com botão View (molde dos menus X do 03)
@@ -136,55 +138,70 @@ if lugBtn then
   end
 end
 
-print("\n== Shell real (abas + paginas + botoes) ==")
-local top12 = host:FindFirstChild("ArkherTop")
-check(top12 ~= nil, "ArkherTop existe no host")
-local strip12 = top12 and top12:FindFirstChild("TabStrip")
-local ribbon12 = top12 and top12:FindFirstChild("Ribbon")
-local nTabs12, nPages12, nBtns12 = 0, 0, 0
-if strip12 then for _, ch in ipairs(strip12:GetChildren()) do
-  if ch:IsA("GuiButton") and ch.Name:sub(1, 4) == "Tab_" then nTabs12 = nTabs12 + 1 end
-end end
-if ribbon12 then for _, pg in ipairs(ribbon12:GetChildren()) do
-  if pg.Name:sub(1, 5) == "Page_" then
-    nPages12 = nPages12 + 1
-    for _, ch in ipairs(pg:GetChildren()) do
-      if ch:IsA("GuiButton") and ch.Name:sub(1, 10) == "RibbonBtn_" then nBtns12 = nBtns12 + 1 end
-    end
+print("\n== Shell2 real (menus + ribbon + paineis) ==")
+local shell12 = canvas:FindFirstChild("ArkherShell2")
+check(shell12 ~= nil, "ArkherShell2 no canvas")
+local nM2, nR2 = 0, 0
+if shell12 then for _, d in ipairs(shell12:GetDescendants()) do
+  if d:IsA("GuiButton") then
+    if d.Name:match("^M2_") and d.Name ~= "M2_Bell" and d.Name ~= "M2_User" then nM2 = nM2 + 1 end
+    if d.Name:match("^R2_") then nR2 = nR2 + 1 end
   end
 end end
-check(nTabs12 == 7 and nPages12 == 7 and nBtns12 == 23,
-  "7 abas + 7 paginas + 23 botoes antigos (" .. nTabs12 .. "/" .. nPages12 .. "/" .. nBtns12 .. ")")
-local tabB = strip12 and strip12:FindFirstChild("Tab_INSERT")
-if tabB then
-  tabB.Activated:Fire()
-  check(ribbon12:FindFirstChild("Page_INSERT").Visible == true, "aba INSERT mostra Page_INSERT")
-  check(ribbon12:FindFirstChild("Page_FILE").Visible == false, "Page_FILE esconde")
-end
+check(nM2 == 12, "12 menus M2_* (" .. nM2 .. ")")
+check(nR2 == 18, "18 botoes R2_* (" .. nR2 .. ")")
+local panels = { "T2_Panel", "C2_Panel", "S2_Panel", "TL2_Panel", "CV2_Panel", "SM2_Panel", "TM2_Panel", "FR2_Panel" }
+local np = 0
+if shell12 then for _, pn in ipairs(panels) do if shell12:FindFirstChild(pn, true) then np = np + 1 end end end
+check(np == 8, "8 paineis shell2 (" .. np .. ")")
 
-print("\n== INSERT cria (via ribbon, bus CreateAny, server real) ==")
-local pageI = ribbon12 and ribbon12:FindFirstChild("Page_INSERT")
+print("\n== Assets criam (via FR2, server real) ==")
 local function countClass(s, cls) local n = 0 for _, x in ipairs(s.nodes) do if x.class == cls then n = n + 1 end end return n end
-local bModel = pageI and pageI:FindFirstChild("RibbonBtn_INSERT_Model")
-if bModel then
-  local n0 = countClass(snap(), "Model")
-  bModel.Activated:Fire()
-  check(countClass(snap(), "Model") == n0 + 1, "INSERT_Model cria Model no mundo")
+local bCrate = shell12 and shell12:FindFirstChild("FR2_A_Crate", true)
+if bCrate then
+  local n0 = countClass(snap(), "Part")
+  bCrate.Activated:Fire()
+  check(countClass(snap(), "Part") >= n0 + 1, "FR2_A_Crate cria Part no mundo")
+  check(findId(snap(), "Crate") ~= nil, "Crate registrada")
 end
-local bText = pageI and pageI:FindFirstChild("RibbonBtn_INSERT_Text")
-if bText then
-  local n0 = countClass(snap(), "TextLabel")
-  bText.Activated:Fire()
-  check(countClass(snap(), "TextLabel") == n0 + 1, "INSERT_Text cria TextLabel no mundo")
+local bTree = shell12 and shell12:FindFirstChild("FR2_A_Tree", true)
+if bTree then
+  local n0 = countClass(snap(), "Part")
+  bTree.Activated:Fire()
+  check(countClass(snap(), "Part") == n0 + 2, "FR2_A_Tree cria 2 Parts (trunk+leaves)")
 end
 
-print("\n== CloudQuick via FILE_SaveToArkher (bus, server real) ==")
-local pageF = ribbon12 and ribbon12:FindFirstChild("Page_FILE")
-local bCloud = pageF and pageF:FindFirstChild("RibbonBtn_FILE_SaveToArkher")
-if bCloud then
-  bCloud.Activated:Fire()
-  local tx = host:FindFirstChild("ArkherMsg") and host:FindFirstChild("ArkherMsg"):FindFirstChild("MsgLbl")
-  check(tx and tostring(tx.Text):find("Nuvem ok") ~= nil, "CloudQuick responde snapshot (toast: " .. tostring(tx and tx.Text):sub(1, 60) .. ")")
+print("\n== Terrain/Sim via shell2 (server real) ==")
+local ter12 = Instance.new("Terrain"); ter12.Name = "Terrain"; ter12.Parent = workspace
+local terCalls12 = {}
+METHODS.FillBall = function(self, c, r, m) terCalls12[#terCalls12+1] = { shape = "ball", r = r, mat = m and m.Name } end
+local bGen = shell12 and shell12:FindFirstChild("T2_Generate", true)
+if bGen then
+  bGen.Activated:Fire()
+  check(#terCalls12 == 1 and terCalls12[1].mat == "Grass", "T2_Generate -> FillBall Grass (r=" .. tostring(terCalls12[1] and terCalls12[1].r) .. ")")
+end
+local bDay = shell12 and shell12:FindFirstChild("SM2_Day", true)
+if bDay then
+  bDay.Activated:Fire()
+  check(game:GetService("Lighting").ClockTime == 14, "SM2_Day -> ClockTime 14 DAY (SvcSet real)")
+  bDay.Activated:Fire()
+  check(game:GetService("Lighting").ClockTime == 0, "SM2_Day toggle -> ClockTime 0 NIGHT")
+end
+
+print("\n== Resources via FR2 (server real) ==")
+local bSync = shell12 and shell12:FindFirstChild("FR2_Sync", true)
+if bSync then
+  bSync.Activated:Fire()
+  local lab = shell12:FindFirstChild("FR2_StorageLabel", true)
+  check(lab and lab.Text:find("project") ~= nil, "FR2_Sync atualiza Cloud label (" .. tostring(lab and lab.Text) .. ")")
+end
+local bExp2 = shell12 and shell12:FindFirstChild("FR2_Export", true)
+if bExp2 then
+  local m0 = #messages
+  bExp2.Activated:Fire()
+  local got
+  for idx = m0 + 1, #messages do got = messages[idx] end
+  check(got and got:find("Exported") ~= nil, "FR2_Export exporta mundo (msg: " .. tostring(got):sub(1, 50) .. ")")
 end
 
 print("\n== Properties na dock original ==")
@@ -214,6 +231,17 @@ local wr = invoke("SetAny", { id = partId, name = "Anchored", kind = "b", value 
 check(wr and wr.ok == true, "SetAny Anchored=true aplicou")
 local pr2 = invoke("PropsAll", { id = partId })
 check(pr2 and pr2.fields and #pr2.fields > 15, "PropsAll devolveu " .. tostring(pr2 and pr2.fields and #pr2.fields) .. " propriedades")
+
+print("\n== Timeline grava (server real) ==")
+cstate.selectedId = partId
+local bRec = shell12 and shell12:FindFirstChild("TL2_Rec", true)
+if bRec then
+  bRec.Activated:Fire()
+  local lane1 = shell12:FindFirstChild("TL2_Lane1", true)
+  local keys = 0
+  if lane1 then for _, k in ipairs(lane1:GetChildren()) do if k.Name == "Key" then keys = keys + 1 end end end
+  check(keys == 1, "TL2_Rec gravou pose + marcador (server AnimKey)")
+end
 
 print("\n== Painel INSERIR OBJETO (catálogo gigante) ==")
 local g = rawget(_G, "ArkherStudioDock")

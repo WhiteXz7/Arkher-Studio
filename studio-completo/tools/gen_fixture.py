@@ -74,7 +74,13 @@ end
 
 def main():
     spec = json.load(open(os.path.join(HERE, "guix_spec.json"), encoding="utf-8"))
-    trees = spec["shell"] + spec["v2"] + [spec["popups"]] + spec["extra"]
+    s2 = json.load(open(os.path.join(HERE, "shell2spec.json"), encoding="utf-8"))
+    trees = spec["shell"] + spec["v2"] + [spec["popups"]] + spec["extra"] + [{
+        "cls": "Frame", "name": "ArkherShell2",
+        "props": {"Size": {"u2": [1.0, 0, 1.0, 0]}, "BackgroundTransparency": 1.0,
+                  "BorderSizePixel": 0, "ZIndex": 45, "Visible": True,
+                  "ClipsDescendants": False},
+        "kids": s2["roots"]}]
     out = ["-- baked_fixture.lua — GERADO por gen_fixture.py. Nao editar.\nFIXTURE_TREES = "]
     emit(trees, out)
     out.append("\n" + BUILDER)

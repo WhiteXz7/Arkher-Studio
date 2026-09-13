@@ -114,7 +114,12 @@ local V3MT = { __index=Vector3,
     if type(a)=="number" then return Vector3.new(b.X*a,b.Y*a,b.Z*a) end
     return Vector3.new(a.X*b.X,a.Y*b.Y,a.Z*b.Z)
   end,
-  __add=function(a,b) return Vector3.new(a.X+b.X,a.Y+b.Y,a.Z+b.Z) end }
+  __add=function(a,b) return Vector3.new(a.X+b.X,a.Y+b.Y,a.Z+b.Z) end,
+  __sub=function(a,b) return Vector3.new(a.X-b.X,a.Y-b.Y,a.Z-b.Z) end,
+  __div=function(a,b)
+    if type(b)=="number" then return Vector3.new(a.X/b,a.Y/b,a.Z/b) end
+    return Vector3.new(a.X/b.X,a.Y/b.Y,a.Z/b.Z)
+  end }
 function Vector3.new(x,y,z) return setmetatable({X=x or 0,Y=y or 0,Z=z or 0,__t="Vector3"},V3MT) end
 CFrame = {}
 local CFMT = { __index=CFrame, __mul=function(a,b) return CFrame.new(0,0,0) end }

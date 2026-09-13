@@ -365,5 +365,28 @@ local pl = invokeWait("TerrainFill", { shape = "ball", center = "player", radius
 check(pl and pl.error and pl.error:find("personagem"), "TerrainFill player sem char: erro honesto")
 
 print("\n================================")
+
+print("\n== R7 shell2 (svcset/smooth/noise) ==")
+local sc1 = invokeWait("SvcSet", { service = "Lighting", name = "ClockTime", kind = "n", value = 18 })
+local lk = game:GetService("Lighting")
+check(sc1 and sc1.applied == "Lighting.ClockTime" and lk.ClockTime == 18, "SvcSet: ClockTime 18")
+local sc2 = invokeWait("SvcSet", { service = "Lighting", name = "ClockTime", kind = "n", value = 6 })
+check(sc2 and lk.ClockTime == 6, "SvcSet: ClockTime 6")
+local sc3 = invokeWait("SvcSet", { service = "Players", name = "X", kind = "s", value = "y" })
+check(sc3 and sc3.error, "SvcSet: servico fora da allowlist rejeita")
+local rwLog = {}
+local occIn = { { { 1, 0 }, { 0, 1 } }, { { 0, 1 }, { 1, 0 } } }
+local matIn = { { { "Grass", "Grass" }, { "Grass", "Grass" } }, { { "Grass", "Grass" }, { "Grass", "Grass" } } }
+METHODS.ReadVoxels = function(self, region, res) return matIn, occIn end
+METHODS.WriteVoxels = function(self, r3, res, m, o) rwLog[#rwLog+1] = { m = m, o = o } end
+local sm = invokeWait("TerrainSmooth", { center = { x = 0, y = 0, z = 0 }, radius = 8 })
+check(sm and sm.msg and #rwLog == 1, "TerrainSmooth: write 1x")
+local sv = rwLog[1] and rwLog[1].o[1][1][1]
+check(sv and math.abs(sv - 0.5) < 0.001, "TerrainSmooth: media 3x3x3 = 0.5")
+local nz = invokeWait("TerrainNoise", { center = { x = 0, y = 0, z = 0 }, radius = 8, force = 100 })
+check(nz and nz.msg and #rwLog == 2, "TerrainNoise: write 1x")
+local nv = rwLog[2] and rwLog[2].o[1][1][2]
+check(nv and nv ~= 0, "TerrainNoise: perturba occupancy")
+
 print(string.format("RESULTADO: %d passaram, %d falharam", pass, fail))
 if fail > 0 then os.exit(1) else os.exit(0) end

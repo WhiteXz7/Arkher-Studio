@@ -23,11 +23,12 @@ local canvas = Instance.new("Frame"); canvas.Name = "Canvas"; canvas.Parent = gu
 local scale = Instance.new("UIScale"); scale.Name = "ResponsiveScale"; scale.Parent = canvas
 local runtime = Instance.new("Folder"); runtime.Name = "ArkherServerClientRuntime"; runtime.Parent = gui
 local NOSEL = { none = true, msg = "Nada selecionado — clique num objeto no EXPLORADOR." }
-local messages, apiCalls, menusCalls = {}, {}, {}
+local messages, apiCalls, menusCalls, setModes = {}, {}, {}, {}
 local clientBus = Instance.new("BindableFunction"); clientBus.Name = "ClientBus"; clientBus.Parent = runtime
 clientBus.OnInvoke = function(action, payload)
   if action == "ClaimPart" then return true end
   if action == "Message" then messages[#messages + 1] = tostring(payload.text) return true end
+  if action == "SetMode" then setModes[#setModes + 1] = payload.key return true end
   if action == "API" then
     apiCalls[#apiCalls + 1] = payload.action
     if payload.action == "SelectedGet" or payload.action == "PropsAll" then
@@ -40,6 +41,7 @@ end
 local menusBus = Instance.new("BindableFunction"); menusBus.Name = "MenusBus"; menusBus.Parent = runtime
 menusBus.OnInvoke = function(action) menusCalls[#menusCalls + 1] = action return true end
 local ready = Instance.new("BoolValue"); ready.Name = "CoreReady"; ready.Value = true; ready.Parent = runtime
+local mready = Instance.new("BoolValue"); mready.Name = "MenusReady"; mready.Value = true; mready.Parent = runtime
 local directBus = Instance.new("BindableFunction"); directBus.Name = "ClientBus"; directBus.Parent = gui
 directBus.OnInvoke = clientBus.OnInvoke
 local rs = game:GetService("ReplicatedStorage")
@@ -97,7 +99,9 @@ check(rawget(_G, "ArkherDeck") ~= nil, "_G.ArkherDeck exposto")
 
 print("\n== fixture: shell + 40 v2 + popups + rig/mesh ==")
 dofile("studio-completo/tools/baked_fixture.lua")
-for _, t in ipairs(FIXTURE_TREES) do buildFixtureTree(t, host) end
+for _, t in ipairs(FIXTURE_TREES) do
+  if t.name == "ArkherShell2" then buildFixtureTree(t, canvas) else buildFixtureTree(t, host) end
+end
 local nDeck, nV2 = 0, 0
 for _, ch in ipairs(host:GetChildren()) do
   if ch.Name:sub(1, 5) == "Deck_" then nDeck = nDeck + 1 end
@@ -135,49 +139,53 @@ local S2 = census()
 local ok2, diff2 = same(S1, S2)
 check(ok2, "2o load NAO duplica nada" .. (ok2 and (" (" .. total(S2) .. " inst)") or (" diff=" .. diff2)))
 
-print("\n== 05 shell (zero novas) ==")
+print("\n== 05 shell2 (fios reais, 1 linha de dados) ==")
 check(loadClient("studio-completo/scripts/05_StudioX.lua", "Arkher_05_StudioX"), "05 ok")
-local S3 = census()
-local ok3, diff3 = same(S2, S3)
-check(ok3, "05 cria ZERO instancias" .. (ok3 and "" or (" diff=" .. diff3)))
-check(rawget(_G, "ArkherShell") ~= nil, "_G.ArkherShell exposto")
--- troca de aba
-local tabT = strip:FindFirstChild("Tab_TRANSFORM")
-if tabT then
-  tabT.MouseButton1Click:Fire()
-  check(ribbon:FindFirstChild("Page_TRANSFORM").Visible == true, "aba TRANSFORM mostra Page_TRANSFORM")
-  check(ribbon:FindFirstChild("Page_FILE").Visible == false, "Page_FILE esconde")
-  check(tabT:FindFirstChild("ActivePill").Visible == true, "pill ativa na aba")
-  check(strip:FindFirstChild("Tab_FILE"):FindFirstChild("ActivePill").Visible == false, "pill FILE apaga")
-end
--- acao menus (RUN_Play -> 03 RunToggle)
-local bPlay = ribbon:FindFirstChild("Page_RUN"):FindFirstChild("RibbonBtn_RUN_Play")
-if bPlay then
-  local m0 = #menusCalls
-  bPlay.MouseButton1Click:Fire()
-  check(menusCalls[m0 + 1] == "RunToggle", "RUN_Play chama menus RunToggle")
-end
--- acao core (TRANSFORM_Select -> modo do nucleo 01)
-local bSel = ribbon:FindFirstChild("Page_TRANSFORM"):FindFirstChild("RibbonBtn_TRANSFORM_Select")
-if bSel then bSel.MouseButton1Click:Fire() check(true, "TRANSFORM_Select sem crash (modo do nucleo)") end
--- acao bus (INSERT_Model -> CreateAny)
-local bModel = ribbon:FindFirstChild("Page_INSERT"):FindFirstChild("RibbonBtn_INSERT_Model")
-if bModel then
+local mates = 0
+for _, d in ipairs(canvas:GetDescendants()) do if d.Name == "Mate" then mates = mates + 1 end end
+check(mates == 1, "05 cria 1 linha Mate (dados do time)")
+check(rawget(_G, "ArkherUnread") == 0, "_G.ArkherUnread zerado")
+local shell2 = canvas:FindFirstChild("ArkherShell2")
+check(shell2 ~= nil, "ArkherShell2 na fixture")
+local bGen = shell2 and shell2:FindFirstChild("T2_Generate", true)
+if bGen then
   local n0 = #apiCalls
-  bModel.MouseButton1Click:Fire()
-  check(apiCalls[n0 + 1] == "CreateAny", "INSERT_Model chama bus CreateAny")
-  check(host:FindFirstChild("ArkherMsg"):FindFirstChild("MsgLbl").Text == "ok (CreateAny)", "toast mostra msg (mock esconde na hora: delay sincrono)")
+  bGen.MouseButton1Click:Fire()
+  check(apiCalls[n0 + 1] == "TerrainFill", "T2_Generate chama bus TerrainFill")
 end
--- acao bus CloudQuick (FILE_SaveToArkher)
-local bCloud = ribbon:FindFirstChild("Page_FILE"):FindFirstChild("RibbonBtn_FILE_SaveToArkher")
-if bCloud then
-  local n1 = #apiCalls
-  bCloud.MouseButton1Click:Fire()
-  check(apiCalls[n1 + 1] == "CloudQuick", "FILE_SaveToArkher chama bus CloudQuick")
+local bSP = shell2 and shell2:FindFirstChild("T2_SizePlus", true)
+if bSP then
+  bSP.MouseButton1Click:Fire()
+  check(shell2:FindFirstChild("T2_SizeVal", true).Text == "20", "stepper Size 16->20")
+end
+local bCrate = shell2 and shell2:FindFirstChild("FR2_A_Crate", true)
+if bCrate then
+  local n0 = #apiCalls
+  bCrate.MouseButton1Click:Fire()
+  check(apiCalls[n0 + 1] == "QuickPart", "FR2_A_Crate chama bus QuickPart")
+end
+local bExp = shell2 and shell2:FindFirstChild("FR2_Export", true)
+if bExp then
+  local n0 = #apiCalls
+  bExp.MouseButton1Click:Fire()
+  check(apiCalls[n0 + 1] == "Export", "FR2_Export chama bus Export")
+end
+local bRec = shell2 and shell2:FindFirstChild("TL2_Rec", true)
+if bRec then
+  local m0 = #messages
+  bRec.MouseButton1Click:Fire()
+  check(messages[m0 + 1] and messages[m0 + 1]:find("select an object") ~= nil, "TL2_Rec sem selecao: erro honesto")
+end
+local bDay = shell2 and shell2:FindFirstChild("SM2_Day", true)
+if bDay then
+  local n0 = #apiCalls
+  bDay.MouseButton1Click:Fire()
+  check(apiCalls[n0 + 1] == "SvcSet", "SM2_Day chama bus SvcSet")
 end
 -- popup de formas: assado mas ORFAO no set antigo (sem gatilho no ribbon)
 local shapes = host:FindFirstChild("ServerEditorPopups"):FindFirstChild("ArkherShapesPopup")
 check(shapes ~= nil, "popup de formas assado (orfo no set antigo)")
+local S3 = census()
 
 print("\n== 06/07 fiacao (zero novas) ==")
 check(loadClient("studio-completo/scripts/06_RigX.lua", "Arkher_06_RigX"), "06 ok")
@@ -204,13 +212,28 @@ check(loadClient("studio-completo/scripts/09_Topbar.lua", "Arkher_09_Topbar"), "
 local S5 = census()
 local ok5, diff5 = same(S4, S5)
 check(ok5, "09 cria ZERO instancias" .. (ok5 and "" or (" diff=" .. diff5)))
-local brow = shapes:FindFirstChild("ShapeRow_Block")
-if brow then
-  shapes.Visible = true
+local mnu = shell2:FindFirstChild("M2_Terrain", true)
+if mnu then
+  local m0 = #menusCalls
+  mnu.MouseButton1Click:Fire()
+  check(menusCalls[m0 + 1] == "Menu", "M2_Terrain abre dropdown (bus Menu)")
+end
+local rp = shell2:FindFirstChild("R2_Play", true)
+if rp then
+  local m0 = #menusCalls
+  rp.MouseButton1Click:Fire()
+  check(menusCalls[m0 + 1] == "RunToggle", "R2_Play chama menus RunToggle")
+end
+local ru = shell2:FindFirstChild("R2_Undo", true)
+if ru then
   local n0 = #apiCalls
-  brow.Activated:Fire()
-  check(apiCalls[n0 + 1] == "QuickPart", "ShapeRow_Block chama QuickPart")
-  check(shapes.Visible == false, "popup esconde apos spawn")
+  ru.MouseButton1Click:Fire()
+  check(apiCalls[n0 + 1] == "Undo", "R2_Undo chama bus Undo")
+end
+local rs2 = shell2:FindFirstChild("R2_Select", true)
+if rs2 then
+  rs2.MouseButton1Click:Fire()
+  check(setModes[#setModes] == "Select", "R2_Select -> SetMode Select")
 end
 
 print("\n================================")

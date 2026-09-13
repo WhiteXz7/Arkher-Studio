@@ -863,7 +863,7 @@ local function buildToolbox()
 	if not popups then return end
 	local scale = guiScale()
 	local fw, fh = 560, 520
-	local f = mk("Frame", nil, { Size = UDim2.fromOffset(fw, fh), Position = UDim2.fromOffset(760, 120),
+	local f = mk("Frame", nil, { Size = UDim2.fromOffset(fw, fh), Position = UDim2.fromOffset(424, 150),
 		BackgroundColor3 = th.bg, BorderSizePixel = 0, ZIndex = 64, Active = true, Name = "ArkherToolboxDock" })
 	corner(f, 10) stroke(f, th.border, 1.2)
 	-- title + drag

@@ -123,3 +123,27 @@ Blocos: 5 por rodada, no automático; pedir pra continuar ao fim.
   Whittaker); (3) auto-diagnóstico (SELFTEST+PipeStats+checklist).
 - 249 testes, VERIFY OK, audits 0/0/0. CHECKLIST_PLAY.md §3 completo.
 - REGRA FINAL: UM teste único no Play (checklist) → depois só refinamento.
+
+## R7 — REBUILD UI PERFEITA (shell EN idêntica ao mockup)
+- Nova shell assada (ArkherShell2, +334 inst, EN): MenuBar2 com 12 menus
+  (Assets/Models/Terrain/Animation/Audio/Scripts/UI/FX/Lighting/Gameplay/
+  Physics/Tools) com dropdowns reais (03 MENUS.*), Ribbon2 com 18 botões,
+  painéis Terrain/Console/Selection/Timeline/Curves/Sim/Team/FarRight/Footer.
+- Chrome antigo escondido (TitleBar/MenuBar/Ribbon/DocumentTabs/DockBackgrounds/
+  ChatBar/ArkherTop) + docks remapados (Explorer esq, Props dir, viewport
+  centro 808x455, footer 63px). Nomes preservados: 01/03/10 religados intactos.
+- 03_Menus: 12 menus EN (linhas act=ações reais) + Fullscreen/ResetLayout
+  mirando o chrome novo (busca recursiva).
+- 09_Topbar reescrito: menus, play/pause/stop, undo/redo, modos, save/publish,
+  busca→Explorer, sino→não-lidas, usuário. 05_StudioX reescrito: 130+ fios.
+- Server: SvcSet (props de Lighting/Workspace/Terrain, allowlist) +
+  TerrainSmooth (média 3x3x3 real) + TerrainNoise (math.noise real).
+  FIX HISTÓRICO: server.lua NUNCA tinha sido assado (placa tinha cópia pré-R5);
+  inject_shell2 agora atualiza ArkherEditorServer do disco (178523 bytes).
+- Forge: reskin_v2 (part A/B), build_shell2 (332 nós), inject_shell2 (fork do
+  guix + refresh de Scripts). inject_arkherx aposentado (redundante: X já tem
+  tudo; writer quebrado) — pipeline: X→v2a→guix→v2b→shell2.
+- Testes: 262 verdes (104+29+18+27+41+43), VERIFY OK, audits 0/0/0.
+  Fixture regenerada com shell2; adopt/round12 reescritos p/ nova shell.
+- Limpeza GitHub: builds velhos/junk/legacy-v3 removidos; teses/lore/TXTs em
+  docs/lore; mockup em studio-completo/docs/UI_REFERENCE.png.

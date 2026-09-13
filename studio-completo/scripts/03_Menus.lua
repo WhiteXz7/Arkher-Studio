@@ -284,16 +284,16 @@ actions.ToggleHierarchy = function() toggleDock("HierarchyDock") end
 actions.ToggleProperties = function() toggleDock("PropertiesDock") end
 actions.Fullscreen = function()
   fullscreen = not fullscreen
-  for _, nm in ipairs({ "TitleBar", "MenuBar", "Footer" }) do
-    local o = g:FindFirstChild(nm)
+  for _, nm in ipairs({ "MenuBar2", "Ribbon2", "Footer" }) do
+    local o = g:FindFirstChild(nm, true)
     if o then o.Visible = not fullscreen end
   end
   say(fullscreen and "Tela cheia ativada." or "Tela cheia desativada.")
 end
 actions.ResetLayout = function()
   fullscreen = false
-  for _, nm in ipairs({ "TitleBar", "MenuBar", "Footer", "HierarchyDock", "PropertiesDock" }) do
-    local o = g:FindFirstChild(nm)
+  for _, nm in ipairs({ "MenuBar2", "Ribbon2", "Footer", "HierarchyDock", "PropertiesDock" }) do
+    local o = g:FindFirstChild(nm, true)
     if o then o.Visible = true end
   end
   local tabs = g:FindFirstChild("DocumentTabs")
@@ -1308,6 +1308,124 @@ openPluginsPanel = function()
 end
 
 -- ============ MenusBus OnInvoke ============
+
+-- SHELL2 EN menus (mockup UI_REFERENCE): dropdowns reais via buildMenu.
+MENUS.Assets = {
+  { icon = "plus", label = "Insert Model…", act = "InsertModel" },
+  { icon = "plus", label = "Insert Part", act = "InsertPart" },
+  { icon = "Open", label = "Toolbox (Creator Store)", act = "XOpenToolbox" },
+  { sep = true },
+  { icon = "nodeLink", label = "Import… (JSON)", act = "Import" },
+  { icon = "nodeLink", label = "Export… (JSON)", act = "Export" },
+}
+MENUS.Models = {
+  { icon = "plus", label = "Block", act = "XSpawnBlock" },
+  { icon = "plus", label = "Wedge", act = "XSpawnWedge" },
+  { icon = "plus", label = "Cylinder", act = "XSpawnCyl" },
+  { icon = "plus", label = "Ball", act = "XSpawnBall" },
+  { icon = "plus", label = "Corner", act = "XSpawnCorner" },
+  { icon = "plus", label = "Truss", act = "XSpawnTruss" },
+  { sep = true },
+  { icon = "plus", label = "Insert Model…", act = "InsertModel" },
+  { icon = "nodeLink", label = "Duplicate", act = "Duplicate" },
+}
+MENUS.Terrain = {
+  { icon = "Open", label = "Terrain Editor X", act = "XOpenTerrain" },
+  { icon = "Open", label = "Terrain Generator", act = "XOpenTerrainGen" },
+  { icon = "Open", label = "Voxel Probe", act = "XOpenTerrainVoxel" },
+  { icon = "Open", label = "Terrain Probe", act = "XOpenTerrainProbe" },
+  { sep = true },
+  { icon = "Cloud", label = "Ocean Water", act = "XAguaOceano" },
+  { icon = "Cloud", label = "Buoyancy Demo", act = "XAguaFlutua" },
+}
+MENUS.Animation = {
+  { icon = "Open", label = "Animator", act = "XOpenAnimator" },
+  { icon = "Open", label = "Rig Editor", act = "XOpenAnimatorRig" },
+  { icon = "Open", label = "Physics Animator", act = "XOpenAnimatorPhys" },
+  { sep = true },
+  { icon = "plus", label = "Record Key (A)", act = "AnimKeyA" },
+  { icon = "Play", label = "Play (A)", act = "AnimGoA" },
+  { icon = "nodeLink", label = "Stop", act = "AnimStop" },
+}
+MENUS.Audio = {
+  { icon = "Open", label = "Audio Tools", act = "XOpenAudio" },
+  { icon = "Play", label = "Interactive Audio", act = "XAudioInt" },
+  { icon = "nodeLink", label = "Mixer", act = "XAudioMixer" },
+}
+MENUS.Scripts = {
+  { icon = "Open", label = "Script Studio", act = "ScriptStudio" },
+  { icon = "Open", label = "All Scripts", act = "XOpenScripts" },
+  { icon = "Open", label = "Python", act = "XOpenPy" },
+  { icon = "Open", label = "Command Bar", act = "XOpenComando" },
+  { icon = "nodeLink", label = "Command Help", act = "XComandoHelp" },
+  { sep = true },
+  { icon = "plus", label = "Insert Script", act = "InsertScript" },
+}
+MENUS.UI = {
+  { icon = "Open", label = "Colors", act = "XOpenCores" },
+  { icon = "Open", label = "Properties+", act = "XOpenProps" },
+  { icon = "Open", label = "Output", act = "XOpenOutput" },
+  { sep = true },
+  { icon = "plus", label = "Insert TextLabel", act = "InsertTextLabel" },
+  { icon = "plus", label = "Insert Folder", act = "InsertFolder" },
+}
+MENUS.FX = {
+  { icon = "Open", label = "FX Panel", act = "XOpenFx" },
+  { icon = "plus", label = "Fire", act = "XFxFogo" },
+  { icon = "plus", label = "Rain", act = "XFxChuva" },
+  { sep = true },
+  { icon = "Open", label = "Atmosphere", act = "XOpenAtmos" },
+  { icon = "Cloud", label = "Sky", act = "XAtmosCeu" },
+  { icon = "Cloud", label = "Time of Day", act = "XAtmosTempo" },
+}
+MENUS.Lighting = {
+  { icon = "Cloud", label = "Sky", act = "XAtmosCeu" },
+  { icon = "Cloud", label = "Time of Day", act = "XAtmosTempo" },
+  { sep = true },
+  { icon = "Open", label = "Climate", act = "XOpenClima" },
+  { icon = "Cloud", label = "Climate On", act = "XClimaOn" },
+  { icon = "Cloud", label = "Climate Off", act = "XClimaOff" },
+  { sep = true },
+  { icon = "nodeLink", label = "Game Properties", act = "GameProperties" },
+}
+MENUS.Gameplay = {
+  { icon = "Open", label = "Life", act = "XOpenVida" },
+  { icon = "plus", label = "Eco Sim", act = "XVidaEco" },
+  { icon = "plus", label = "Human", act = "XVidaHumano" },
+  { icon = "plus", label = "NPC", act = "XVidaNpc" },
+  { sep = true },
+  { icon = "Open", label = "City", act = "XOpenCidade" },
+  { icon = "plus", label = "Village", act = "XCidadeVila" },
+  { icon = "plus", label = "Metro", act = "XCidadeMetro" },
+  { sep = true },
+  { icon = "nodeLink", label = "Project Settings", act = "ProjectSettings" },
+}
+MENUS.Physics = {
+  { icon = "Play", label = "Rope Demo", act = "XCordaDemo" },
+  { icon = "plus", label = "Rope Bridge", act = "XCordaPonte" },
+  { icon = "Open", label = "Ropes", act = "XOpenCordas" },
+  { sep = true },
+  { icon = "Cloud", label = "Buoyancy", act = "XAguaFlutua" },
+  { icon = "Cloud", label = "Ocean", act = "XAguaOceano" },
+  { sep = true },
+  { icon = "Open", label = "Space", act = "XOpenEspaco" },
+  { icon = "plus", label = "Solar System", act = "XEspacoSolar" },
+  { icon = "plus", label = "Earth-Moon", act = "XEspacoTerraLua" },
+}
+MENUS.Tools = {
+  { icon = "Open", label = "Fabricate", act = "XOpenFabricar" },
+  { icon = "nodeLink", label = "Fabrication List", act = "XFabricarList" },
+  { sep = true },
+  { icon = "nodeLink", label = "Clear Output", act = "XOutputClear" },
+  { icon = "Open", label = "Water Tools", act = "XOpenWater" },
+  { icon = "Open", label = "Modeler", act = "XOpenModeler" },
+  { icon = "Open", label = "Modeler Prims", act = "XOpenModelerPrim" },
+  { sep = true },
+  { icon = "Open", label = "Fullscreen", act = "Fullscreen" },
+  { icon = "Open", label = "Reset Layout", act = "ResetLayout" },
+  { icon = "nodeLink", label = "Studio Help", act = "HelpStudio" },
+}
+
 bj.OnInvoke = function(action, payload)
   payload = payload or {}
   if action == "Menu" then

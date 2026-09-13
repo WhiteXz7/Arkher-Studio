@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Injeta a GUI X ESTÁTICA (tools/guix_spec.json) + LocalScripts 05/06/07 no .rbxl.
+"""Injeta a SHELL2 EN (tools/shell2spec.json) - fork aditivo do inject_guix.
 
 Aditivo e lossless p/ a UI original:
   * Canvas ganha 1 filho: Frame ArkherXDeck (host) com UIScale DeckScale=1.0.
@@ -302,7 +302,7 @@ OLDFILL = {
 
 def main():
     inp, outp = sys.argv[1], sys.argv[2]
-    spec = json.load(open(os.path.join(HERE, "guix_spec.json"), encoding="utf-8"))
+    spec = json.load(open(os.path.join(HERE, "shell2spec.json"), encoding="utf-8"))
     data = open(inp, "rb").read()
     version, num_types, num_instances, hdr_end = read_header(data)
     chunks = parse_chunks(data, hdr_end)
@@ -322,14 +322,14 @@ def main():
     print(f"Canvas ref={ref_canvas} ScreenGui ref={ref_screengui}")
 
     # ---------- flatten da spec (ordem depth-first estável) ----------
-    host = {"cls": "Frame", "name": "ArkherXDeck", "props": {
+    host = {"cls": "Frame", "name": "ArkherShell2", "props": {
         "Size": {"u2": [1.0, 0, 1.0, 0]}, "BackgroundTransparency": 1.0,
-        "BorderSizePixel": 0, "ZIndex": 50, "Active": False, "Selectable": False,
+        "BorderSizePixel": 0, "ZIndex": 45, "Active": False, "Selectable": False,
         "Visible": True, "ClipsDescendants": False}, "kids": []}
-    host_scale = {"cls": "UIScale", "name": "DeckScale",
+    host_scale = {"cls": "UIScale", "name": "Shell2Scale",
                   "props": {"Scale": float(spec.get("host_scale", 1.0))}, "kids": []}
     roots = [host]
-    host["kids"] = spec["deck"] + spec["extra"] + spec["shell"] + [spec["popups"]] + spec["v2"]
+    host["kids"] = spec["roots"]
     ordered = []  # (nó, ref-pai-ou-None, é-host?)
 
     def walk(n, parent):
@@ -339,15 +339,7 @@ def main():
 
     walk(host, "CANVAS")
     ordered.append((host_scale, host))
-    # Container canvas-level p/ dropdowns/dialogs do 03_Menus + paineis do 10:
-    # sem ele o 03 trava em WaitForChild("ServerEditorPopups"). ZIndex=500 p/
-    # ficar ACIMA do host (50): menus/dialogs sempre clicaveis. (Nao confundir
-    # com o ServerEditorPopups filho do host, que guarda o popup de formas.)
-    canvas_popups = {"cls": "Frame", "name": "ServerEditorPopups", "props": {
-        "Size": {"u2": [1.0, 0, 1.0, 0]}, "BackgroundTransparency": 1.0,
-        "BorderSizePixel": 0, "ZIndex": 500, "Active": False, "Selectable": False,
-        "Visible": True, "ClipsDescendants": False}, "kids": []}
-    ordered.append((canvas_popups, "CANVAS"))
+    # (shell2 roda DEPOIS do guix: ServerEditorPopups canvas-level ja existe.)
     new_by_class = {}
     for n, _ in ordered:
         new_by_class.setdefault(n["cls"], []).append(n)
@@ -541,6 +533,39 @@ def main():
             updated_chunks[idx] = prop_head(ls_tid, "Disabled", 2) + rbxcodec.encode(2, old + [False] * len(missing))
             break
 
+
+    # ---------- Script ArkherEditorServer/Engine: refresh de Source (R7) ----------
+    srv_tid = type_ids["Script"]
+    srv_names = []
+    for idx, (cname, payload) in enumerate(chunks):
+        if cname != b"PROP":
+            continue
+        cr = pyrbxl2.R(payload)
+        if cr.u32() == srv_tid and cr.string() == "Name" and cr.u8() == 1:
+            vals, _ = dec_strings(payload[cr.i:], len(refs_por_type[srv_tid]))
+            srv_names = [v.decode("utf-8", "replace") for v in vals]
+            break
+    print("Scripts atuais:", srv_names)
+    assert "ArkherEditorServer" in srv_names, "ArkherEditorServer sumiu!"
+    for idx, (cname, payload) in enumerate(chunks):
+        if cname != b"PROP":
+            continue
+        cr = pyrbxl2.R(payload)
+        if cr.u32() == srv_tid and cr.string() == "Source" and cr.u8() == 1:
+            n_prev = len(refs_por_type[srv_tid])
+            vals, _ = dec_strings(payload[cr.i:], n_prev)
+            srcs = list(vals)
+            pos = srv_names.index("ArkherEditorServer")
+            srcs[pos] = open(os.path.join(ROOT, "scripts", "server.lua"),
+                             encoding="utf-8").read().encode("utf-8")
+            print("ArkherEditorServer Source atualizada (%d bytes)" % len(srcs[pos]))
+            if "ArkherEngineServer" in srv_names:
+                pe = srv_names.index("ArkherEngineServer")
+                srcs[pe] = open(os.path.join(ROOT, "scripts", "engine_server.lua"),
+                                encoding="utf-8").read().encode("utf-8")
+            updated_chunks[idx] = prop_head(srv_tid, "Source", 1) + enc_strings(srcs)
+            break
+
     # ---------- PRNT ----------
     for idx, (cname, payload) in enumerate(chunks):
         if cname != b"PRNT":
@@ -641,6 +666,8 @@ def main():
             continue
         if (type_by_id[tid], pname) == ("LocalScript", "Source"):
             continue  # refresh intencional
+        if (type_by_id[tid], pname) == ("Script", "Source"):
+            continue  # refresh intencional (R7: server sempre atual)
         if type_by_id[tid] == "LocalScript" and pname == "Name" and missing:
             continue  # nomes anexados
         old_cr = pyrbxl2.R(payload)

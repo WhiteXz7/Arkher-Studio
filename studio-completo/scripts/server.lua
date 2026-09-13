@@ -2722,7 +2722,89 @@ end
 
 -- ============ RUN REAL (Play/Pause/Stop de verdade) ============
 local RUN = { running = false, frozen = false, parts = {}, vels = {}, sounds = {} }
-local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, TerrainGenFlat=true, TerrainReplace=true, TerrainWater=true, ScriptSet=true, Undo=true }
+
+-- R7 SHELL2: service props (sim) + voxel smooth/noise (terrain panel).
+local SVC_ALLOW = { Lighting = true, Workspace = true, Terrain = true }
+function handlers.SvcSet(player, payload)
+	local svc = tostring(payload.service or "")
+	assert(SVC_ALLOW[svc], "Servico invalido.")
+	local o = game:GetService(svc)
+	local name = tostring(payload.name or "")
+	assert(#name > 0 and #name < 60, "Prop invalida.")
+	local kind = tostring(payload.kind or "s")
+	local val = coerceProp(o, name, kind, payload.value)
+	local okOld, old = pcall(function() return o[name] end)
+	if not okOld then return { error = "Propriedade nao existe: " .. name } end
+	local okSet, errSet = pcall(function() o[name] = val end)
+	if not okSet then return { error = "Roblox recusou " .. name .. ": " .. tostring(errSet) } end
+	local okNew, new0 = pcall(function() return o[name] end)
+	if okOld and okNew and tostring(old) ~= tostring(new0) then
+		pcall(function() hSet(player, o, name, old, new0) end)
+	end
+	pcall(function() queueObject(o) end)
+	return { ok = true, applied = svc .. "." .. name, now = tostring(new0) }
+end
+local function smoothRegion(center, r)
+	local ter = terrainOrFail()
+	local minP = center - Vector3.new(r, r, r)
+	local maxP = center + Vector3.new(r, r, r)
+	local region = Region3.new(minP, maxP):ExpandToGrid(4)
+	local mats, occs = ter:ReadVoxels(region, 4)
+	return ter, region, mats, occs
+end
+function handlers.TerrainSmooth(player, payload)
+	local ctr = terrainCenter(payload.center, player)
+	local r = math.clamp(tonumber(payload.radius) or 16, 4, 32)
+	local ter, region, mats, occs = smoothRegion(ctr, r)
+	local sx, sy, sz = #occs, #occs[1], #occs[1][1]
+	local out = {}
+	for x = 1, sx do
+		out[x] = {}
+		for y = 1, sy do
+			out[x][y] = {}
+			for z = 1, sz do
+				local sum, n = 0, 0
+				for dx = -1, 1 do
+					for dy = -1, 1 do
+						for dz = -1, 1 do
+							local xx, yy, zz = x + dx, y + dy, z + dz
+							if occs[xx] and occs[xx][yy] and occs[xx][yy][zz] then
+								sum, n = sum + occs[xx][yy][zz], n + 1
+							end
+						end
+					end
+				end
+				out[x][y][z] = (n > 0) and (sum / n) or occs[x][y][z]
+			end
+		end
+	end
+	ter:WriteVoxels(region, 4, mats, out)
+	return { msg = ("Smooth r=%s aplicado."):format(tostring(r)) }
+end
+function handlers.TerrainNoise(player, payload)
+	local ctr = terrainCenter(payload.center, player)
+	local r = math.clamp(tonumber(payload.radius) or 16, 4, 32)
+	local force = math.clamp(tonumber(payload.force) or 50, 0, 100)
+	local ter, region, mats, occs = smoothRegion(ctr, r)
+	local sx, sy, sz = #occs, #occs[1], #occs[1][1]
+	local lo = region.Min
+	for x = 1, sx do
+		for y = 1, sy do
+			for z = 1, sz do
+				local wx = lo.X + (x - 1) * 4
+				local wy = lo.Y + (y - 1) * 4
+				local wz = lo.Z + (z - 1) * 4
+				local nz = math.noise or function() return 0.25 end
+				local n2 = nz(wx * 0.05, wy * 0.05, wz * 0.05)
+				local v = occs[x][y][z] + n2 * (force / 100)
+				occs[x][y][z] = math.clamp(v, 0, 1)
+			end
+		end
+	end
+	ter:WriteVoxels(region, 4, mats, occs)
+	return { msg = ("Noise r=%s f=%s aplicado."):format(tostring(r), tostring(force)) }
+end
+local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, TerrainGenFlat=true, TerrainReplace=true, TerrainWater=true, TerrainSmooth=true, TerrainNoise=true, ScriptSet=true, Undo=true }
 local function runRestore()
 	for part, was in pairs(RUN.parts) do
 		if part and part.Parent then
