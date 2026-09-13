@@ -227,8 +227,25 @@ local function runAction(key)
 		end
 	elseif a[1] == "core" then
 		if not clientBus then say("sem ClientBus") return end
-		local ok, r = pcall(function() return clientBus:Invoke(a[2], a[3] or {}) end)
-		if not ok then say(tostring(r)) end
+		if a[2] == "Lock" then
+			local sg = busApi("SelectedGet", {})
+			local sid = sg and sg.id
+			if not sid then say("Selecione um objeto primeiro.", true) return end
+			local pr = busApi("PropsAll", { id = sid })
+				local cur = nil
+				if pr and pr.fields then for _, f in ipairs(pr.fields) do if f.name == "Locked" then cur = f.value end end end
+				if cur == nil then say("Seleção sem Locked.", true) return end
+				local st = busApi("SetAny", { id = sid, name = "Locked", kind = "b", value = not cur })
+				if st and st.ok then say("Locked = " .. tostring(not cur)) else say("Lock falhou.", true) end
+			return
+			elseif a[2] == "LocalGlobal" then
+				pcall(function() clientBus:Invoke("SetSpace", {}) end)
+			say("Espaço Local/Global alternado.")
+			return
+		end
+		local key = (a[2] == "Transform") and "MoveScale" or a[2]
+		local ok, r = pcall(function() return clientBus:Invoke("SetMode", { key = key }) end)
+		if not ok then say(tostring(r)) else say("Modo: " .. tostring(key)) end
 	end
 end
 

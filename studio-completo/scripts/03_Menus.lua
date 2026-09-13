@@ -1448,6 +1448,11 @@ MENUS.MODELAGEM = {
 }
 MENUS.ANIMACAO = {
   { icon = "Play", label = "Animator X (abrir, estilo Cascadeur)", act = "XOpenAnimator" },
+  { icon = "plus", label = "Pose A: gravar seleção", act = "AnimKeyA" },
+  { icon = "plus", label = "Pose B: gravar seleção", act = "AnimKeyB" },
+  { icon = "Play", label = "Pose: tocar A (2s)", act = "AnimGoA" },
+  { icon = "Play", label = "Pose: tocar B (2s)", act = "AnimGoB" },
+  { icon = "Pause", label = "Pose: parar", act = "AnimStop" },
   { sep = true },
   { icon = "Players", label = "AutoRig (esqueletos)…", act = "XOpenAnimatorRig" },
   { icon = "Settings", label = "AutoPhysics 0→1…", act = "XOpenAnimatorPhys" },
@@ -1821,6 +1826,20 @@ local function openHelpStudio()
   end
 end
 actions.HelpStudio = function() openHelpStudio() end
+local function animDo(act, slot)
+  local id = needSelection()
+  if not id then return end
+  local p = { id = id }
+  if slot then p.slot = slot end
+  if act == "AnimGo" then p.dur = 2 end
+  local r, err = api(act, p)
+  if err then say(err, true) else say(r.result and r.result.msg or "ok") end
+end
+actions.AnimKeyA = function() animDo("AnimKey", "A") end
+actions.AnimKeyB = function() animDo("AnimKey", "B") end
+actions.AnimGoA = function() animDo("AnimGo", "A") end
+actions.AnimGoB = function() animDo("AnimGo", "B") end
+actions.AnimStop = function() local r, err = api("AnimStop", {}) if err then say(err, true) else say("Parada.") end end
 actions.XOpenTerrainVoxel = function() openTerrainVoxelPanel() end
 actions.XOpenTerrain      = function() deckOpen("terrain", "ferramentas") end
 actions.XOpenTerrainGen   = function() deckOpen("terrain", "gerar") end

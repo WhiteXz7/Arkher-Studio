@@ -218,7 +218,12 @@ MT.__newindex = function(self,k,v)
     end
     return
   end
-  if k=="CFrame" and type(v)=="table" and v.Position then
+  if k=="Position" and type(v)=="table" and v.X then
+    rawget(self,"__props").Position = v
+    rawget(self,"__props").CFrame = CFrame.new(v.X, v.Y, v.Z)
+    rawget(self,"__explicit").CFrame = true
+    rawget(self,"__explicit").Position = true
+  elseif k=="CFrame" and type(v)=="table" and v.Position then
     rawget(self,"__props").CFrame = v
     rawget(self,"__props").Position = v.Position
     rawget(self,"__explicit").CFrame = true
@@ -442,7 +447,7 @@ function gameObj:GetService(name)
   if name == "Workspace" and workspace then return workspace end
   if services[name] then return services[name] end
   local s = mkInstance(name); rawget(s,"__props").ClassName=name; rawget(s,"__props").Name=name
-  services[name]=s; table.insert(rawget(gameObj,"__children"), s)
+  services[name]=s; s.Parent = gameObj
   return s
 end
 game = gameObj

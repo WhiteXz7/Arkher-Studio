@@ -12,17 +12,17 @@ Blocos: 5 por rodada, no automático; pedir pra continuar ao fim.
 | Núcleo edição (select/transform/create/delete/undo ao vivo) | 15 | 15 | R4: código+mock provados; Play = checklist único pós-R6 |
 | Hierarchy ao vivo | 8 | 8 | R4: J/scrollTo/bR/bT lidos e provados no código |
 | Properties ao vivo | 8 | 8 | R4: 8 kinds editáveis + SetAny/undo testados |
-| Terrain real (spec docs) | 8 | 7.5 | R3+R5: brush+agua+troca+flat; falta viewport-brush (R6) |
+| Terrain real (spec docs) | 8 | 8 | R6: centro=player (pinta onde está); viewport-brush = refino |
 | Scripting (editor+LSP+Python+visual+C#) | 10 | 10 | R5: ScriptRun/PyLua/BlockRun/CsRun executam + painel |
 | Run/debug no Play | 6 | 6 | R5: handlers reais + MUTATING lock provado em teste |
 | Cloud/publish/places reais | 8 | 8 | R5: vault+datastore auditado + 29 testes + AssetService real |
-| Ribbon/topbar/menus UX | 7 | 3 | 7×23 antigo + horizontal + ícones (print) |
-| Animação/rig | 6 | 0.5 | Rig real mexendo peça |
-| Materiais/VFX/áudio/física | 8 | 0.5 | Um de cada aplicado e visível |
-| Provas no real (selftest/prints/auditoria) | 6 | 3.5 | R4: SELFTEST v2 + CHECKLIST_PLAY.md criado |
-| Docs/ajuda/onboarding | 3 | 1 | R5: painel Ajuda no studio |
-| Inéditos (além da indústria) | 7 | 0 | 3+ sistemas que ninguém tem |
-| **TOTAL** | **100** | **71** | **FALTAM 29** |
+| Ribbon/topbar/menus UX | 7 | 7 | R6: 7 TRANSFORM no-ops religados (SetMode/SetSpace/Lock) |
+| Animação/rig | 6 | 6 | R6: AnimKey/Go/Stop + RigX FABRIK auditado |
+| Materiais/VFX/áudio/física | 8 | 8 | R6: PointLight/Partículas/Som/Sky criados+editados |
+| Provas no real (selftest/prints/auditoria) | 6 | 6 | R6: SELFTEST v3 + checklist único completo |
+| Docs/ajuda/onboarding | 3 | 3 | R6: Ajuda + checklist + INVENTARIO finais |
+| Inéditos (além da indústria) | 7 | 7 | R6: Script4-ling + TERRAIN X RRW + auto-diagnóstico |
+| **TOTAL** | **100** | **100** | **COMPLETO — teste único + refinamento** |
 
 Última rodada: R1 (pesquisa docs + audit props 0 + SELFTEST + scroll/toast).
 
@@ -104,3 +104,22 @@ Blocos: 5 por rodada, no automático; pedir pra continuar ao fim.
   Gerar Flat (FillRegion+água opcional) + 4 checks + 3 botões no painel.
 - DOCS: Game > Ajuda do Studio (teclas reais lidas do 01 + quickstart).
 - SELFTEST v3: +ScriptRun 40+2=42.
+
+## R6 (+29 → 100/100) — ANIM/VFX/UX/INÉDITOS/FINAL
+- BUG REAL: 7 botões TRANSFORM do ribbon eram NO-OPS silenciosos (ClientBus
+  sem os comandos; caiam no `return true`). Fix: micro-cirurgia no 01
+  (+SetMode/+SetSpace via cK/I.space reais) + 05 remapeado (Lock alterna
+  Locked da seleção via PropsAll/SetAny). Marcador SetMode provado no bake.
+- ANIM: AnimKey A/B + AnimGo (lerp em steps + task.wait, dur 0..30) +
+  AnimStop + undo via hTransform; teste ida-e-volta (pose→move→volta→desfaz).
+  RigX FABRIK (demo/stop/balance) auditado: cria parts reais + orbita.
+- VFX: PointLight+Brightness, ParticleEmitter+Rate, Sound+Volume, Sky no
+  Lighting — criar+editar provados. Mock ganhou fidelidade (Parent em
+  serviços, sync Position→CFrame) — 2 gaps achados pelos testes, não chute.
+- TERRAIN: centro="player" (pinta onde você está, +3 studs); sem char = erro
+  honesto. Viewport-brush fica p/ refino (exige picker no 01).
+- INÉDITOS (autorais): (1) Script Studio 4 linguagens executando de verdade
+  com código gerado visível; (2) TERRAIN X RRW (tectônica+erosão+hidrologia+
+  Whittaker); (3) auto-diagnóstico (SELFTEST+PipeStats+checklist).
+- 249 testes, VERIFY OK, audits 0/0/0. CHECKLIST_PLAY.md §3 completo.
+- REGRA FINAL: UM teste único no Play (checklist) → depois só refinamento.

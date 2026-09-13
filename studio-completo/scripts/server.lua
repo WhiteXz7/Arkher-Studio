@@ -261,7 +261,14 @@ local function terrainMat(name)
 	assert(type(name) == "string" and TERRAIN_MATS[name], "Material de terreno invalido: " .. tostring(name))
 	return Enum.Material[name]
 end
-local function terrainCenter(c)
+local function terrainCenter(c, player)
+	if c == "player" then
+		local ch = player and player.Character
+		local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+		assert(hrp, "Sem personagem (entre no Play com spawn).")
+		local pp = hrp.Position
+		return Vector3.new(pp.X, pp.Y + 3, pp.Z)
+	end
 	assert(type(c) == "table", "Centro invalido.")
 	local x, y, z = tonumber(c.x), tonumber(c.y), tonumber(c.z)
 	assert(x and y and z and finite(x) and finite(y) and finite(z), "Centro invalido.")
@@ -288,7 +295,7 @@ function handlers.TerrainFill(player, payload)
 	assert(shape == "ball" or shape == "block" or shape == "cylinder", "shape: ball, block ou cylinder.")
 	local matName = (payload.op == "remove") and "Air" or payload.material
 	local mat = terrainMat(matName)
-	local ctr = terrainCenter(payload.center)
+	local ctr = terrainCenter(payload.center, player)
 	local ter = terrainOrFail()
 	if shape == "ball" then
 		local r = tonumber(payload.radius) or 0
@@ -520,7 +527,7 @@ function handlers.TerrainWater(player, payload)
 	return { msg = ("Agua em y=%s (%sx%s)."):format(tostring(y), tostring(xz), tostring(xz)) }
 end
 function handlers.TerrainReplace(player, payload)
-	local ctr = terrainCenter(payload.center)
+	local ctr = terrainCenter(payload.center, player)
 	local r = tonumber(payload.radius) or 32
 	assert(r >= 4 and r <= 256, "radius 4..256.")
 	local fromM = terrainMat(payload.from)
@@ -539,6 +546,57 @@ function handlers.TerrainGenFlat(player, payload)
 	ter:FillRegion(r3, 4, mat)
 	if payload.water then ter:FillBlock(CFrame.new(0, 10, 0), Vector3.new(sz, 4, sz), Enum.Material.Water) end
 	return { msg = "Flat gerado (" .. tostring(sz) .. "x" .. tostring(sz) .. ")." }
+end
+
+-- ============ R6: ANIMACAO (pose real em qualquer peca) ============
+local ANIM = {}
+function handlers.AnimKey(player, payload)
+	local o = getObject(payload.id)
+	assert(o:IsA("BasePart") or o.ClassName == "Model", "Pose exige Part/Model.")
+	local slot = tostring(payload.slot or "A")
+	assert(slot == "A" or slot == "B", "slot A ou B.")
+	ANIM[player] = ANIM[player] or {}
+	ANIM[player][slot] = { cf = getPivot(o), size = o:IsA("BasePart") and o.Size or nil, id = payload.id }
+	return { msg = ("Pose %s gravada (%s)."):format(slot, o.Name) }
+end
+function handlers.AnimGo(player, payload)
+	local o = getObject(payload.id)
+	local slot = tostring(payload.slot or "A")
+	local key = ANIM[player] and ANIM[player][slot]
+	assert(key, "Grave a pose " .. slot .. " antes (AnimKey).")
+	local dur = tonumber(payload.dur) or 0
+	assert(dur >= 0 and dur <= 30, "dur 0..30s.")
+	local fromCf = getPivot(o)
+	local fromSize = o:IsA("BasePart") and o.Size or nil
+	ANIM[player].stop = false
+	if dur <= 0 then
+		pcall(function() setPivot(o, key.cf) end)
+		if key.size and o:IsA("BasePart") then pcall(function() o.Size = key.size end) end
+		pcall(function() hTransform(player, o, fromCf, fromSize, nil, key.cf, key.size, nil) end)
+		pcall(function() queueObject(o) end)
+		return { msg = "Pose aplicada (instantâneo)." }
+	end
+	local steps = math.max(1, math.min(100, math.floor(dur * 20)))
+	local me = player
+	task.spawn(function()
+		for i = 1, steps do
+			if not (ANIM[me]) or ANIM[me].stop then return end
+			if not o.Parent then return end
+			local a = i / steps
+			pcall(function() setPivot(o, fromCf:Lerp(key.cf, a)) end)
+			task.wait(dur / steps)
+		end
+		if o.Parent and ANIM[me] and not ANIM[me].stop then
+			pcall(function() setPivot(o, key.cf) end)
+			pcall(function() hTransform(player, o, fromCf, fromSize, nil, key.cf, key.size, nil) end)
+			pcall(function() queueObject(o) end)
+		end
+	end)
+	return { msg = ("Tocando pose %s em %ss."):format(slot, tostring(dur)) }
+end
+function handlers.AnimStop(player, payload)
+	if ANIM[player] then ANIM[player].stop = true end
+	return { msg = "Animação parada." }
 end
 
 function handlers.PipeStats(player)

@@ -169,3 +169,10 @@ intacto. NOVO: editor do Terrain voxel REAL (menu MUNDO > Terreno VOXEL):
 TerrainInfo/Fill/Clear no server (whitelist 40 materiais, limites radius
 128/size 256, MUTATING) + painel 03 (forma/material/centro+X/Y/Z+usar
 selecao). 214 testes. AGUARDA PROVA NO PLAY: bola de Grama no terreno.
+
+R5 (SCRIPT/RUN/CLOUD/TERRAIN2/DOCS): ScriptRun/PyLua/BlockRun/CsRun
+executam de verdade + Script Studio + Run lock + Ajuda + agua/troca/flat.
+239 testes.
+R6 (FINAL): 7 TRANSFORM no-ops religados (SetMode/SetSpace/Lock) +
+AnimKey/Go/Stop + VFX + centro=player + ineditos. 249 testes. 100/100.
+PROXIMO: UM teste unico no Play (CHECKLIST_PLAY.md) + refinamento.

@@ -320,6 +320,50 @@ check(rp3 and rp3.error, "TerrainReplace: material falso rejeita")
 local gf = invokeWait("TerrainGenFlat", { size = 128, material = "Sand", water = true })
 check(gf and gf.msg and terCalls2[#terCalls2].shape == "block", "TerrainGenFlat: region + agua")
 
+print("\n== R6 animacao (pose real) ==")
+local aSnap = invokeWait("Snapshot", {})
+local aWs = findId(aSnap, "Workspace")
+local ap = invokeWait("CreateAny", { class = "Part", parentId = aWs })
+local apid = ap and ap.id
+local k1 = apid and invokeWait("AnimKey", { id = apid, slot = "A" })
+check(k1 and k1.msg, "AnimKey A: pose gravada")
+local mv = apid and invokeWait("Set", { id = apid, key = "Position", value = Vector3.new(10, 5, 0) })
+check(mv and mv.node, "Anim: peca movida p/ (10,5,0)")
+local go = apid and invokeWait("AnimGo", { id = apid, slot = "A", dur = 0 })
+local paA = apid and invokeWait("PropsAll", { id = apid })
+local posA = nil
+if paA and paA.fields then for _, f in ipairs(paA.fields) do if f.name == "Position" then posA = f.value end end end
+check(go and go.msg and posA and tonumber(posA.x) == 0, "AnimGo A: voltou p/ pose (x=" .. tostring(posA and posA.x) .. ")")
+local unA = invokeWait("Undo", {})
+local paA2 = apid and invokeWait("PropsAll", { id = apid })
+local posA2 = nil
+if paA2 and paA2.fields then for _, f in ipairs(paA2.fields) do if f.name == "Position" then posA2 = f.value end end end
+check(unA and posA2 and tonumber(posA2.x) == 10, "AnimGo: desfazer volta p/ (10,5,0)")
+local stp = invokeWait("AnimStop", {})
+check(stp and stp.msg, "AnimStop: msg")
+
+print("\n== R6 vfx (luz/particula/som/ceu) ==")
+local vSnap = invokeWait("Snapshot", {})
+local vWs = findId(vSnap, "Workspace")
+local vLight = findId(vSnap, "Lighting")
+local vp = invokeWait("CreateAny", { class = "Part", parentId = vWs })
+local vpid = vp and vp.id
+local li = vpid and invokeWait("CreateAny", { class = "PointLight", parentId = vpid })
+local liSet = li and li.id and invokeWait("SetAny", { id = li.id, name = "Brightness", kind = "n", value = 5 })
+check(li and li.id and liSet and liSet.ok, "VFX: PointLight + Brightness=5")
+local pe = vpid and invokeWait("CreateAny", { class = "ParticleEmitter", parentId = vpid })
+local peSet = pe and pe.id and invokeWait("SetAny", { id = pe.id, name = "Rate", kind = "n", value = 50 })
+check(pe and pe.id and peSet and peSet.ok, "VFX: ParticleEmitter + Rate=50")
+local snd = vpid and invokeWait("CreateAny", { class = "Sound", parentId = vpid })
+local sndSet = snd and snd.id and invokeWait("SetAny", { id = snd.id, name = "Volume", kind = "n", value = 3 })
+check(snd and snd.id and sndSet and sndSet.ok, "VFX: Sound + Volume=3")
+local sky = vLight and invokeWait("CreateAny", { class = "Sky", parentId = vLight })
+check(sky and sky.id, "VFX: Sky no Lighting")
+
+print("\n== R6 terreno centro=player ==")
+local pl = invokeWait("TerrainFill", { shape = "ball", center = "player", radius = 8, material = "Grass" })
+check(pl and pl.error and pl.error:find("personagem"), "TerrainFill player sem char: erro honesto")
+
 print("\n================================")
 print(string.format("RESULTADO: %d passaram, %d falharam", pass, fail))
 if fail > 0 then os.exit(1) else os.exit(0) end
