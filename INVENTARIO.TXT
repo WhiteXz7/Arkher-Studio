@@ -1,8 +1,8 @@
 ================================================================
 ARKHER STUDIO — INVENTÁRIO COMPLETO (texto)
-Atualizado na R12. Placa: ArkherStudio_Completo_GUIX.rbxl
-10054 instâncias, 35 tipos, 381848 bytes, 638 checks verdes (11/11 suítes).
-FALTANTE p/ superar a indústria: ~42% (R11: ~46%).
+Atualizado na R13. Placa: ArkherStudio_Completo_GUIX.rbxl
+10164 instâncias, 35 tipos, 390029 bytes, 738 checks verdes (12/12 suítes).
+FALTANTE p/ superar a indústria: ~38% (R12: ~42%).
 ================================================================
 
 1) SCRIPTS (tudo assado dentro do rbxl, zero criação em runtime na shell)
@@ -13,9 +13,10 @@ LocalScripts (14): Arkher_01_Nucleo, 02_Icones, 03_Menus, 04_Gizmos,
   toolbox/scripteditor), 11_Input (Input System: PC/Mobile/Console/VR),
   12_Terrain (Terrain Editor PRO: pincel real),
   13_Viewport (Viewport Editor: camera/transform/medicao),
-  14_Modeler (Modeler PRO: EditableMesh + OBJ).
-Scripts servidor (2): ArkherEditorServer (120+ handlers, incl. Terrain* R10,
-  Viewport* R11, Mesh* R12), ArkherEngineServer.
+  14_Modeler (Modeler PRO: EditableMesh + OBJ),
+  15_Animator (Animator PRO: keyframes + preview Transform + IK).
+Scripts servidor (2): ArkherEditorServer (130+ handlers, incl. Terrain* R10,
+  Viewport* R11, Mesh* R12, Anim* R13), ArkherEngineServer.
 PyBridge externo: pybridge.py + rbxlx.py + test_rbxlx.py + README.
 
 2) RIBBON (topbar ANTIGA em abas; 7 abas, 7 páginas, 23 botões)
@@ -202,3 +203,11 @@ DeleteVert, Smooth laplaciano, Mirror, ExportOBJ, ImportOBJ tri/quad/neg);
 14_Modeler (select/move/near, prev/next vert, steppers XYZ, IO multiline,
 M_MD); winding OUTWARD provado geometricamente por face; undo/redo mesh
 com vid rastreado; bake MD4 (6 paineis + M_MD). 638/638. Faltante ~42%.
+
+R13 (Animator PRO): mock KeyframeSequence/Keyframe/Pose/Animation/Animator+
+track/Motor6D/IKControl + CFrame:Lerp slerp quaterniônico; server 13 Anim*
+(Rig/New/Keys/KeyAdd/KeyDel/PoseSet/JointSet/Play/Stop/Scrub/IK/Export/
+Import); preview por Motor6D.Transform no Heartbeat (Linear exato, Constant
+snap, resto linear+flag approx honesta); 15_Animator (rig/pose-live/timeline
+30fps/keys/easing+weight/IO JSON/M_AN); interpolacao PROVADA (scrub 0.5 =
+45deg exatos); bake AN5 (7 paineis + M_AN). 738/738. Faltante ~38%.

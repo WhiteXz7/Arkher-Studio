@@ -16,6 +16,7 @@ TESTS = {
     "Terrain R10 client (12_Terrain wiring/strokes/paineis)": "studio-completo/tools/test_terrain12.lua",
     "Viewport R11 (server remap/many/rig + 13_Viewport)": "studio-completo/tools/test_viewport13.lua",
     "Modeler R12 (server Mesh*/OBJ + 14_Modeler)": "studio-completo/tools/test_modeler14.lua",
+    "Animator R13 (server Anim*/IK/JSON + 15_Animator)": "studio-completo/tools/test_animator15.lua",
 }
 ok = True
 for label, path in TESTS.items():

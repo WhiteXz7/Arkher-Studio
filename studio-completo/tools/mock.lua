@@ -232,6 +232,57 @@ function CFrame:GetComponents()
   return p.X,p.Y,p.Z,rawget(self,"r00"),rawget(self,"r01"),rawget(self,"r02"),
     rawget(self,"r10"),rawget(self,"r11"),rawget(self,"r12"),rawget(self,"r20"),rawget(self,"r21"),rawget(self,"r22")
 end
+local function cfToQuat(o)
+  local r00, r01, r02 = rawget(o, "r00"), rawget(o, "r01"), rawget(o, "r02")
+  local r10, r11, r12 = rawget(o, "r10"), rawget(o, "r11"), rawget(o, "r12")
+  local r20, r21, r22 = rawget(o, "r20"), rawget(o, "r21"), rawget(o, "r22")
+  local tr = r00 + r11 + r22
+  if tr > 0 then
+    local s = math.sqrt(tr + 1) * 2
+    return (r21 - r12) / s, (r02 - r20) / s, (r10 - r01) / s, s / 4
+  elseif r00 > r11 and r00 > r22 then
+    local s = math.sqrt(1 + r00 - r11 - r22) * 2
+    return s / 4, (r01 + r10) / s, (r02 + r20) / s, (r21 - r12) / s
+  elseif r11 > r22 then
+    local s = math.sqrt(1 + r11 - r00 - r22) * 2
+    return (r01 + r10) / s, s / 4, (r12 + r21) / s, (r02 - r20) / s
+  else
+    local s = math.sqrt(1 + r22 - r00 - r11) * 2
+    return (r02 + r20) / s, (r12 + r21) / s, s / 4, (r10 - r01) / s
+  end
+end
+function CFrame:Lerp(goal, alpha)
+  alpha = math.clamp(tonumber(alpha) or 0, 0, 1)
+  local p0, p1 = rawget(self, "Position"), rawget(goal, "Position")
+  local px = p0.X + (p1.X - p0.X) * alpha
+  local py = p0.Y + (p1.Y - p0.Y) * alpha
+  local pz = p0.Z + (p1.Z - p0.Z) * alpha
+  local x0, y0, z0, w0 = cfToQuat(self)
+  local x1, y1, z1, w1 = cfToQuat(goal)
+  local dot = x0 * x1 + y0 * y1 + z0 * z1 + w0 * w1
+  if dot < 0 then x1, y1, z1, w1, dot = -x1, -y1, -z1, -w1, -dot end
+  local x, y, z, w
+  if dot > 0.9995 then
+    x = x0 + (x1 - x0) * alpha y = y0 + (y1 - y0) * alpha
+    z = z0 + (z1 - z0) * alpha w = w0 + (w1 - w0) * alpha
+    local l = math.sqrt(x * x + y * y + z * z + w * w)
+    x, y, z, w = x / l, y / l, z / l, w / l
+  else
+    local th = math.acos(math.max(-1, math.min(1, dot)))
+    local s = math.sin(th)
+    local a = math.sin((1 - alpha) * th) / s
+    local b = math.sin(alpha * th) / s
+    x = x0 * a + x1 * b y = y0 * a + y1 * b
+    z = z0 * a + z1 * b w = w0 * a + w1 * b
+  end
+  local xx, yy, zz = x * x, y * y, z * z
+  local xy, xz, xw = x * y, x * z, x * w
+  local yz, yw, zw = y * z, y * w, z * w
+  return cfBuild(px, py, pz,
+    1 - 2 * (yy + zz), 2 * (xy - zw), 2 * (xz + yw),
+    2 * (xy + zw), 1 - 2 * (xx + zz), 2 * (yz - xw),
+    2 * (xz - yw), 2 * (yz + xw), 1 - 2 * (xx + yy))
+end
 function CFrame:Inverse()
   local p = rawget(self,"Position")
   local t00,t01,t02 = rawget(self,"r00"),rawget(self,"r10"),rawget(self,"r20")
@@ -291,6 +342,9 @@ local CLASS_SUPER = {
   ScreenGui="LayerCollector", LayerCollector="Instance",
   BindableFunction="Instance", BindableEvent="Instance", RemoteEvent="Instance", RemoteFunction="Instance",
   UnreliableRemoteEvent="Instance", UIScale="Instance", WeldConstraint="Instance", Motor6D="Instance",
+  AnimationClip="Instance", KeyframeSequence="AnimationClip", Keyframe="Instance",
+  PoseBase="Instance", Pose="PoseBase", Animation="Instance", Animator="Instance",
+  AnimationController="Instance", Humanoid="Instance", IKControl="Instance", Bone="Instance",
   UICorner="Instance", UIStroke="Instance", UIGradient="Instance", UIPadding="Instance",
   UIListLayout="Instance", UIGridLayout="Instance", UIAspectRatioConstraint="Instance", UISizeConstraint="Instance",
   Folder="Instance", Model="Instance",
@@ -323,6 +377,14 @@ MT.__index = function(self,k)
   end
   if ev then return ev end
   if METHODS and METHODS[k] then return METHODS[k] end
+  if k == "Length" and rawget(self, "__props").ClassName == "KeyframeSequence" then
+    local m = 0
+    for _, ch in ipairs(rawget(self, "__children")) do
+      local cp = rawget(ch, "__props")
+      if cp.ClassName == "Keyframe" and (cp.Time or 0) > m then m = cp.Time end
+    end
+    return m
+  end
   if k=="CFrame" then
     local cf = rawget(self,"__props").CFrame
     if cf then return cf end
@@ -816,6 +878,29 @@ function Instance.new(class, parent)
     rawget(o, "__events").Event = ev
     o.Fire = function(self, ...) ev:Fire(...) end
     o.Wait = function(self) return nil end
+  elseif class == "KeyframeSequence" then
+    rawget(o, "__props").Loop = false
+    rawget(o, "__props").Priority = Enum.AnimationPriority.Action
+  elseif class == "Keyframe" then
+    rawget(o, "__props").Time = 0
+  elseif class == "Pose" then
+    rawget(o, "__props").Weight = 1
+    rawget(o, "__props").MaskWeight = 1
+    rawget(o, "__props").EasingStyle = Enum.PoseEasingStyle.Linear
+    rawget(o, "__props").EasingDirection = Enum.PoseEasingDirection.InOut
+  elseif class == "Animation" then
+    rawget(o, "__props").AnimationId = ""
+  elseif class == "Motor6D" then
+    rawget(o, "__props").C0 = CFrame.new()
+    rawget(o, "__props").C1 = CFrame.new()
+    rawget(o, "__props").Transform = CFrame.new()
+    rawget(o, "__props").DesiredAngle = 0
+    rawget(o, "__props").MaxVelocity = 0
+  elseif class == "IKControl" then
+    rawget(o, "__props").Type = Enum.IKControlType.Transform
+    rawget(o, "__props").Weight = 1
+    rawget(o, "__props").Enabled = true
+    rawget(o, "__props").SmoothTime = 0.1
   elseif class == "RemoteEvent" then
     local ev = Event.new("OnServerEvent")
     rawget(o, "__events").OnServerEvent = ev
@@ -1084,3 +1169,90 @@ function http:GenerateGUID(_d) local n=0 local function r() n=(n*16807)%21474836
 function http:GetUuid() return self:GenerateGUID(false) end
 
 print("[mock] ready")
+
+-- ============ R13: metodos Keyframe/Pose/Animator (mesma API do real) ============
+function METHODS:AddKeyframe(kf)
+  assert(rawget(self, "__props").ClassName == "KeyframeSequence", "AddKeyframe so em KeyframeSequence.")
+  kf.Parent = self
+end
+function METHODS:RemoveKeyframe(kf)
+  if kf.Parent == self then kf.Parent = nil end
+end
+function METHODS:GetKeyframes()
+  local out = {}
+  for _, ch in ipairs(rawget(self, "__children")) do
+    if rawget(ch, "__props").ClassName == "Keyframe" then out[#out + 1] = ch end
+  end
+  return out
+end
+function METHODS:AddPose(p)
+  assert(rawget(self, "__props").ClassName == "Keyframe", "AddPose so em Keyframe.")
+  p.Parent = self
+end
+function METHODS:RemovePose(p)
+  if p.Parent == self then p.Parent = nil end
+end
+function METHODS:GetPoses()
+  local out = {}
+  for _, ch in ipairs(rawget(self, "__children")) do
+    if rawget(ch, "__props").ClassName == "Pose" then out[#out + 1] = ch end
+  end
+  return out
+end
+function METHODS:AddSubPose(p)
+  assert(rawget(self, "__props").ClassName == "Pose", "AddSubPose so em Pose.")
+  p.Parent = self
+end
+function METHODS:RemoveSubPose(p)
+  if p.Parent == self then p.Parent = nil end
+end
+function METHODS:GetSubPoses()
+  local out = {}
+  for _, ch in ipairs(rawget(self, "__children")) do
+    if rawget(ch, "__props").ClassName == "Pose" then out[#out + 1] = ch end
+  end
+  return out
+end
+local TRACKMT = { __index = function(self, k)
+  local f = rawget(self, "_f")
+  if f[k] ~= nil then return f[k] end
+  return rawget(getmetatable(self), k)
+end, __newindex = function(self, k, v) rawget(self, "_f")[k] = v end }
+local function newTrack(animator, anim)
+  local t = { _f = { IsPlaying = false, Length = 0, Looped = false,
+    Priority = Enum.AnimationPriority.Action, Speed = 1, TimePosition = 0,
+    WeightCurrent = 1, WeightTarget = 1, Animation = anim } }
+  function t:Play(fadeTime, weight, speed)
+    self._f.IsPlaying = true
+    if weight then self._f.WeightTarget = weight end
+    if speed then self._f.Speed = speed end
+  end
+  function t:Stop(_fadeTime) self._f.IsPlaying = false end
+  function t:AdjustSpeed(s) self._f.Speed = s end
+  function t:GetTimeOfKeyframe(name)
+    local seq = rawget(animator, "__props")._seq
+    if seq then
+      for _, kf in ipairs(seq:GetKeyframes()) do
+        if kf.Name == name then return kf.Time end
+      end
+    end
+    error("Keyframe '" .. tostring(name) .. "' nao encontrado.", 0)
+  end
+  return setmetatable(t, TRACKMT)
+end
+function METHODS:LoadAnimation(anim)
+  assert(rawget(self, "__props").ClassName == "Animator", "LoadAnimation so em Animator.")
+  assert(anim and anim.IsA and anim:IsA("Animation"), "LoadAnimation precisa de Animation.")
+  local p = rawget(self, "__props")
+  if not p._tracks then p._tracks = {} end
+  local t = newTrack(self, anim)
+  p._tracks[#p._tracks + 1] = t
+  return t
+end
+function METHODS:GetPlayingAnimationTracks()
+  local out = {}
+  for _, t in ipairs(rawget(self, "__props")._tracks or {}) do
+    if t._f.IsPlaying then out[#out + 1] = t end
+  end
+  return out
+end

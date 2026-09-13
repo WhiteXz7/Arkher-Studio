@@ -17,7 +17,8 @@ NODES = ["LangPy", "Suggest", "Sug0", "Sug7", "NewPlace", "SaveAcct", "Abrir", "
          "D_Settings", "D_S_B1", "D_S_Reset", "D_Marquee", "M_Marquee", "C_Marquee", "M_Cat_Assets", "M_B_Del", "V_Editors", "V_Spatial", "Shell2Scale",
          "TE3_Rail", "TE3_Brush", "TE3_Mat", "TE3_Layers", "TE3_History", "TE3_Gen", "TE3_Water", "TE3_Status", "M_TE",
          "VP3_Rail", "VP3_Cam", "VP3_Trans", "VP3_Meas", "VP3_Snap", "VP3_Status", "M_VP",
-         "MD4_Rail", "MD4_Mesh", "MD4_Vert", "MD4_Top", "MD4_IO", "MD4_Status", "M_MD"]
+         "MD4_Rail", "MD4_Mesh", "MD4_Vert", "MD4_Top", "MD4_IO", "MD4_Status", "M_MD",
+         "AN5_Rail", "AN5_Rig", "AN5_Pose", "AN5_Time", "AN5_Keys", "AN5_IO", "AN5_Status", "M_AN"]
 CODE = ["PARTE 6B", "ArkherSEBridge", "doPaidSearch", "buyPaid", "ToolboxPaidSearch", "TeleportTo", "PublishReal", "AccountPlaces", "REBUILD EN", "dsMirrorPut",
         "code grande demais", "handlers.SvcSet", "MENUS.Assets", "handlers.TerrainSmooth",
         "handlers.Group", "handlers.PivotReset", "actions.XPivotReset", "ArkherInput", "MOBILE_MENUS",
@@ -25,11 +26,12 @@ CODE = ["PARTE 6B", "ArkherSEBridge", "doPaidSearch", "buyPaid", "ToolboxPaidSea
         "XPublishBridge", "XTerrGen", "Spatial.toggle", "numApplyMany", "editorsRadial", "setLang",
         "handlers.TerrainStroke", "handlers.TerrainGen", "handlers.TerrainHydro", "ArkherTerrain", "XTerrainEditor",
         "handlers.TransformMany", "handlers.ViewportFrame", "handlers.RemapSet", "ArkherViewport", "XViewport",
-        "handlers.MeshNew", "handlers.MeshSmooth", "handlers.MeshExportOBJ", "handlers.MeshImportOBJ", "ArkherModeler", "XModeler"]
+        "handlers.MeshNew", "handlers.MeshSmooth", "handlers.MeshExportOBJ", "handlers.MeshImportOBJ", "ArkherModeler", "XModeler",
+        "handlers.AnimNew", "handlers.AnimPlay", "handlers.AnimScrub", "handlers.AnimExport", "handlers.AnimImport", "ArkherAnimator", "XAnimator"]
 SCRIPTS = ["Arkher_01_Nucleo", "Arkher_02_Icones", "Arkher_03_Menus",
            "Arkher_04_Gizmos", "Arkher_05_StudioX", "Arkher_06_RigX",
            "Arkher_07_MeshX", "Arkher_08_RealityX", "Arkher_09_Topbar",
-           "Arkher_10_Studio", "Arkher_11_Input", "Arkher_12_Terrain", "Arkher_13_Viewport", "Arkher_14_Modeler", "ArkherEditorServer", "ArkherEngineServer"]
+           "Arkher_10_Studio", "Arkher_11_Input", "Arkher_12_Terrain", "Arkher_13_Viewport", "Arkher_14_Modeler", "Arkher_15_Animator", "ArkherEditorServer", "ArkherEngineServer"]
 
 
 def main():

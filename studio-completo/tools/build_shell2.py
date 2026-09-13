@@ -584,6 +584,78 @@ mmd_kids = [B("M_MD_New", 8, 8, 200, 64, "NEW BOX", ACCENT, TEXT, 16, FB),
             B("M_MD_Smooth", 216, 8, 200, 64, "SMOOTH", BTN, TEXT, 16, FB),
             L("M_MD_Hint", 424, 8, 700, 64, "create + smooth current mesh", MUTED, 13)]
 mmd = F("M_MD", 0, 690, 1568, 80, MENU_BG, mmd_kids, HID)
+# ---------------- 12d. animator R13 (AN5) ----------------
+an5_rail_kids = [title("ANIM")]
+for i, key in enumerate(["Select", "Pose"]):
+    an5_rail_kids.append(B("AN5_T_" + key, 8, 30 + i * 44, 56, 40,
+                            key[:3].upper(), BTN, TEXT, 11, FB))
+an5_rail_kids.append(B("AN5_Close", 8, 30 + 2 * 44, 56, 32, "X", BTN, RED, 14, FB))
+an5_rail = F("AN5_Rail", 8, 100, 72, 220, PANEL, an5_rail_kids, HID)
+
+an5_rig_kids = [title("RIG + SEQ"),
+    B("AN5_New", 8, 30, 100, 30, "NEW SEQ", ACCENT, TEXT, 12, FB),
+    B("AN5_Adopt", 112, 30, 100, 30, "ADOPT", BTN, TEXT, 11, FB),
+    B("AN5_J_Prev", 8, 66, 50, 26, "<", BTN, TEXT, 14),
+    L("AN5_J_Name", 62, 66, 100, 26, "joint -", GOLD, 11, FC, CENTER, INSET),
+    B("AN5_J_Next", 166, 66, 50, 26, ">", BTN, TEXT, 14),
+    L("AN5_Info", 8, 98, 204, 66, "no rig", MUTED, 11, FC)]
+an5_rig = F("AN5_Rig", 88, 100, 220, 172, PANEL, an5_rig_kids, HID)
+
+an5_pose_kids = [title("POSE JOINT (live)")]
+for i, ax in enumerate(["X", "Y", "Z"]):
+    y = 30 + i * 30
+    an5_pose_kids += [L("AN5_R_" + ax + "L", 8, y, 20, 26, ax, MUTED, 11, FB),
+        B("AN5_R_" + ax + "M", 28, y, 40, 26, "-", BTN, TEXT, 14),
+        L("AN5_R_" + ax + "V", 72, y, 76, 26, "0", TEXT, 12, FC, CENTER, INSET),
+        B("AN5_R_" + ax + "P", 152, y, 40, 26, "+", BTN, TEXT, 14)]
+an5_pose_kids += [B("AN5_R_Apply", 8, 122, 100, 30, "APPLY", ACCENT, TEXT, 12, FB),
+    B("AN5_R_Reset", 112, 122, 100, 30, "RESET", BTN, TEXT, 12, FB),
+    L("AN5_Pose_Hint", 8, 158, 204, 40, "rot deg step 15; apply = live Transform", MUTED, 10)]
+an5_pose = F("AN5_Pose", 88, 280, 220, 206, PANEL, an5_pose_kids, HID)
+
+an5_time_kids = [title("TIMELINE 30fps"),
+    B("AN5_Play", 8, 30, 100, 30, "PLAY", ACCENT, TEXT, 12, FB),
+    B("AN5_Stop", 112, 30, 100, 30, "STOP", BTN, TEXT, 12, FB),
+    B("AN5_F_M", 8, 66, 50, 26, "-1F", BTN, TEXT, 11, FB),
+    L("AN5_TLabel", 62, 66, 100, 26, "0:00", GOLD, 13, FC, CENTER, INSET),
+    B("AN5_F_P", 166, 66, 50, 26, "+1F", BTN, TEXT, 11, FB),
+    B("AN5_Loop", 8, 98, 100, 26, "LOOP OFF", BTN, TEXT, 11, FB),
+    B("AN5_S_M", 112, 98, 30, 26, "-", BTN, TEXT, 14),
+    L("AN5_SV", 146, 98, 36, 26, "1x", TEXT, 11, FC, CENTER, INSET),
+    B("AN5_S_P", 186, 98, 26, 26, "+", BTN, TEXT, 14)]
+an5_time = F("AN5_Time", 1330, 100, 220, 132, PANEL, an5_time_kids, HID)
+
+an5_keys_kids = [title("KEYS"),
+    B("AN5_K_Prev", 8, 30, 50, 26, "<", BTN, TEXT, 14),
+    L("AN5_K_Name", 62, 66 - 36, 100, 26, "key -", GOLD, 11, FC, CENTER, INSET),
+    B("AN5_K_Next", 166, 30, 50, 26, ">", BTN, TEXT, 14),
+    B("AN5_K_Add", 8, 62, 100, 30, "ADD KEY", ACCENT, TEXT, 12, FB),
+    B("AN5_K_Del", 112, 62, 100, 30, "DEL", BTN, RED, 12, FB),
+    B("AN5_E_S", 8, 98, 100, 26, "LIN", BTN, TEXT, 11, FB),
+    B("AN5_E_D", 112, 98, 100, 26, "INOUT", BTN, TEXT, 11, FB),
+    L("AN5_W_L", 8, 130, 70, 26, "WEIGHT", MUTED, 11, FB),
+    B("AN5_W_M", 80, 130, 40, 26, "-", BTN, TEXT, 14),
+    L("AN5_WV", 124, 130, 44, 26, "1", TEXT, 12, FC, CENTER, INSET),
+    B("AN5_W_P", 172, 130, 40, 26, "+", BTN, TEXT, 14)]
+an5_keys = F("AN5_Keys", 1330, 240, 220, 164, PANEL, an5_keys_kids, HID)
+
+an5_io_kids = [title("ANIM JSON"),
+    T("AN5_IO_Text", 8, 30, 204, 90, "paste anim JSON here", "", 11,
+      {"MultiLine": True, "TextWrapped": True, "TextYAlignment": {"en": "TextYAlignment.Top"}}),
+    B("AN5_IO_Import", 8, 126, 100, 30, "IMPORT", ACCENT, TEXT, 12, FB),
+    B("AN5_IO_Export", 112, 126, 100, 30, "EXPORT", BTN, TEXT, 12, FB),
+    L("AN5_IO_Stat", 8, 162, 204, 22, "anim -", MUTED, 11)]
+an5_io = F("AN5_IO", 1330, 412, 220, 192, PANEL, an5_io_kids, HID)
+
+an5_status = F("AN5_Status", 88, 820, 700, 30, PANEL,
+               [L("AN5_StatL", 8, 4, 684, 22, "animator", TEXT, 12, FC)], HID)
+
+man_kids = [B("M_AN_New", 8, 8, 200, 64, "NEW SEQ", ACCENT, TEXT, 16, FB),
+            B("M_AN_Play", 216, 8, 200, 64, "PLAY", BTN, TEXT, 16, FB),
+            B("M_AN_Key", 424, 8, 200, 64, "ADD KEY", BTN, TEXT, 16, FB),
+            L("M_AN_Hint", 632, 8, 700, 64, "new + play + key at cursor", MUTED, 13)]
+man = F("M_AN", 0, 690, 1568, 80, MENU_BG, man_kids, HID)
+
 
 desktop_kids = ([menu, ribbon, terrain, console, selection, crumb, compass, coords,
           play, layers, region, mapp, gizmo, timeline, curves, sim, team,
@@ -613,6 +685,8 @@ for _p in [te3_rail, te3_brush, te3_mat, te3_layers, te3_history, te3_gen, te3_w
 for _p in [vp3_rail, vp3_cam, vp3_tm, vp3_meas, vp3_snap, vp3_status]:
     desktop_kids.append(_p)
 for _p in [md4_rail, md4_mesh, md4_vert, md4_top, md4_io, md4_status]:
+    desktop_kids.append(_p)
+for _p in [an5_rail, an5_rig, an5_pose, an5_time, an5_keys, an5_io, an5_status]:
     desktop_kids.append(_p)
 desktop = N("Frame", "DesktopRoot",
             {"Position": P(0, 0), "Size": S(1568, 882),

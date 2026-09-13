@@ -114,6 +114,7 @@ local DESK_HIDE = { "T2_Panel", "C2_Panel", "S2_Panel", "O2_Panel", "O2_WPanel",
   "TL2_Panel", "CV2_Panel", "SM2_Panel", "TM2_Panel", "FR2_Panel" }
 local VP3_ALL = { "VP3_Rail", "VP3_Cam", "VP3_Trans", "VP3_Meas", "VP3_Snap", "VP3_Status" }
 local MD4_ALL = { "MD4_Rail", "MD4_Mesh", "MD4_Vert", "MD4_Top", "MD4_IO", "MD4_Status" }
+local AN5_ALL = { "AN5_Rail", "AN5_Rig", "AN5_Pose", "AN5_Time", "AN5_Keys", "AN5_IO", "AN5_Status" }
 local HLOG = {}
 local lastHit = nil
 local lastStats = { cells = 0, undo = 0, redo = 0, layers = 0 }
@@ -154,9 +155,11 @@ local function setOpen(v)
   if v then
     for _, n in ipairs(VP3_ALL) do setVisible(n, false) end
     for _, n in ipairs(MD4_ALL) do setVisible(n, false) end
+    for _, n in ipairs(AN5_ALL) do setVisible(n, false) end
     setVisible("M_VP", false)
     setVisible("M_MD", false)
-    for _, ed in ipairs({ "ArkherViewport", "ArkherModeler" }) do
+    setVisible("M_AN", false)
+    for _, ed in ipairs({ "ArkherViewport", "ArkherModeler", "ArkherAnimator" }) do
       pcall(function()
         local e = _G[ed]
         if e and e.isOpen and e.isOpen() then e.close() end

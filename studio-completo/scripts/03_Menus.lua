@@ -1398,6 +1398,7 @@ MENUS.Terrain = {
   { icon = "nodeLink", label = "Noise", act = "XTerrNoise" },
 }
 MENUS.Animation = {
+  { icon = "Open", label = "Animator PRO (keyframes)", act = "XAnimator" },
   { icon = "Open", label = "Animator", act = "XOpenAnimator" },
   { icon = "Open", label = "Rig Editor", act = "XOpenAnimatorRig" },
   { icon = "Open", label = "Physics Animator", act = "XOpenAnimatorPhys" },
@@ -2048,6 +2049,10 @@ end
 actions.XModeler = function()
   local md = _G.ArkherModeler
   if md and md.open then md.open() else say("Modeler nao carregado (14_Modeler).", true) end
+end
+actions.XAnimator = function()
+  local an = _G.ArkherAnimator
+  if an and an.open then an.open() else say("Animator nao carregado (15_Animator).", true) end
 end
 actions.XOpenTerrain      = function() deckOpen("terrain", "ferramentas") end
 actions.XOpenTerrainGen   = function() deckOpen("terrain", "gerar") end

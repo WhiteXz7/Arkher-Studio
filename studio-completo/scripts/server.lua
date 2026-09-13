@@ -3335,7 +3335,7 @@ function handlers.TerrainStats(player)
   return { cells = cells, undo = #TER_UNDO, redo = #TER_REDO, layers = #TER_LAYERS }
 end
 
-local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, TerrainGenFlat=true, TerrainReplace=true, TerrainWater=true, TerrainSmooth=true, TerrainNoise=true, TerrainStroke=true, TerrainUndo=true, TerrainRedo=true, TerrainLayer=true, TerrainGen=true, TerrainWaterProps=true, TerrainRain=true, TerrainFlood=true, TerrainHydro=true, ScriptSet=true, Undo=true, Group=true, Ungroup=true, AlignKids=true, DistributeKids=true, MirrorKids=true, PivotReset=true, SelAdd=true, SelClear=true, SelectMany=true, DeleteMany=true, DuplicateMany=true, RemapSet=true, TransformMany=true, ViewportRig=true, MeshNew=true, MeshMoveVert=true, MeshDeleteVert=true, MeshSmooth=true, MeshMirror=true, MeshImportOBJ=true }
+local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, TerrainGenFlat=true, TerrainReplace=true, TerrainWater=true, TerrainSmooth=true, TerrainNoise=true, TerrainStroke=true, TerrainUndo=true, TerrainRedo=true, TerrainLayer=true, TerrainGen=true, TerrainWaterProps=true, TerrainRain=true, TerrainFlood=true, TerrainHydro=true, ScriptSet=true, Undo=true, Group=true, Ungroup=true, AlignKids=true, DistributeKids=true, MirrorKids=true, PivotReset=true, SelAdd=true, SelClear=true, SelectMany=true, DeleteMany=true, DuplicateMany=true, RemapSet=true, TransformMany=true, ViewportRig=true, MeshNew=true, MeshMoveVert=true, MeshDeleteVert=true, MeshSmooth=true, MeshMirror=true, MeshImportOBJ=true, AnimRig=true, AnimNew=true, AnimKeyAdd=true, AnimKeyDel=true, AnimPoseSet=true, AnimPlay=true, AnimStop=true, AnimScrub=true, AnimIK=true, AnimImport=true, AnimJointSet=true }
 local function runRestore()
 	for part, was in pairs(RUN.parts) do
 		if part and part.Parent then
@@ -4136,6 +4136,548 @@ function handlers.MeshImportOBJ(player, payload)
   hCreate(player, mp)
   return { node = record(mp), verts = #verts, faces = #faces,
     msg = ("OBJ importado (%d verts, %d tris)."):format(#verts, #faces) }
+end
+
+-- ============ R13: ANIMATOR (KeyframeSequence real + preview por Motor6D.Transform) ============
+-- Playback SEM publish: o motor aplica Pose interpolada em Motor6D.Transform todo
+-- Heartbeat (exatamente o canal que o runtime usa). Easing Linear/Constant exato no
+-- preview; Elastic/Cubic/Bounce/CubicV2 usam preview linear (flag approx=true) e o
+-- easing real vale apos publicar a sequencia pelo Studio.
+local EASE_STYLE = { Linear = true, Constant = true, Elastic = true, Cubic = true,
+  Bounce = true, CubicV2 = true }
+local EASE_DIR = { In = true, Out = true, InOut = true }
+local ANIM_PRI = { Idle = true, Movement = true, Action = true, Action2 = true,
+  Action3 = true, Action4 = true, Core = true }
+local animPrev = {}
+local function animGetSeq(id)
+  local o = getObject(id)
+  assert(o:IsA("KeyframeSequence"), "id nao eh KeyframeSequence.")
+  return o
+end
+local function animRigOf(id)
+  local o = getObject(id)
+  assert(o:IsA("Model"), "rig precisa ser um Model.")
+  local hum = o:FindFirstChildWhichIsA("Humanoid", true)
+    or o:FindFirstChildWhichIsA("AnimationController", true)
+  assert(hum, "rig sem Humanoid/AnimationController.")
+  local ator = hum:FindFirstChildOfClass("Animator")
+  local created = false
+  if not ator then
+    ator = Instance.new("Animator")
+    ator.Name = "Animator"
+    ator.Parent = hum
+    created = true
+  end
+  return o, hum, ator, created
+end
+local function animJoints(rig)
+  local j, seen = {}, {}
+  for _, d in ipairs(rig:GetDescendants()) do
+    if d:IsA("Motor6D") and d.Part1 then
+      local nm = d.Part1.Name
+      assert(not seen[nm], "rig com parts de mesmo nome (" .. nm .. "); animacao exige nomes distintos.")
+      seen[nm] = true
+      j[nm] = d
+    end
+  end
+  return j
+end
+local function animKeysSorted(seq)
+  local ks = seq:GetKeyframes()
+  table.sort(ks, function(a, b) return a.Time < b.Time end)
+  return ks
+end
+local function animLength(seq)
+  local m = 0
+  for _, k in ipairs(seq:GetKeyframes()) do m = math.max(m, k.Time or 0) end
+  return m
+end
+local function animPoseMap(kf)
+  local m = {}
+  local function rec(list)
+    for _, p in ipairs(list) do m[p.Name] = p rec(p:GetSubPoses()) end
+  end
+  rec(kf:GetPoses())
+  return m
+end
+local function animFindKey(seq, time)
+  local best, bd = nil, 1e-4
+  for _, k in ipairs(seq:GetKeyframes()) do
+    local d = math.abs((k.Time or 0) - time)
+    if d < bd then best, bd = k, d end
+  end
+  return best
+end
+local function animCapture(rig, kf)
+  local joints = animJoints(rig)
+  local parts = {}
+  for _, d in ipairs(rig:GetDescendants()) do
+    if d:IsA("BasePart") then parts[d.Name] = d end
+  end
+  local poses = {}
+  local names = {}
+  for n in pairs(parts) do names[#names + 1] = n end
+  table.sort(names)
+  for _, n in ipairs(names) do
+    local p = Instance.new("Pose")
+    p.Name = n
+    local m = joints[n]
+    if m and m.Transform then p.CFrame = m.Transform else p.CFrame = CFrame.new() end
+    p.Weight = 1
+    poses[n] = p
+  end
+  for n, m in pairs(joints) do
+    local par = (m.Part0 and m.Part0.Name) or nil
+    if par and poses[par] then poses[par]:AddSubPose(poses[n]) end
+  end
+  local top = 0
+  for _, p in pairs(poses) do
+    if p.Parent == nil then kf:AddPose(p) top = top + 1 end
+  end
+  return #names, top
+end
+local function animSerPose(p, path)
+  local cf = { p.CFrame:GetComponents() }
+  local es, ed = p.EasingStyle, p.EasingDirection
+  return { path = path,
+    cf = { cf[1], cf[2], cf[3], cf[4], cf[5], cf[6], cf[7], cf[8], cf[9], cf[10], cf[11], cf[12] },
+    w = p.Weight or 1, mw = p.MaskWeight or 1,
+    es = (type(es) == "table" and es.Name) or "Linear",
+    ed = (type(ed) == "table" and ed.Name) or "InOut" }
+end
+local function animSerKey(kf)
+  local out = { time = kf.Time or 0, name = kf.Name, poses = {} }
+  local function rec(list, path)
+    for _, p in ipairs(list) do
+      local np = {}
+      for _, s in ipairs(path) do np[#np + 1] = s end
+      np[#np + 1] = p.Name
+      out.poses[#out.poses + 1] = animSerPose(p, np)
+      rec(p:GetSubPoses(), np)
+    end
+  end
+  rec(kf:GetPoses(), {})
+  return out
+end
+local function animBuildKey(seq, data)
+  local kf = Instance.new("Keyframe")
+  kf.Name = tostring(data.name or "Key"):sub(1, 40)
+  kf.Time = tonumber(data.time) or 0
+  seq:AddKeyframe(kf)
+  local byPath = { [""] = kf }
+  for _, pd in ipairs(data.poses or {}) do
+    local p = Instance.new("Pose")
+    p.Name = tostring((pd.path or {})[#(pd.path or {})] or "Pose"):sub(1, 60)
+    local c = pd.cf or {}
+    p.CFrame = CFrame.new(c[1] or 0, c[2] or 0, c[3] or 0, c[4] or 1, c[5] or 0, c[6] or 0,
+      c[7] or 0, c[8] or 1, c[9] or 0, c[10] or 0, c[11] or 0, c[12] or 1)
+    p.Weight = tonumber(pd.w) or 1
+    pcall(function() p.MaskWeight = tonumber(pd.mw) or 1 end)
+    local es = tostring(pd.es or "Linear")
+    if EASE_STYLE[es] then pcall(function() p.EasingStyle = Enum.PoseEasingStyle[es] end) end
+    local ed = tostring(pd.ed or "InOut")
+    if EASE_DIR[ed] then pcall(function() p.EasingDirection = Enum.PoseEasingDirection[ed] end) end
+    local parentPath = ""
+    for i = 1, #(pd.path or {}) - 1 do parentPath = parentPath .. "/" .. pd.path[i] end
+    local par = byPath[parentPath]
+    if par and par.AddSubPose and parentPath ~= "" then par:AddSubPose(p) else kf:AddPose(p) end
+    local full = parentPath .. "/" .. p.Name
+    byPath[full] = p
+  end
+  return kf
+end
+local function animAlpha(a, style, dir)
+  if style == "Constant" then
+    if dir == "InOut" then return (a < 0.5) and 0 or 1 end
+    return (a >= 1) and 1 or 0
+  end
+  if style ~= "Linear" then return a, true end
+  return a, false
+end
+local function animApply(sess, T)
+  local ks = sess.keys
+  if #ks == 0 then return false end
+  local i0, i1 = 1, 1
+  if T <= ks[1].Time then i0, i1 = 1, 1
+  elseif T >= ks[#ks].Time then i0, i1 = #ks, #ks
+  else
+    for i = 1, #ks - 1 do
+      if T >= ks[i].Time and T <= ks[i + 1].Time then i0, i1 = i, i + 1 break end
+    end
+  end
+  local k0, k1 = ks[i0], ks[i1]
+  local span = (k1.Time or 0) - (k0.Time or 0)
+  local raw = (span > 1e-9) and ((T - (k0.Time or 0)) / span) or 0
+  raw = math.clamp(raw, 0, 1)
+  local m0, m1 = animPoseMap(k0), animPoseMap(k1)
+  local approx = false
+  for name, motor in pairs(sess.joints) do
+    local p0, p1 = m0[name], m1[name]
+    if p0 and p1 then
+      local es = p0.EasingStyle
+      local style = (type(es) == "table" and es.Name) or "Linear"
+      local ed = p0.EasingDirection
+      local dir = (type(ed) == "table" and ed.Name) or "InOut"
+      local a, ap = animAlpha(raw, style, dir)
+      if ap then approx = true end
+      motor.Transform = p0.CFrame:Lerp(p1.CFrame, a)
+    elseif p0 then
+      motor.Transform = p0.CFrame
+    elseif p1 then
+      motor.Transform = p1.CFrame
+    end
+  end
+  return approx
+end
+local function animSession(player, seq, rig)
+  local sess = { seq = seq, rig = rig, joints = animJoints(rig),
+    keys = animKeysSorted(seq), playing = false, time = 0, speed = 1, loop = false, track = nil }
+  animPrev[player] = sess
+  return sess
+end
+Run.Heartbeat:Connect(function(dt)
+  for player, sess in pairs(animPrev) do
+    if sess.playing and sess.seq and sess.seq.Parent then
+      local len = animLength(sess.seq)
+      sess.time = sess.time + dt * (sess.speed or 1)
+      if len <= 0 then sess.time = 0
+      elseif sess.time >= len then
+        if sess.loop then sess.time = sess.time % len
+        else sess.time = len sess.playing = false end
+      end
+      pcall(animApply, sess, sess.time)
+    end
+  end
+end)
+function handlers.AnimRig(player, payload)
+  local rig, hum, ator, created = animRigOf(payload.id)
+  local joints = animJoints(rig)
+  local names = {}
+  for n in pairs(joints) do names[#names + 1] = n end
+  table.sort(names)
+  local parts = 0
+  for _, d in ipairs(rig:GetDescendants()) do if d:IsA("BasePart") then parts = parts + 1 end end
+  if created then queueObject(hum) end
+  return { node = record(rig), joints = names, parts = parts,
+    animatorCreated = created, msg = ("Rig %s: %d juntas."):format(rig.Name, #names) }
+end
+function handlers.AnimNew(player, payload)
+  local seq = Instance.new("KeyframeSequence")
+  seq.Name = tostring(payload.name or "Animacao"):sub(1, 40)
+  seq.Loop = payload.loop == true
+  local pri = tostring(payload.priority or "Action")
+  if ANIM_PRI[pri] then pcall(function() seq.Priority = Enum.AnimationPriority[pri] end) end
+  local parent = game:GetService("ServerStorage")
+  if payload.parentId then
+    local ok, p = pcall(getObject, payload.parentId)
+    if ok and p then parent = p end
+  end
+  seq.Parent = parent
+  created[player] = (created[player] or 0) + 1
+  register(seq)
+  queueObject(parent)
+  hCreate(player, seq)
+  if payload.rigId then
+    local ok, rig = pcall(getObject, payload.rigId)
+    if ok and rig and rig:IsA("Model") then
+      local kf = Instance.new("Keyframe")
+      kf.Name = "K0"
+      kf.Time = 0
+      seq:AddKeyframe(kf)
+      pcall(animCapture, rig, kf)
+    end
+  end
+  return { node = record(seq), length = animLength(seq), msg = "Sequencia criada." }
+end
+function handlers.AnimKeys(player, payload)
+  local seq = animGetSeq(payload.id)
+  local out = {}
+  for _, k in ipairs(animKeysSorted(seq)) do
+    local n = 0
+    local function cnt(list) for _, p in ipairs(list) do n = n + 1 cnt(p:GetSubPoses()) end end
+    cnt(k:GetPoses())
+    out[#out + 1] = { time = k.Time or 0, name = k.Name, poses = n }
+  end
+  return { keys = out, length = animLength(seq) }
+end
+function handlers.AnimKeyAdd(player, payload)
+  local seq = animGetSeq(payload.id)
+  local time = math.clamp(tonumber(payload.time) or 0, 0, 120)
+  assert(#seq:GetKeyframes() < 200, "Sequencia cheia (200 keys).")
+  assert(not animFindKey(seq, time), "Ja existe key nesse tempo.")
+  local kf = Instance.new("Keyframe")
+  kf.Name = tostring(payload.name or ("K" .. tostring(math.floor(time * 30)))):sub(1, 40)
+  kf.Time = time
+  seq:AddKeyframe(kf)
+  local poses = 0
+  if payload.rigId then
+    local ok, rig = pcall(getObject, payload.rigId)
+    assert(ok and rig and rig:IsA("Model"), "rigId invalido.")
+    poses = animCapture(rig, kf)
+  end
+  queueObject(seq)
+  pushHist(player, {
+    label = "Add key " .. string.format("%.2f", time),
+    undo = function() pcall(function() seq:RemoveKeyframe(kf) end) queueObject(seq) end,
+    redo = function() pcall(function() seq:AddKeyframe(kf) end) queueObject(seq) end,
+  })
+  return { time = time, poses = poses, length = animLength(seq) }
+end
+function handlers.AnimKeyDel(player, payload)
+  local seq = animGetSeq(payload.id)
+  local kf = animFindKey(seq, tonumber(payload.time) or 0)
+  assert(kf, "Key nao encontrada nesse tempo.")
+  local snap = animSerKey(kf)
+  seq:RemoveKeyframe(kf)
+  queueObject(seq)
+  pushHist(player, {
+    label = "Del key " .. string.format("%.2f", snap.time),
+    undo = function() pcall(animBuildKey, seq, snap) queueObject(seq) end,
+    redo = function()
+      pcall(function()
+        local k2 = animFindKey(seq, snap.time)
+        if k2 then seq:RemoveKeyframe(k2) end
+      end)
+      queueObject(seq)
+    end,
+  })
+  return { deleted = true, time = snap.time, length = animLength(seq) }
+end
+function handlers.AnimPoseSet(player, payload)
+  local seq = animGetSeq(payload.id)
+  local kf = animFindKey(seq, tonumber(payload.time) or 0)
+  assert(kf, "Key nao encontrada nesse tempo.")
+  local part = tostring(payload.part or "")
+  assert(#part > 0 and #part <= 60, "part invalida.")
+  local pos = payload.pos or {}
+  local rot = payload.rot or {}
+  local cf = nil
+  if payload.pos ~= nil or payload.rot ~= nil then
+    cf = CFrame.new(tonumber(pos.x) or 0, tonumber(pos.y) or 0, tonumber(pos.z) or 0)
+      * CFrame.fromOrientation(math.rad(tonumber(rot.x) or 0), math.rad(tonumber(rot.y) or 0), math.rad(tonumber(rot.z) or 0))
+  end
+  local map = animPoseMap(kf)
+  local pose = map[part]
+  local created = false
+  local old = nil
+  if pose then
+    local oes, oed = pose.EasingStyle, pose.EasingDirection
+    old = { cf = pose.CFrame, w = pose.Weight,
+      es = (type(oes) == "table" and oes.Name) or "Linear",
+      ed = (type(oed) == "table" and oed.Name) or "InOut" }
+  else
+    local n = 0
+    local function cnt(list) for _, p in ipairs(list) do n = n + 1 cnt(p:GetSubPoses()) end end
+    cnt(kf:GetPoses())
+    assert(n < 500, "Key cheia (500 poses).")
+    pose = Instance.new("Pose")
+    pose.Name = part
+    local par = nil
+    if payload.rigId then
+      local ok, rig = pcall(getObject, payload.rigId)
+      if ok and rig then
+        for _, d in ipairs(rig:GetDescendants()) do
+          if d:IsA("Motor6D") and d.Part1 and d.Part1.Name == part and d.Part0 then
+            par = map[d.Part0.Name]
+            break
+          end
+        end
+      end
+    end
+    if par then par:AddSubPose(pose) else kf:AddPose(pose) end
+    created = true
+  end
+  if cf then pose.CFrame = cf elseif created then pose.CFrame = CFrame.new() end
+  if payload.weight ~= nil then pose.Weight = math.clamp(tonumber(payload.weight) or 1, 0, 10) end
+  local es = payload.easingStyle and tostring(payload.easingStyle) or nil
+  if es then
+    assert(EASE_STYLE[es], "easingStyle: Linear/Constant/Elastic/Cubic/Bounce/CubicV2.")
+    pcall(function() pose.EasingStyle = Enum.PoseEasingStyle[es] end)
+  end
+  local ed = payload.easingDir and tostring(payload.easingDir) or nil
+  if ed then
+    assert(EASE_DIR[ed], "easingDir: In/Out/InOut.")
+    pcall(function() pose.EasingDirection = Enum.PoseEasingDirection[ed] end)
+  end
+  queueObject(seq)
+  pushHist(player, {
+    label = "Pose " .. part,
+    undo = function()
+      pcall(function()
+        if created then
+          if pose.Parent then pose.Parent = nil end
+        else
+          pose.CFrame = old.cf pose.Weight = old.w
+          pose.EasingStyle = Enum.PoseEasingStyle[old.es]
+          pose.EasingDirection = Enum.PoseEasingDirection[old.ed]
+        end
+      end)
+      queueObject(seq)
+    end,
+    redo = function()
+      pcall(function()
+        if created and pose.Parent == nil then kf:AddPose(pose) end
+        if cf then pose.CFrame = cf end
+      end)
+      queueObject(seq)
+    end,
+  })
+  return { ok2 = true, created = created }
+end
+function handlers.AnimJointSet(player, payload)
+  local rig = getObject(payload.rigId)
+  assert(rig and rig:IsA("Model"), "rigId invalido.")
+  local part = tostring(payload.part or "")
+  assert(#part > 0, "part invalida.")
+  local motor = nil
+  for _, d in ipairs(rig:GetDescendants()) do
+    if d:IsA("Motor6D") and d.Part1 and d.Part1.Name == part then motor = d break end
+  end
+  assert(motor, "junta nao achada: " .. part)
+  local pos = payload.pos or {}
+  local rot = payload.rot or {}
+  motor.Transform = CFrame.new(tonumber(pos.x) or 0, tonumber(pos.y) or 0, tonumber(pos.z) or 0)
+    * CFrame.fromOrientation(math.rad(tonumber(rot.x) or 0), math.rad(tonumber(rot.y) or 0), math.rad(tonumber(rot.z) or 0))
+  return { posed = true, part = part }
+end
+function handlers.AnimPlay(player, payload)
+  local seq = animGetSeq(payload.id)
+  local rig = getObject(payload.rigId)
+  assert(rig and rig:IsA("Model"), "rigId invalido.")
+  animRigOf(payload.rigId)
+  local sess = animSession(player, seq, rig)
+  sess.loop = payload.loop == true
+  sess.speed = math.clamp(tonumber(payload.speed) or 1, 0.1, 4)
+  sess.time = math.clamp(tonumber(payload.from) or 0, 0, math.max(animLength(seq), 0.001))
+  sess.keys = animKeysSorted(seq)
+  sess.playing = true
+  local trackLoaded = false
+  if payload.animationId and #tostring(payload.animationId) > 0 then
+    pcall(function()
+      local ator = rig:FindFirstChildWhichIsA("Humanoid", true):FindFirstChildOfClass("Animator")
+        or rig:FindFirstChildWhichIsA("AnimationController", true):FindFirstChildOfClass("Animator")
+      if ator then
+        local anim = Instance.new("Animation")
+        anim.AnimationId = tostring(payload.animationId)
+        local tr = ator:LoadAnimation(anim)
+        tr.Looped = sess.loop
+        tr:Play(0.1, 1, sess.speed)
+        sess.track = tr
+        trackLoaded = true
+      end
+    end)
+  end
+  local approx = animApply(sess, sess.time)
+  local nj = 0
+  for _ in pairs(sess.joints) do nj = nj + 1 end
+  return { playing = true, length = animLength(seq), joints = nj,
+    trackLoaded = trackLoaded, approx = approx,
+    msg = approx and "Tocando (preview linear; easing real apos publish)."
+      or "Tocando (preview exato)." }
+end
+function handlers.AnimStop(player, payload)
+  local sess = animPrev[player]
+  if sess and sess.track then pcall(function() sess.track:Stop() end) end
+  if sess then
+    for _, m in pairs(sess.joints) do pcall(function() m.Transform = CFrame.new() end) end
+    sess.playing = false
+    sess.time = 0
+  end
+  animPrev[player] = nil
+  return { stopped = true, msg = "Parado (rig em repouso)." }
+end
+function handlers.AnimScrub(player, payload)
+  local rig = getObject(payload.rigId)
+  assert(rig and rig:IsA("Model"), "rigId invalido.")
+  local sess = animPrev[player]
+  if not sess or (payload.id and sess.seq ~= animGetSeq(payload.id)) then
+    assert(payload.id, "seq id necessaria p/ iniciar sessao.")
+    sess = animSession(player, animGetSeq(payload.id), rig)
+  end
+  sess.keys = animKeysSorted(sess.seq)
+  sess.playing = false
+  local len = animLength(sess.seq)
+  local cursor = math.clamp(tonumber(payload.time) or 0, 0, 120)
+  sess.time = math.clamp(cursor, 0, math.max(len, 0.001))
+  local approx = animApply(sess, sess.time)
+  return { time = cursor, applied = sess.time, length = len, approx = approx }
+end
+function handlers.AnimIK(player, payload)
+  local rig, hum = animRigOf(payload.rigId)
+  local ee = nil
+  for _, d in ipairs(rig:GetDescendants()) do
+    if d.Name == tostring(payload.endName or "") and (d:IsA("BasePart") or d:IsA("Attachment") or d:IsA("Motor6D")) then
+      ee = d break
+    end
+  end
+  assert(ee, "endEffector nao achado no rig (part/attachment/motor).")
+  local tgt = getObject(payload.targetId)
+  assert(tgt and (tgt:IsA("BasePart") or tgt:IsA("Attachment")), "targetId precisa ser part/attachment.")
+  local ik = hum:FindFirstChild("ArkherIK")
+  if not (ik and ik:IsA("IKControl")) then
+    ik = Instance.new("IKControl")
+    ik.Name = "ArkherIK"
+    ik.Parent = hum
+    created[player] = (created[player] or 0) + 1
+    register(ik)
+    hCreate(player, ik)
+  end
+  ik.EndEffector = ee
+  ik.Target = tgt
+  if payload.rootName then
+    local root = nil
+    for _, d in ipairs(rig:GetDescendants()) do
+      if d.Name == tostring(payload.rootName) and (d:IsA("BasePart") or d:IsA("Motor6D")) then
+        root = d break
+      end
+    end
+    assert(root, "chainRoot nao achado no rig.")
+    ik.ChainRoot = root
+  else
+    ik.ChainRoot = rig:FindFirstChild("HumanoidRootPart") or rig:FindFirstChildWhichIsA("BasePart", true)
+  end
+  local tp = tostring(payload.type or "Transform")
+  assert(tp == "Transform" or tp == "Position" or tp == "Rotation" or tp == "LookAt", "type: Transform/Position/Rotation/LookAt.")
+  pcall(function() ik.Type = Enum.IKControlType[tp] end)
+  ik.Weight = math.clamp(tonumber(payload.weight) or 1, 0, 1)
+  if payload.enabled ~= nil then ik.Enabled = payload.enabled == true end
+  queueObject(hum)
+  return { node = record(ik), msg = "IK configurado (" .. tp .. ")." }
+end
+function handlers.AnimExport(player, payload)
+  local seq = animGetSeq(payload.id)
+  local pri = seq.Priority
+  local data = { v = 1, name = seq.Name, loop = seq.Loop == true,
+    priority = (type(pri) == "table" and pri.Name) or "Action", keys = {} }
+  for _, k in ipairs(animKeysSorted(seq)) do data.keys[#data.keys + 1] = animSerKey(k) end
+  local ok, json = pcall(function() return Http:JSONEncode(data) end)
+  assert(ok and json, "Falha ao serializar.")
+  assert(#json <= 2000000, "Animacao grande demais (2MB).")
+  return { json = json, keys = #data.keys }
+end
+function handlers.AnimImport(player, payload)
+  local raw = tostring(payload.json or "")
+  assert(#raw > 0 and #raw <= 2000000, "JSON vazio ou grande demais (2MB).")
+  local ok, data = pcall(function() return Http:JSONDecode(raw) end)
+  assert(ok and type(data) == "table" and type(data.keys) == "table", "JSON de animacao invalido.")
+  assert(#data.keys >= 1 and #data.keys <= 200, "keys fora do limite (1..200).")
+  local seq = Instance.new("KeyframeSequence")
+  seq.Name = tostring(payload.name or data.name or "Animacao"):sub(1, 40)
+  seq.Loop = data.loop == true
+  local pri = tostring(data.priority or "Action")
+  if ANIM_PRI[pri] then pcall(function() seq.Priority = Enum.AnimationPriority[pri] end) end
+  seq.Parent = game:GetService("ServerStorage")
+  for _, kd in ipairs(data.keys) do
+    assert(type(kd.time) == "number" and kd.time >= 0 and kd.time <= 120, "key time invalido.")
+    assert(type(kd.poses) == "table" and #kd.poses <= 500, "poses demais (500).")
+    animBuildKey(seq, kd)
+  end
+  created[player] = (created[player] or 0) + 1
+  register(seq)
+  queueObject(seq)
+  hCreate(player, seq)
+  return { node = record(seq), keys = #data.keys, length = animLength(seq),
+    msg = ("Animacao importada (%d keys)."):format(#data.keys) }
 end
 
 function handlers.PivotReset(player, payload)

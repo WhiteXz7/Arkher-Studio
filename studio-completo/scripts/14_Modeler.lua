@@ -96,7 +96,9 @@ local S = { open = false, tool = "Select", prim = "box", iters = 1,
 local MD4_ALL = { "MD4_Rail", "MD4_Mesh", "MD4_Vert", "MD4_Top", "MD4_IO", "MD4_Status" }
 local OTHER_EDS = { "TE3_Rail", "TE3_Brush", "TE3_Mat", "TE3_Layers", "TE3_History",
   "TE3_Gen", "TE3_Water", "TE3_Status", "VP3_Rail", "VP3_Cam", "VP3_Trans",
-  "VP3_Meas", "VP3_Snap", "VP3_Status" }
+  "VP3_Meas", "VP3_Snap", "VP3_Status",
+  "AN5_Rail", "AN5_Rig", "AN5_Pose", "AN5_Time", "AN5_Keys", "AN5_IO",
+  "AN5_Status" }
 local DESK_HIDE = { "T2_Panel", "C2_Panel", "S2_Panel", "O2_Panel", "O2_WPanel",
   "TL2_Panel", "CV2_Panel", "SM2_Panel", "TM2_Panel", "FR2_Panel" }
 
@@ -115,8 +117,9 @@ local function setOpen(v)
   for _, n in ipairs(DESK_HIDE) do setVisible(n, not v) end
   for _, n in ipairs(OTHER_EDS) do setVisible(n, false) end
   setVisible("M_VP", false)
+  setVisible("M_AN", false)
   if v then
-    for _, ed in ipairs({ "ArkherTerrain", "ArkherViewport" }) do
+    for _, ed in ipairs({ "ArkherTerrain", "ArkherViewport", "ArkherAnimator" }) do
       pcall(function()
         local e = _G[ed]
         if e and e.isOpen and e.isOpen() then e.close() end
