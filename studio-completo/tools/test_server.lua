@@ -238,6 +238,88 @@ local names = {}
 if paB and paB.fields then for _, f in ipairs(paB.fields) do names[f.name] = f.kind end end
 check(names["Position"] and names["Size"] and names["Color"] and names["Name"], "R4: PropsAll Part tem Position/Size/Color/Name")
 
+print("\n== R5 script studio (execucao real) ==")
+local sr1 = invokeWait("ScriptRun", { code = "return 2+2" })
+check(sr1 and sr1.ret == "4", "ScriptRun: return 2+2 -> 4")
+local sr2 = invokeWait("ScriptRun", { code = "error('boom')" })
+check(sr2 and sr2.error and sr2.error:find("boom"), "ScriptRun: erro capturado")
+local sr3 = invokeWait("ScriptRun", { code = "local =" })
+check(sr3 and sr3.error and sr3.error:find("Sintaxe"), "ScriptRun: sintaxe invalida")
+local sr4 = invokeWait("ScriptRun", { code = "while true do end" })
+check(sr4 and sr4.error and sr4.error:find("infinito"), "ScriptRun: trava loop infinito")
+local py1 = invokeWait("PyLua", { code = [==[
+def fat(n):
+    r = 1
+    for i in range(1, n + 1):
+        r = r * i
+    return r
+return fat(5)
+]==] })
+check(py1 and py1.ret == "120", "PyRun: fatorial(5)=120 (ret=" .. tostring(py1 and py1.ret) .. ")")
+local py2 = invokeWait("PyLua", { code = [==[
+x = 7
+if x > 10:
+    r = "big"
+elif x > 5:
+    r = "mid"
+else:
+    r = "small"
+return r
+]==] })
+check(py2 and py2.ret == "mid", "PyRun: if/elif/else -> mid")
+local py3 = invokeWait("PyLua", { code = "import os\nreturn 1" })
+check(py3 and py3.error and py3.error:find("import"), "PyRun: import rejeitado (honesto)")
+local cs1 = invokeWait("CsRun", { code = [==[
+int s = 0;
+for (int i = 1; i < 6; i++) {
+    s += i;
+}
+return s;
+]==] })
+check(cs1 and cs1.ret == "15", "CsRun: soma 1..5=15 (ret=" .. tostring(cs1 and cs1.ret) .. ")")
+local bl1 = invokeWait("BlockRun", { nodes = {
+  { op = "lua", code = "bx = 0" },
+  { op = "repeat", n = 3, body = { { op = "lua", code = "bx = bx + 10" } } },
+  { op = "lua", code = "return bx" },
+} })
+check(bl1 and bl1.ret == "30", "BlockRun: repeat 3x -> 30")
+check(bl1 and bl1.lua and bl1.lua:find("for _bx"), "BlockRun: mostra Lua gerado")
+local sssSnap = invokeWait("Snapshot", {})
+local sssId = findId(sssSnap, "ServerScriptService")
+local sc = invokeWait("CreateAny", { class = "Script", parentId = sssId })
+local scid = sc and sc.id
+local ss1 = scid and invokeWait("ScriptSet", { id = scid, source = "print('oi')" })
+local sg1 = scid and invokeWait("ScriptGet", { id = scid })
+check(ss1 and ss1.msg and sg1 and sg1.source == "print('oi')", "ScriptGet/Set: roundtrip Source")
+
+print("\n== R5 run (play/pause/stop reais) ==")
+local rp = invokeWait("CreateAny", { class = "Part" })
+local rpid = rp and rp.id
+local play = invokeWait("RunPlay", {})
+check(play and play.msg, "RunPlay: msg")
+local setBlocked = rpid and invokeWait("Set", { id = rpid, key = "Name", value = "Travado" })
+check(setBlocked and setBlocked.error and setBlocked.error:find("execu"), "Run: Set bloqueado durante play")
+local pause = invokeWait("RunPause", {})
+check(pause and pause.msg, "RunPause: msg")
+local stop = invokeWait("RunStop", {})
+local setFree = rpid and invokeWait("Set", { id = rpid, key = "Name", value = "Livre" })
+check(stop and stop.msg and setFree and setFree.node, "RunStop: edicao liberada")
+
+print("\n== R5 terreno 2 (agua/troca/flat) ==")
+Region3 = Region3 or { new = function(a, b) return { Min = a, Max = b, ExpandToGrid = function(self, _) return self end } end }
+local terCalls2 = {}
+METHODS.FillBlock = function(self, cf, sz, mt) terCalls2[#terCalls2+1] = { shape = "block", sz = sz, mat = mt and mt.Name } end
+METHODS.FillRegion = function(self, r3, res, mt) terCalls2[#terCalls2+1] = { shape = "region", mat = mt and mt.Name } end
+METHODS.ReplaceMaterial = function(self, r3, res, f, t2) terCalls2[#terCalls2+1] = { shape = "replace", from = f and f.Name, to = t2 and t2.Name } end
+local w1 = invokeWait("TerrainWater", { y = 12, xz = 256 })
+check(w1 and w1.msg and terCalls2[#terCalls2].mat == "Water", "TerrainWater: FillBlock Water")
+local rp2 = invokeWait("TerrainReplace", { center = { x = 0, y = 0, z = 0 }, radius = 16, from = "Rock", to = "Grass" })
+check(rp2 and rp2.msg and terCalls2[#terCalls2].shape == "replace" and terCalls2[#terCalls2].to == "Grass", "TerrainReplace: Rock->Grass")
+local rp3 = invokeWait("TerrainReplace", { center = { x = 0, y = 0, z = 0 }, radius = 16, from = "Rock", to = "Adamantium" })
+check(rp3 and rp3.error, "TerrainReplace: material falso rejeita")
+local gf = invokeWait("TerrainGenFlat", { size = 128, material = "Sand", water = true })
+check(gf and gf.msg and terCalls2[#terCalls2].shape == "block", "TerrainGenFlat: region + agua")
+
 print("\n================================")
 print(string.format("RESULTADO: %d passaram, %d falharam", pass, fail))
 if fail > 0 then os.exit(1) else os.exit(0) end

@@ -164,7 +164,7 @@ local CLASS_SUPER = {
   Part="BasePart", WedgePart="BasePart", CornerWedgePart="BasePart", TrussPart="BasePart",
   SpawnLocation="BasePart", MeshPart="BasePart", BasePart="Volume", Volume="Instance",
   Terrain="BasePart",
-  Script="BaseScript", LocalScript="BaseScript", ModuleScript="BaseScript", BaseScript="Instance",
+  Script="BaseScript", LocalScript="BaseScript", ModuleScript="BaseScript", BaseScript="LuaSourceContainer", LuaSourceContainer="Instance",
   Attachment="Instance", Decal="Instance", Texture="Instance",
   PointLight="Light", SpotLight="Light", SurfaceLight="Light", Light="Instance",
   ParticleEmitter="Instance", Fire="Instance", Smoke="Instance", Sparkles="Instance",

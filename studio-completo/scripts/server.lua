@@ -313,6 +313,234 @@ function handlers.TerrainClear(player)
 	return { msg = "Terreno limpo (voxels removidos)." }
 end
 
+-- ============ R5: SCRIPT STUDIO (Lua/Python/blocos/C# executam DE VERDADE) ============
+-- Poder = command bar do Studio: roda como servidor, so p/ usuario autorizado.
+local function execCode(code)
+	if code:match("while%s+true%s+do") and not (code:find("task%.wait", 1, true) or code:find("wait%s*%(", 1)) then
+		return { error = "Loop infinito sem espera (adicione task.wait)." }
+	end
+	local fn, err = loadstring(code, "[ArkherRun]")
+	if not fn then return { error = "Sintaxe: " .. tostring(err) } end
+	local ok2, res = pcall(fn)
+	if not ok2 then return { error = "Execucao: " .. tostring(res) } end
+	return { ret = (res == nil) and "nil" or tostring(res), msg = "Executado (saida no Output)." }
+end
+function handlers.ScriptRun(player, payload)
+	local code = tostring(payload.code or "")
+	assert(#code > 0 and #code < 20000, "Codigo vazio ou grande demais (20k).")
+	return execCode(code)
+end
+local function pyToLua(src)
+	local out, stack = {}, {}
+	local function dedentTo(ind)
+		while #stack > 0 and stack[#stack] >= ind do
+			out[#out + 1] = string.rep("  ", #stack - 1) .. "end"
+			table.remove(stack)
+		end
+	end
+	for line in (src .. "\n"):gmatch("([^\n]*)\n") do
+		local indent = #(line:match("^ *") or "")
+		local t = line:match("^%s*(.-)%s*$")
+		if t == "" then
+			-- vazia: ignora
+		elseif t:sub(1, 1) == "#" then
+			out[#out + 1] = "--" .. t:sub(2)
+		elseif t:match("^import%s") or t:match("^from%s") or t:match("^class%s") then
+			return nil, "import/class nao suportado no V1 (use Lua)."
+		elseif t:match("^elif%s") or t == "else:" then
+			if #stack == 0 then return nil, "elif/else sem if." end
+			table.remove(stack)
+			local pre = string.rep("  ", #stack)
+			if t == "else:" then out[#out + 1] = pre .. "else"
+			else out[#out + 1] = pre .. "elseif " .. t:match("^elif%s+(.-):%s*$") .. " then" end
+			stack[#stack + 1] = indent
+		else
+			dedentTo(indent)
+			local pre = string.rep("  ", #stack)
+			t = t:gsub("True", "true"):gsub("False", "false"):gsub("None", "nil")
+			t = t:gsub("len%s*%(", "#("):gsub("str%s*%(", "tostring("):gsub("int%s*%(", "tonumber("):gsub("float%s*%(", "tonumber(")
+			local fn, args = t:match("^def%s+([%a_][%w_]*)%s*%(([^)]*)%):%s*$")
+			if fn then
+				out[#out + 1] = pre .. "local function " .. fn .. "(" .. args .. ")"
+				stack[#stack + 1] = indent
+			else
+				local v, r1, r2, r3 = t:match("^for%s+([%a_][%w_]*)%s+in%s+range%(([^,)]+),?([^,)]*),?([^)]*)%):%s*$")
+				if v and r1 then
+					r1 = r1:match("^%s*(.-)%s*$") r2 = (r2 or ""):match("^%s*(.-)%s*$") r3 = (r3 or ""):match("^%s*(.-)%s*$")
+					local loop
+					if r2 == "" then loop = ("for %s = 0, (%s) - 1 do"):format(v, r1)
+					elseif r3 == "" then loop = ("for %s = %s, (%s) - 1 do"):format(v, r1, r2)
+					else loop = ("for %s = %s, (%s) - 1, %s do"):format(v, r1, r2, r3) end
+					out[#out + 1] = pre .. loop
+					stack[#stack + 1] = indent
+				else
+					local w = t:match("^while%s+(.-):%s*$")
+					local i = t:match("^if%s+(.-):%s*$")
+					if w then out[#out + 1] = pre .. "while " .. w .. " do" stack[#stack + 1] = indent
+					elseif i then out[#out + 1] = pre .. "if " .. i .. " then" stack[#stack + 1] = indent
+					else
+						local av, aop, ar = t:match("^([%a_][%w_.]*)%s*([%+%-%*/])=%s*(.+)$")
+						if av then out[#out + 1] = pre .. av .. " = " .. av .. " " .. aop .. " (" .. ar .. ")"
+						else out[#out + 1] = pre .. t end
+					end
+				end
+			end
+		end
+	end
+	dedentTo(-1)
+	return table.concat(out, "\n")
+end
+function handlers.PyLua(player, payload)
+	local code = tostring(payload.code or "")
+	assert(#code > 0 and #code < 20000, "Codigo vazio ou grande demais (20k).")
+	local lua, err = pyToLua(code)
+	if not lua then return { error = tostring(err) } end
+	local r = execCode(lua)
+	r.lua = lua
+	return r
+end
+local function csToLua(src)
+	local out, stack = {}, {}
+	for line in (src .. "\n"):gmatch("([^\n]*)\n") do
+		local t = line:match("^%s*(.-)%s*$")
+		if t == "" or t:match("^using%s") or t:match("^namespace%s") or t:match("^class%s") or t:match("static%s+void%s+Main") or t:match("^//") then
+			-- pula estrutura
+		elseif t == "{" then
+			stack[#stack + 1] = false
+		elseif t == "}" or t:match("^}%s*;?%s*$") then
+			local was = table.remove(stack)
+			if was then out[#out + 1] = string.rep("  ", #stack) .. "end" end
+		elseif t:match("^}%s*else") then
+			table.remove(stack)
+			local pre = string.rep("  ", #stack)
+			if t:find("{", 1, true) then stack[#stack + 1] = true end
+			local ec = t:match("^}%s*else%s+if%s*%((.-)%)%s*{?%s*$")
+			if ec then out[#out + 1] = pre .. "elseif " .. ec .. " then"
+			else out[#out + 1] = pre .. "else" end
+		else
+			local pre = string.rep("  ", #stack)
+			local w = t:match("Console%.WriteLine%s*%((.-)%)%s*;?%s*$")
+			if w then out[#out + 1] = pre .. "print(" .. w .. ")"
+			else
+				local vt, vn, vv = t:match("^(%a+)%s+([%a_][%w_]*)%s*=%s*(.-);%s*$")
+				local csTypes = { int = true, string = true, float = true, double = true, bool = true, var = true, long = true, char = true }
+				if vt and vn and csTypes[vt] then
+					vv = vv:gsub("true", "true"):gsub("false", "false"):gsub("null", "nil")
+					out[#out + 1] = pre .. "local " .. vn .. " = " .. vv
+				else
+					local fv, fa, fop, fb = t:match("^for%s*%(%s*int%s+([%a_][%w_]*)%s*=%s*([^;]+);%s*%1%s*([<>=!]+)%s*([^;]+);%s*%1%+%+%s*%)%s*{?%s*$")
+					if fv then
+						local lim = "(" .. fb:match("^%s*(.-)%s*$") .. ")"
+						if fop == "<" then lim = lim .. " - 1" end
+						out[#out + 1] = pre .. ("for %s = %s, %s do"):format(fv, fa:match("^%s*(.-)%s*$"), lim)
+						stack[#stack + 1] = true
+					else
+						local ic = t:match("^if%s*%((.-)%)%s*{?%s*$")
+						local wc = t:match("^while%s*%((.-)%)%s*{?%s*$")
+						if ic then out[#out + 1] = pre .. "if " .. ic .. " then" stack[#stack + 1] = true
+						elseif wc then out[#out + 1] = pre .. "while " .. wc .. " do" stack[#stack + 1] = true
+						else
+							local r = t:match("^return%s+(.-);%s*$")
+							if r then out[#out + 1] = pre .. "return " .. r
+							else
+								local av, aop, ar = t:match("^([%a_][%w_]*)%s*([%+%-%*/])=%s*(.-);%s*$")
+								if av then out[#out + 1] = pre .. av .. " = " .. av .. " " .. aop .. " (" .. ar .. ")"
+								else out[#out + 1] = pre .. t:gsub(";%s*$", "") end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	while #stack > 0 do if table.remove(stack) then out[#out + 1] = "end" end end
+	return table.concat(out, "\n")
+end
+function handlers.CsRun(player, payload)
+	local code = tostring(payload.code or "")
+	assert(#code > 0 and #code < 20000, "Codigo vazio ou grande demais (20k).")
+	local r = execCode(csToLua(code))
+	r.lua = csToLua(code)
+	return r
+end
+local function blockGen(nodes, depth)
+	depth = depth or 0
+	local pre = string.rep("  ", depth)
+	local out = {}
+	for _, n in ipairs(nodes or {}) do
+		if n.op == "print" then
+			local tx = tostring(n.text or ""):gsub("\\", "\\\\"):gsub('"', '\\"'):gsub("\n", "\\n")
+			out[#out + 1] = pre .. 'print("' .. tx .. '")'
+		elseif n.op == "wait" then
+			out[#out + 1] = pre .. "task.wait(" .. (tonumber(n.n) or 1) .. ")"
+		elseif n.op == "lua" then
+			out[#out + 1] = pre .. tostring(n.code or "")
+		elseif n.op == "repeat" then
+			out[#out + 1] = pre .. "for _bx = 1, " .. (tonumber(n.n) or 1) .. " do"
+				for _, l in ipairs(blockGen(n.body or {}, depth + 1)) do out[#out + 1] = l end
+				out[#out + 1] = pre .. "end"
+		end
+	end
+	return out
+end
+function handlers.BlockRun(player, payload)
+	assert(type(payload.nodes) == "table" and #payload.nodes <= 200, "Blocos invalidos (max 200).")
+	local lua = table.concat(blockGen(payload.nodes, 0), "\n")
+	local r = execCode(lua)
+	r.lua = lua
+	return r
+end
+function handlers.ScriptGet(player, payload)
+	local o = getObject(payload.id)
+	assert(o:IsA("LuaSourceContainer"), "Nao e Script.")
+	local ok, src = pcall(function() return o.Source end)
+	if not ok then return { error = "Source ilegivel aqui (leia no Studio)." } end
+	return { source = src or "", className = o.ClassName, name = o.Name }
+end
+function handlers.ScriptSet(player, payload)
+	local o = getObject(payload.id)
+	assert(o:IsA("LuaSourceContainer"), "Nao e Script.")
+	assert(editable(o), "Protegido.")
+	local src = tostring(payload.source or "")
+	assert(#src < 200000, "Grande demais.")
+	local ok, err = pcall(function() o.Source = src end)
+	if not ok then return { error = "Roblox recusou gravar Source aqui (edite no Studio). Rode ou salve na nuvem." } end
+	queueObject(o)
+	return { msg = "Source gravado.", len = #src }
+end
+
+-- ============ R5: TERRENO 2 (agua/troca/flat) ============
+function handlers.TerrainWater(player, payload)
+	local y = tonumber(payload.y) or 10
+	local xz = tonumber(payload.xz) or 512
+	assert(y >= -100 and y <= 1000, "y -100..1000.")
+	assert(xz >= 16 and xz <= 2048, "xz 16..2048.")
+	local ter = terrainOrFail()
+	ter:FillBlock(CFrame.new(0, y, 0), Vector3.new(xz, 8, xz), Enum.Material.Water)
+	return { msg = ("Agua em y=%s (%sx%s)."):format(tostring(y), tostring(xz), tostring(xz)) }
+end
+function handlers.TerrainReplace(player, payload)
+	local ctr = terrainCenter(payload.center)
+	local r = tonumber(payload.radius) or 32
+	assert(r >= 4 and r <= 256, "radius 4..256.")
+	local fromM = terrainMat(payload.from)
+	local toM = terrainMat(payload.to)
+	local ter = terrainOrFail()
+	local r3 = Region3.new(Vector3.new(ctr.X - r, ctr.Y - r, ctr.Z - r), Vector3.new(ctr.X + r, ctr.Y + r, ctr.Z + r)):ExpandToGrid(4)
+	ter:ReplaceMaterial(r3, 4, fromM, toM)
+	return { msg = ("Troca %s->%s num cubo r=%s."):format(tostring(payload.from), tostring(payload.to), tostring(r)) }
+end
+function handlers.TerrainGenFlat(player, payload)
+	local sz = tonumber(payload.size) or 512
+	assert(sz >= 32 and sz <= 1024, "size 32..1024.")
+	local mat = terrainMat(payload.material or "Grass")
+	local ter = terrainOrFail()
+	local r3 = Region3.new(Vector3.new(-sz / 2, 0, -sz / 2), Vector3.new(sz / 2, 8, sz / 2)):ExpandToGrid(4)
+	ter:FillRegion(r3, 4, mat)
+	if payload.water then ter:FillBlock(CFrame.new(0, 10, 0), Vector3.new(sz, 4, sz), Enum.Material.Water) end
+	return { msg = "Flat gerado (" .. tostring(sz) .. "x" .. tostring(sz) .. ")." }
+end
+
 function handlers.PipeStats(player)
 	local sel2 = selected[player]
 	return { deltaFlush = pipeStats.deltaFlush, deltaNodes = pipeStats.deltaNodes, propsPush = pipeStats.propsPush, selRemoved = pipeStats.selRemoved, selects = pipeStats.selects, creates = pipeStats.creates, skippedCap = pipeStats.skippedCap, skippedParent = pipeStats.skippedParent, nodeCount = nodeCount, maxNodes = CONFIG.MAX_NODES, subscribed = subscribed[player] == true, selectedId = (sel2 ~= nil) and idOf[sel2] or nil }
@@ -2436,7 +2664,7 @@ end
 
 -- ============ RUN REAL (Play/Pause/Stop de verdade) ============
 local RUN = { running = false, frozen = false, parts = {}, vels = {}, sounds = {} }
-local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, Undo=true }
+local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, TerrainGenFlat=true, TerrainReplace=true, TerrainWater=true, ScriptSet=true, Undo=true }
 local function runRestore()
 	for part, was in pairs(RUN.parts) do
 		if part and part.Parent then

@@ -83,7 +83,7 @@ local function menuItems(name)
 end
 local fEdit, nEdit = menuItems("Edit")
 check(fEdit ~= nil, "Menu Edit criado")
-check(nEdit == 8, "Menu Edit tem 8 itens (=" .. tostring(nEdit) .. ")")
+check(nEdit == 9, "Menu Edit tem 9 itens c/ Script Studio (=" .. tostring(nEdit) .. ")")
 local fFile, nFile = menuItems("File")
 check(fFile ~= nil, "Menu File criado")
 check(nFile >= 9, "Menu File tem itens (=" .. tostring(nFile) .. ")")

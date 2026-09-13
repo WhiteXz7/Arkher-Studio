@@ -375,6 +375,10 @@ if strip and ribbon then
 			if ti and ti.cells ~= nil then
 				ok(true, "TerrainInfo vivo (" .. tostring(ti.cells) .. " voxels)")
 			else print("[ArkherX] SELFTEST INFO TerrainInfo sem resposta (sem Terrain/mock?)") end
+			local sr = busApi("ScriptRun", { code = "return 40+2" })
+			if sr and sr.ret ~= nil then
+				ok(sr.ret == "42", "ScriptRun vivo (40+2=" .. tostring(sr.ret) .. ")")
+			else print("[ArkherX] SELFTEST INFO ScriptRun sem resposta (mock?)") end
 			local cl = busApi("CloudList", {})
 			if cl and cl.clouds ~= nil then
 				ok(true, "CloudList vivo (" .. tostring(#(cl.clouds or {})) .. " nuvens)")

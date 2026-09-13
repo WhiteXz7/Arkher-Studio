@@ -514,6 +514,8 @@ local MENUS = {
     { sep = true },
     { icon = "Text", label = "Renomear…", key = "F2", act = "Rename" },
     { icon = "close", label = "Excluir", key = "Del", act = "Delete" },
+    { sep = true },
+    { icon = "Script", label = "Script Studio (Lua/Python/blocos/C#)…", act = "ScriptStudio" },
   },
   View = {
     { icon = "nodeLink", label = "Hierarchy (painel)", key = "Ctrl+Shift+X", act = "ToggleHierarchy" },
@@ -544,6 +546,8 @@ local MENUS = {
     { sep = true },
     { icon = "Save", label = "Publicar no Roblox…", act = "Publish", tip = "Publica o jogo atual no seu PERFIL (página estilo jogo do Roblox)" },
     { icon = "Folder", label = "Places do meu perfil…", act = "PlacesProfile", tip = "Lista jogos/places do perfil + cria PLACES NOVAS de verdade (CreatePlaceAsync)" },
+    { sep = true },
+    { icon = "Info", label = "Ajuda do Studio…", act = "HelpStudio" },
   },
 }
 -- Menus dos topos (Collaborate/Invites/Changes/Account) — item unico que abre Info.
@@ -1650,8 +1654,173 @@ local function openTerrainVoxelPanel()
     if e then say(tostring(e), true)
     elseif r and r.result then say(r.result.msg or "Terreno limpo.") refreshInfo() end
   end)
-  label("Hint", body, "V1: sem desfazer no terreno — confira o centro antes de aplicar. Voxels de 4 studs.", 0, 270, 660, 30, 11, m.muted)
+  local wtB = actionBtn(body, 0, 266, 200, 30, "AGUA Y=10", m.blue)
+  wtB.Activated:Connect(function()
+    local r, e = api("TerrainWater", { y = tonumber(cy.Text) or 10, xz = 512 })
+    if e then say(tostring(e), true)
+    elseif r and r.result then say(r.result.msg or "Agua.") refreshInfo() end
+  end)
+  local rpB = actionBtn(body, 210, 266, 200, 30, "ROCHA->MATERIAL", m.gold)
+  rpB.Activated:Connect(function()
+    local r, e = api("TerrainReplace", { center = center(), radius = tonumber(rIn.Text) or 16, from = "Rock", to = mats[mi] })
+    if e then say(tostring(e), true)
+    elseif r and r.result then say(r.result.msg or "Trocado.") refreshInfo() end
+  end)
+  local gfB = actionBtn(body, 420, 266, 200, 30, "GERAR FLAT", m.blue)
+  gfB.Activated:Connect(function()
+    local r, e = api("TerrainGenFlat", { size = 512, material = mats[mi], water = false })
+    if e then say(tostring(e), true)
+    elseif r and r.result then say(r.result.msg or "Flat.") refreshInfo() end
+  end)
+  label("Hint", body, "V2: agua/troca/flat juntos. V1: sem desfazer no terreno — confira o centro antes de aplicar. Voxels de 4 studs.", 0, 302, 660, 30, 11, m.muted)
 end
+local function openScriptStudio()
+  local d, body = modalDialog("Script Studio — Lua/Python/blocos/C# (executa de verdade)", 700, 600)
+  label("T", body, "EDITOR + EXECUCAO REAL (poder de command bar, so p/ voce)", 0, 8, 680, 18, 14, m.cyan, true)
+  local langs = { "Lua", "Python", "BLOCOS", "C#" }
+  local li = 1
+  local langB = actionBtn(body, 0, 34, 160, 30, "linguagem: Lua", m.cyan)
+  langB.Activated:Connect(function()
+    li = li % #langs + 1
+    langB.Text = "linguagem: " .. langs[li]
+  end)
+  local listB = actionBtn(body, 168, 34, 150, 30, "LISTAR SCRIPTS", m.muted)
+  local selB = actionBtn(body, 326, 34, 170, 30, "CARREGAR SELECAO", m.gold)
+  local codeT = Instance.new("TextBox")
+  codeT.Name = "Code"
+  codeT.Position = UDim2.fromOffset(0, 72)
+  codeT.Size = UDim2.fromOffset(680, 190)
+  codeT.BackgroundColor3 = m.bg
+  codeT.TextColor3 = m.text
+  codeT.Font = Enum.Font.Code
+  codeT.TextSize = 13
+  codeT.TextXAlignment = Enum.TextXAlignment.Left
+  codeT.TextYAlignment = Enum.TextYAlignment.Top
+  codeT.MultiLine = true
+  codeT.ClearTextOnFocus = false
+  codeT.TextWrapped = false
+  codeT.Text = "return 2+2"
+  codeT.ZIndex = 42
+  codeT.Parent = body
+  corner(codeT, 6)
+  stroke(codeT, m.border, 1)
+  local outL = label("O", body, "saida: …", 0, 268, 680, 76, 12, m.text)
+  local function showOut(txt) outL.Text = "saida: " .. tostring(txt):sub(1, 600) end
+  listB.Activated:Connect(function()
+    local r, e = api("ScriptList", {})
+    if e then showOut(e) return end
+    local names = {}
+    for _, sc in ipairs((r.result and r.result.scripts) or {}) do
+      names[#names + 1] = (sc.path or sc.name or "?")
+    end
+    showOut(#names .. " scripts: " .. table.concat(names, " | "):sub(1, 500))
+  end)
+  selB.Activated:Connect(function()
+    local id = needSelection()
+    if not id then return end
+    local r, e = api("ScriptGet", { id = id })
+    if e then showOut(e)
+    elseif r.result and r.result.error then showOut(r.result.error)
+    elseif r.result then codeT.Text = r.result.source or "" showOut("carregado: " .. tostring(r.result.name)) end
+  end)
+  local buildTree
+  local runB = actionBtn(body, 0, 350, 200, 36, "EXECUTAR", m.blue)
+  runB.Activated:Connect(function()
+    local lg = langs[li]
+    local act = lg == "Lua" and "ScriptRun" or lg == "Python" and "PyLua" or lg == "C#" and "CsRun" or nil
+    if lg == "BLOCOS" then
+      local tree = buildTree()
+      local r, e = api("BlockRun", { nodes = tree })
+      if e then showOut(e)
+      elseif r.result.error then showOut("ERRO: " .. r.result.error .. (r.result.lua and ("\nLUA:\n" .. r.result.lua:sub(1, 300)) or ""))
+      else showOut("ret=" .. tostring(r.result.ret) .. (r.result.lua and ("\nLUA:\n" .. r.result.lua:sub(1, 300)) or "")) end
+      return
+    end
+    local r, e = api(act, { code = codeT.Text })
+    if e then showOut(e)
+    elseif r.result.error then showOut("ERRO: " .. r.result.error .. (r.result.lua and ("\nLUA:\n" .. r.result.lua:sub(1, 300)) or ""))
+    else showOut("ret=" .. tostring(r.result.ret) .. (r.result.lua and ("\nLUA:\n" .. r.result.lua:sub(1, 300)) or "")) end
+  end)
+  local saveB = actionBtn(body, 210, 350, 200, 36, "SALVAR NA SELECAO", m.gold)
+  saveB.Activated:Connect(function()
+    local id = needSelection()
+    if not id then return end
+    local r, e = api("ScriptSet", { id = id, source = codeT.Text })
+    if e then showOut(e)
+    elseif r.result.error then showOut(r.result.error)
+    else showOut(r.result.msg or "gravado.") end
+  end)
+  label("B", body, "BLOCOS V1 (linear + repeat/end):", 0, 396, 400, 16, 12, m.text, true)
+  local chain = {}
+  local chainL = label("C", body, "(vazio)", 0, 470, 680, 60, 11, m.muted)
+  local function paintChain()
+    local parts = {}
+    for _, n in ipairs(chain) do parts[#parts + 1] = n.op .. (n.text and (": " .. n.text:sub(1, 18)) or n.n and (" " .. tostring(n.n)) or n.code and (": " .. n.code:sub(1, 18)) or "") end
+    chainL.Text = (#parts == 0) and "(vazio)" or table.concat(parts, " > "):sub(1, 400)
+  end
+  buildTree = function()
+    local root, stack = {}, {}
+    local cur = root
+    for _, n in ipairs(chain) do
+      if n.op == "repeat" then
+        local r = { op = "repeat", n = n.n, body = {} }
+        cur[#cur + 1] = r
+        stack[#stack + 1] = cur
+        cur = r.body
+      elseif n.op == "end" then
+        if #stack > 0 then cur = table.remove(stack) end
+      else
+        cur[#cur + 1] = n
+      end
+    end
+    return root
+  end
+  local pText = input(body, "Pt", 0, 416, 300, "texto p/ print ou lua")
+  local pNum = input(body, "Pn", 308, 416, 100, "n (1)")
+  local function addOp(op)
+    if op == "print" then chain[#chain + 1] = { op = "print", text = pText.Text }
+    elseif op == "wait" then chain[#chain + 1] = { op = "wait", n = tonumber(pNum.Text) or 1 }
+    elseif op == "lua" then chain[#chain + 1] = { op = "lua", code = pText.Text }
+    elseif op == "repeat" then chain[#chain + 1] = { op = "repeat", n = tonumber(pNum.Text) or 2 }
+    elseif op == "end" then chain[#chain + 1] = { op = "end" } end
+    paintChain()
+  end
+  local bx = 416
+  for _, op in ipairs({ "print", "wait", "lua", "repeat", "end" }) do
+    local b = actionBtn(body, bx, 416, 52, 30, op, m.muted)
+    b.Activated:Connect(function() addOp(op) end)
+    bx = bx + 56
+  end
+  local clrB = actionBtn(body, bx, 416, 60, 30, "limpar", m.error)
+  clrB.Activated:Connect(function() chain = {} paintChain() end)
+  label("Hint", body, "Tradutores V1: Python sem import/class · C# sem classes · loop infinito trava (ponha task.wait).", 0, 536, 680, 40, 11, m.muted)
+end
+actions.ScriptStudio = function() openScriptStudio() end
+local function openHelpStudio()
+  local d, body = modalDialog("Ajuda do Studio", 680, 480)
+  label("T", body, "ARKHER STUDIO — AJUDA RAPIDA", 0, 8, 660, 20, 15, m.cyan, true)
+  local lines = {
+    "TECLAS: F5 play/stop · F8 mostra/esconde UI · Del excluir · Esc fechar/desselecionar",
+    "Ctrl+S salvar+publicar · Ctrl+Shift+P busca properties · Ctrl+Shift+X busca hierarchy",
+    "Ctrl+Z desfazer · Ctrl+Shift+Z refazer · F2 renomear",
+    "",
+    "COMECO RAPIDO:",
+    "1. Clique numa peca no viewport (seleciona) ou na Hierarchy.",
+    "2. INSERT cria (Model/Folder/Script/Texto). MUNDO > Terreno VOXEL = pincel 3D.",
+    "3. Properties edita tudo (cor = quadradinho, enum = menu).",
+    "4. Edit > Script Studio roda Lua/Python/blocos/C# de verdade.",
+    "5. Run > Play testa com fisica; Stop volta a editar.",
+    "6. FILE > Publicar manda p/ sua conta (precisa jogo publicado).",
+    "",
+    "DIAGNOSTICO: console `_G.ArkherSelfTest()` repete o autoteste; `_G.ArkherPipe()` mostra o pipeline.",
+  }
+  local y = 36
+  for _, ln in ipairs(lines) do
+    label("H" .. y, body, ln == "" and " " or ln, 0, y, 660, 18, 12, m.text)
+    y = y + 20
+  end
+end
+actions.HelpStudio = function() openHelpStudio() end
 actions.XOpenTerrainVoxel = function() openTerrainVoxelPanel() end
 actions.XOpenTerrain      = function() deckOpen("terrain", "ferramentas") end
 actions.XOpenTerrainGen   = function() deckOpen("terrain", "gerar") end

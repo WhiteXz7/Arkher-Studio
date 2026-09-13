@@ -17,6 +17,15 @@ seguir os itens e anotar OK/FALHA + print/log. Depois é só refinamento.
 - [ ] MUNDO > Terreno VOXEL > APLICAR → bola de Grama no terreno
 - [ ] Console: `_G.ArkherPipe()` → 1 linha com contadores
 
-## 2. (R5: scripting/run/cloud — checklist entra na R5)
+## 2. Scripting/run/cloud/terrain-2 — R5 (8 min)
+- [ ] Edit > Script Studio > EXECUTAR (Lua `return 2+2`) → saida ret=4
+- [ ] Linguagem Python > fatorial (painel hint) > EXECUTAR → ret=120 + mostra Lua
+- [ ] BLOCOS > ADD print/lua/repeat > EXECUTAR → roda + mostra Lua gerado
+- [ ] C# > soma 1..5 > EXECUTAR → ret=15
+- [ ] LISTAR SCRIPTS → nomes; CARREGAR SELECAO (Script) → código; SALVAR
+- [ ] Run > Play → peça cai (física); editar peça → erro "Em execução"; Stop → libera
+- [ ] Game > Places do meu perfil → abre (com ou sem login: msg honesta)
+- [ ] Terreno VOXEL > AGUA / ROCHA->MATERIAL / GERAR FLAT → aplicam
+- [ ] Game > Ajuda do Studio → painel de ajuda
 
 ## 3. (R6: anim/vfx/inéditos/beleza — checklist entra na R6)

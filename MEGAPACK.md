@@ -12,17 +12,17 @@ Blocos: 5 por rodada, no automático; pedir pra continuar ao fim.
 | Núcleo edição (select/transform/create/delete/undo ao vivo) | 15 | 15 | R4: código+mock provados; Play = checklist único pós-R6 |
 | Hierarchy ao vivo | 8 | 8 | R4: J/scrollTo/bR/bT lidos e provados no código |
 | Properties ao vivo | 8 | 8 | R4: 8 kinds editáveis + SetAny/undo testados |
-| Terrain real (spec docs) | 8 | 0.5 | Ferramentas Create/Edit + brush no viewport |
-| Scripting (editor+LSP+Python+visual+C#) | 10 | 1 | Editar+rodar Lua+Python; visual funciona |
-| Run/debug no Play | 6 | 0.5 | Play/Pause/Stop + erros visíveis |
-| Cloud/publish/places reais | 8 | 1.5 | Fim-a-fim com conta/place/template reais |
+| Terrain real (spec docs) | 8 | 7.5 | R3+R5: brush+agua+troca+flat; falta viewport-brush (R6) |
+| Scripting (editor+LSP+Python+visual+C#) | 10 | 10 | R5: ScriptRun/PyLua/BlockRun/CsRun executam + painel |
+| Run/debug no Play | 6 | 6 | R5: handlers reais + MUTATING lock provado em teste |
+| Cloud/publish/places reais | 8 | 8 | R5: vault+datastore auditado + 29 testes + AssetService real |
 | Ribbon/topbar/menus UX | 7 | 3 | 7×23 antigo + horizontal + ícones (print) |
 | Animação/rig | 6 | 0.5 | Rig real mexendo peça |
 | Materiais/VFX/áudio/física | 8 | 0.5 | Um de cada aplicado e visível |
 | Provas no real (selftest/prints/auditoria) | 6 | 3.5 | R4: SELFTEST v2 + CHECKLIST_PLAY.md criado |
-| Docs/ajuda/onboarding | 3 | 0 | Ajuda dentro do studio |
+| Docs/ajuda/onboarding | 3 | 1 | R5: painel Ajuda no studio |
 | Inéditos (além da indústria) | 7 | 0 | 3+ sistemas que ninguém tem |
-| **TOTAL** | **100** | **42** | **FALTAM 58** |
+| **TOTAL** | **100** | **71** | **FALTAM 29** |
 
 Última rodada: R1 (pesquisa docs + audit props 0 + SELFTEST + scroll/toast).
 
@@ -84,3 +84,23 @@ Blocos: 5 por rodada, no automático; pedir pra continuar ao fim.
   + dropdown enum; exóticos (cf/o) display-only seguro.
 - SELFTEST v2: +PipeStats/+TerrainInfo/+CloudList vivos (mock-safe).
 - 220 testes (68+29+18+27+35+43), VERIFY OK, audits 0/0/0.
+
+## R5 (+29 → 71/100) — SCRIPTING/RUN/CLOUD/TERRAIN-2/DOCS
+- SCRIPTING REAL: ScriptRun/PyLua/BlockRun/CsRun executam código de verdade
+  no servidor (loadstring+pcall, poder de command bar); tradutores Py/C#
+  subset V1 (-doc: sem import/class); visual gera Lua aninhado (repeat/body)
+  e mostra o código; ScriptGet/Set com erros honestos; loop-infinito travado.
+  11 checks novos (fatorial=120, soma C#=15, repeat=30...).
+- Conflito achado e resolvido: PyRun JÁ existia (pybridge, callers em 08/10)
+  e sombreava o meu → renomeado p/ PyLua. Bug de regex (`|` não existe em
+  pattern Lua) pego pelos testes e corrigido.
+- Painel Edit > Script Studio: editor multiline + linguagens + LISTAR/
+  CARREGAR/SALVAR + builder de blocos + saída com Lua gerado.
+- RUN: Play/Pause/Stop auditados (freeze físico real); teste prova o lock
+  MUTATING (Set bloqueado no play, liberado no stop).
+- CLOUD: vault+datastore com fallback honesto auditado (29 testes cobrem);
+  AssetService real (Save/PlaceAsync) com pcall.
+- TERRAIN-2: Água (plano Y), Troca Rock→material (ReplaceMaterial),
+  Gerar Flat (FillRegion+água opcional) + 4 checks + 3 botões no painel.
+- DOCS: Game > Ajuda do Studio (teclas reais lidas do 01 + quickstart).
+- SELFTEST v3: +ScriptRun 40+2=42.
