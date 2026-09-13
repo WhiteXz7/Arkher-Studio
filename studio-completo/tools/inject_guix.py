@@ -207,13 +207,16 @@ def build_prop_values(cls, nodes):
             "TextXAlignment": (0x12, col("TextXAlignment", lambda v: as_enum(v["en"]), 0)),
             "MultiLine": (0x2, col("MultiLine", bool, False)),
             "TextYAlignment": (0x12, col("TextYAlignment", lambda v: as_enum(v["en"]), 1)),
+            "RichText": (0x2, col("RichText", bool, False)),
+            "TextEditable": (0x2, col("TextEditable", bool, True)),
+            "TextWrapped": (0x2, col("TextWrapped", bool, False)),
         }
     elif cls == "ScrollingFrame":
         P = {
             "Name": (0x1, [n["name"] for n in nodes]),
             "Position": (0x7, col("Position", lambda v: as_u2(v["u2"]), U2ZERO)),
             "Size": (0x7, [as_u2(n["props"]["Size"]["u2"]) for n in nodes]),
-            "Active": (0x2, [False] * N),
+            "Active": (0x2, col("Active", bool, False)),
             "BackgroundColor3": (0xC, col("BackgroundColor3", lambda v: as_c3(v["c3"]), BLACK)),
             "BackgroundTransparency": (0x4, col("BackgroundTransparency", float, 0.0)),
             "BorderSizePixel": (0x3, col("BorderSizePixel", int, 1)),
@@ -287,7 +290,11 @@ OLDFILL = {
                    "TextColor3": BLACK, "TextXAlignment": 2},
     "TextLabel": {"TextTruncate": 0, "ClipsDescendants": False, "Visible": True},
     "TextBox": {"MultiLine": False, "TextYAlignment": 1},
-    "ScrollingFrame": {"AutomaticCanvasSize": 0, "Visible": True},
+    "ScrollingFrame": {"AutomaticCanvasSize": 0, "Visible": True, "Active": False},
+    "TextBox": {"RichText": False, "TextEditable": True, "TextWrapped": False,
+                "MultiLine": False, "TextYAlignment": 1, "ClearTextOnFocus": True,
+                "PlaceholderColor3": (0.0, 0.0, 0.0), "PlaceholderText": "",
+                "TextColor3": (0.0, 0.0, 0.0), "TextSize": 14.0, "TextXAlignment": 0},
     "UIListLayout": {"FillDirection": 1, "SortOrder": 0},
 }
 

@@ -25,6 +25,7 @@ TEAM: Collab Toolbox (paineis 03)
 Layouts: UIL horizontal + SortOrder LayoutOrder (PROVADO no bake).
 Icones: 02 pinta os ORIGINAIS no boot via IconsBus (assados = fallback).
 Feedback: todo toast espelha no log ([ArkherX] SAY ...); boot: OLD-BUTTONS.
+R1 MEGA PACK: SELFTEST em Play real + audit_props 0 drops + scroll Active; ver MEGAPACK.md (13/100, faltam 87).
 Auditoria tools/audit_buttons.py: 23/23 botões resolvem p/ algo real,
 0 mortos (handler real / cmd menus real / modo nucleo).
 

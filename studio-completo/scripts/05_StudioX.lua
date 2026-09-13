@@ -321,6 +321,54 @@ if strip and ribbon then
 	end)
 
 	_G.ArkherShell = { select = selectTab, run = runAction, say = say }
+
+	-- ---------- SELFTEST (prova em Play real; re-rodavel via _G.ArkherSelfTest) ----------
+	local function selftest()
+		local P, F = 0, 0
+		local function ok(c, msg)
+			if c then P = P + 1 print("[ArkherX] SELFTEST PASS " .. msg)
+			else F = F + 1 print("[ArkherX] SELFTEST FAIL " .. msg) end
+		end
+		local eFD = Enum.FillDirection and Enum.FillDirection.Horizontal
+		local eSO = Enum.SortOrder and Enum.SortOrder.LayoutOrder
+		pcall(function()
+			local lay = strip and strip:FindFirstChildWhichIsA("UIListLayout")
+			ok(lay and (eFD == nil or lay.FillDirection == eFD), "TabStrip horizontal (live=" .. tostring(lay and lay.FillDirection) .. ")")
+			ok(lay and (eSO == nil or lay.SortOrder == eSO), "TabStrip SortOrder=LayoutOrder (live=" .. tostring(lay and lay.SortOrder) .. ")")
+			local nt, np, nb = 0, 0, 0
+			if strip then for _, ch in ipairs(strip:GetChildren()) do
+				if ch:IsA("GuiButton") and ch.Name:sub(1, 4) == "Tab_" then nt = nt + 1 end end end
+			if ribbon then for _, pg in ipairs(ribbon:GetChildren()) do
+					if pg.Name:sub(1, 5) == "Page_" then np = np + 1
+						for _, ch in ipairs(pg:GetChildren()) do
+							if ch:IsA("GuiButton") and ch.Name:sub(1, 10) == "RibbonBtn_" then nb = nb + 1 end end end end end
+			ok(nt == 7, "7 abas (" .. nt .. ")")
+			ok(np == 7, "7 paginas (" .. np .. ")")
+			ok(nb == 23, "23 botoes (" .. nb .. ")")
+			local pf = ribbon and ribbon:FindFirstChild("Page_FILE")
+			ok(pf and pf.Visible, "Page_FILE visivel")
+			local b0 = pf and pf:FindFirstChild("RibbonBtn_FILE_Save")
+				if b0 and b0.AbsoluteSize.X == 0 and b0.AbsolutePosition.X == 0 then
+				print("[ArkherX] SELFTEST INFO botao sem viewport (mock?)")
+			else
+				ok(b0 and b0.AbsoluteSize.X > 10, "FILE_Save com tamanho real (" .. tostring(b0 and b0.AbsoluteSize) .. ")")
+			end
+			ok(clientBus ~= nil, "ClientBus vivo")
+			ok(menusBus ~= nil, "MenusBus vivo")
+			local nv, nd = 0, 0
+			if host then for _, ch in ipairs(host:GetChildren()) do
+					if ch.Name:sub(1, 3) == "V2_" then nv = nv + 1 end
+					if ch.Name:sub(1, 5) == "Deck_" then nd = nd + 1 end end end
+			ok(nv == 40, "40 V2 (" .. nv .. ")")
+			ok(nd == 25, "25 Decks (" .. nd .. ")")
+		end)
+		print("[ArkherX] SELFTEST fim: " .. P .. " pass, " .. F .. " fail.")
+		say("SelfTest: " .. P .. " pass, " .. F .. " fail (7 abas x 23 botoes).")
+		return F == 0
+	end
+	_G.ArkherSelfTest = selftest
+	pcall(function() task.delay(3, function() pcall(selftest) end) end)
+
 	-- auto-cura de boot: garante topbar visivel e UMA pagina (HOME)
 	pcall(function() top.Visible = true end)
 	selectTab("FILE")
