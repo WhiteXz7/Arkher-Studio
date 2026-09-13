@@ -2883,8 +2883,7 @@ local function terCenters(ctr, sym)
   if sym == "xz" then list[#list + 1] = { x = -ctr.x, y = ctr.y, z = -ctr.z } end
   return list
 end
-local TER_UNDO, TER_REDO = {}, {}
-local TER_STROKES = {}
+local TERD = { UNDO = {}, REDO = {}, STROKES = {} }
 local function terSnap(ter, r3)
   local mn = r3.Min
   local bx, by, bz = mn.X / 4, mn.Y / 4, mn.Z / 4
@@ -2899,9 +2898,9 @@ local function terRestore(ter, snap)
   ter:PasteRegion(snap.treg, Vector3int16.new(snap.corner[1], snap.corner[2], snap.corner[3]), true)
 end
 local function terPushUndo(label, snaps)
-  TER_UNDO[#TER_UNDO + 1] = { label = label, snaps = snaps }
-  if #TER_UNDO > 50 then table.remove(TER_UNDO, 1) end
-  TER_REDO = {}
+  TERD.UNDO[#TERD.UNDO + 1] = { label = label, snaps = snaps }
+  if #TERD.UNDO > 50 then table.remove(TERD.UNDO, 1) end
+  TERD.REDO = {}
 end
 -- aplica 1 dab (read -> modifica -> write). p: tool,cx,cy,cz,radius,strength,
 -- material,falloff,hardness,noise,seed,planeY,source
@@ -3013,9 +3012,9 @@ local function terApplyDab(ter, p)
 end
 -- camadas nao-destrutivas: regiao fixa + snapshot base + ops (re-execucao).
 -- Regioes nao podem sobrepor (garante correcao do hide/show).
-local TER_LAYERS = {}
+TERD.LAYERS = {}
 local function terLayerFind(name)
-  for _, L in ipairs(TER_LAYERS) do if L.name == name then return L end end
+  for _, L in ipairs(TERD.LAYERS) do if L.name == name then return L end end
   return nil
 end
 local function terBoxOverlap(a, b)
@@ -3027,10 +3026,10 @@ function handlers.TerrainStroke(player, payload)
   local ctr = terrainCenter(payload.center, player)
   local ter = terrainOrFail()
   if payload.apply == false then
-    local ST = TER_STROKES[player]
+    local ST = TERD.STROKES[player]
     if ST and #ST.snaps > 0 then
       terPushUndo(tool .. " (stroke)", ST.snaps)
-      TER_STROKES[player] = nil
+      TERD.STROKES[player] = nil
       return { msg = "Stroke fechado.", dabs = #ST.snaps }
     end
     return { msg = "Stroke vazio.", dabs = 0 }
@@ -3049,13 +3048,13 @@ function handlers.TerrainStroke(player, payload)
   if mode == "" or mode == "single" then
     terPushUndo(tool, snaps)
   else
-    local ST = TER_STROKES[player] or { snaps = {} }
-    TER_STROKES[player] = ST
+    local ST = TERD.STROKES[player] or { snaps = {} }
+    TERD.STROKES[player] = ST
     if mode == "begin" then ST.snaps = snaps
     else for _, s in ipairs(snaps) do ST.snaps[#ST.snaps + 1] = s end end
     if mode == "end" then
       terPushUndo(tool .. " (stroke)", ST.snaps)
-      TER_STROKES[player] = nil
+      TERD.STROKES[player] = nil
     end
   end
   local recorded = terLayerRecord(ter, payload, p, ctr)
@@ -3063,7 +3062,7 @@ function handlers.TerrainStroke(player, payload)
     touched = touched, dabs = dabs, recorded = recorded }
 end
 function handlers.TerrainUndo(player)
-  local e = table.remove(TER_UNDO)
+  local e = table.remove(TERD.UNDO)
   assert(e, "Nada p/ desfazer no terreno.")
   local ter = terrainOrFail()
   local redo = { label = e.label, snaps = {} }
@@ -3075,11 +3074,11 @@ function handlers.TerrainUndo(player)
     if cur then cur.sizeX, cur.sizeY, cur.sizeZ = s.sizeX, s.sizeY, s.sizeZ redo.snaps[#redo.snaps + 1] = cur end
   end
   for i = #e.snaps, 1, -1 do terRestore(ter, e.snaps[i]) end
-  TER_REDO[#TER_REDO + 1] = redo
+  TERD.REDO[#TERD.REDO + 1] = redo
   return { msg = "Desfeito: " .. tostring(e.label) .. "." }
 end
 function handlers.TerrainRedo(player)
-  local e = table.remove(TER_REDO)
+  local e = table.remove(TERD.REDO)
   assert(e, "Nada p/ refazer no terreno.")
   local ter = terrainOrFail()
   local undo = { label = e.label, snaps = {} }
@@ -3091,11 +3090,11 @@ function handlers.TerrainRedo(player)
     if cur then cur.sizeX, cur.sizeY, cur.sizeZ = s.sizeX, s.sizeY, s.sizeZ undo.snaps[#undo.snaps + 1] = cur end
   end
   for i = #e.snaps, 1, -1 do terRestore(ter, e.snaps[i]) end
-  TER_UNDO[#TER_UNDO + 1] = undo
+  TERD.UNDO[#TERD.UNDO + 1] = undo
   return { msg = "Refeito: " .. tostring(e.label) .. "." }
 end
 function terLayerRecord(ter, payload, p, ctr)
-  local lname = tostring(payload.layer or (TER_LAYERS[1] and TER_LAYERS[1].name) or "")
+  local lname = tostring(payload.layer or (TERD.LAYERS[1] and TERD.LAYERS[1].name) or "")
   if lname == "" then return false end
   local L = terLayerFind(lname)
   if not L or not L.visible then return false end
@@ -3111,24 +3110,24 @@ function handlers.TerrainLayer(player, payload)
   local ter = terrainOrFail()
   if op == "list" then
     local out = {}
-    for _, L in ipairs(TER_LAYERS) do
+    for _, L in ipairs(TERD.LAYERS) do
       out[#out + 1] = { name = L.name, visible = L.visible, ops = #L.ops, box = L.box }
     end
     return { layers = out }
   elseif op == "add" then
-    assert(#TER_LAYERS < 8, "Maximo 8 camadas.")
-    local nm = tostring(payload.name or ("Layer" .. (#TER_LAYERS + 1)))
+    assert(#TERD.LAYERS < 8, "Maximo 8 camadas.")
+    local nm = tostring(payload.name or ("Layer" .. (#TERD.LAYERS + 1)))
     assert(nm ~= "" and not terLayerFind(nm), "Nome de camada invalido/duplicado.")
     local cx, cz = tonumber(payload.cx) or 0, tonumber(payload.cz) or 0
     local sx, sz = math.clamp(tonumber(payload.sx) or 256, 32, 1024), math.clamp(tonumber(payload.sz) or 256, 32, 1024)
     local sy = math.clamp(tonumber(payload.sy) or 128, 32, 512)
     local box = { x0 = cx - sx / 2, x1 = cx + sx / 2, z0 = cz - sz / 2, z1 = cz + sz / 2 }
-    for _, L in ipairs(TER_LAYERS) do assert(not terBoxOverlap(box, L.box), "Regioes de camada nao podem sobrepor.") end
+    for _, L in ipairs(TERD.LAYERS) do assert(not terBoxOverlap(box, L.box), "Regioes de camada nao podem sobrepor.") end
     local r3 = Region3.new(Vector3.new(box.x0, -64, box.z0), Vector3.new(box.x1, -64 + sy, box.z1)):ExpandToGrid(4)
     local base = terSnap(ter, r3)
     assert(base, "Falha no snapshot base da camada.")
-    TER_LAYERS[#TER_LAYERS + 1] = { name = nm, visible = true, ops = {}, box = box, sy = sy, base = base, region = r3 }
-    return { msg = "Camada " .. nm .. " criada.", layers = #TER_LAYERS }
+    TERD.LAYERS[#TERD.LAYERS + 1] = { name = nm, visible = true, ops = {}, box = box, sy = sy, base = base, region = r3 }
+    return { msg = "Camada " .. nm .. " criada.", layers = #TERD.LAYERS }
   elseif op == "toggle" or op == "show" or op == "hide" then
     local L = terLayerFind(tostring(payload.name or ""))
     assert(L, "Camada nao encontrada.")
@@ -3143,7 +3142,7 @@ function handlers.TerrainLayer(player, payload)
   elseif op == "remove" then
     local L = terLayerFind(tostring(payload.name or ""))
     assert(L, "Camada nao encontrada.")
-    for i, v in ipairs(TER_LAYERS) do if v == L then table.remove(TER_LAYERS, i) break end end
+    for i, v in ipairs(TERD.LAYERS) do if v == L then table.remove(TERD.LAYERS, i) break end end
     return { msg = "Camada " .. L.name .. " removida (voxels mantidos)." }
   elseif op == "clear" then
     local L = terLayerFind(tostring(payload.name or ""))
@@ -3157,7 +3156,7 @@ function handlers.TerrainLayer(player, payload)
   end
   assert(false, "op: list/add/toggle/show/hide/remove/clear.")
 end
-local TER_BIOMES = {
+TERD.BIOMES = {
   meadow = { top = "Grass", topHigh = "Snow", shore = "Sand", mid = "Ground", deep = "Rock" },
   desert = { top = "Sand", topHigh = "Sandstone", shore = "Sand", mid = "Sandstone", deep = "Rock" },
   arctic = { top = "Snow", topHigh = "Glacier", shore = "Ice", mid = "Rock", deep = "Slate" },
@@ -3169,7 +3168,7 @@ function handlers.TerrainGen(player, payload)
   local height = math.clamp(math.floor(tonumber(payload.height) or 48), 8, 128)
   local cx, cz = tonumber(payload.cx) or 0, tonumber(payload.cz) or 0
   local baseY = math.floor(tonumber(payload.baseY) or 0)
-  local biome = TER_BIOMES[tostring(payload.biome or "meadow")] or TER_BIOMES.meadow
+  local biome = TERD.BIOMES[tostring(payload.biome or "meadow")] or TERD.BIOMES.meadow
   local waterLevel = payload.waterLevel and math.floor(tonumber(payload.waterLevel)) or nil
   local passes = math.clamp(math.floor(tonumber(payload.erosion) or 1), 0, 3)
   local ter = terrainOrFail()
@@ -3332,10 +3331,10 @@ function handlers.TerrainStats(player)
   local ter = terrainOrFail()
   local cells = 0
   pcall(function() cells = ter:CountCells() end)
-  return { cells = cells, undo = #TER_UNDO, redo = #TER_REDO, layers = #TER_LAYERS }
+  return { cells = cells, undo = #TERD.UNDO, redo = #TERD.REDO, layers = #TERD.LAYERS }
 end
 
-local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, TerrainGenFlat=true, TerrainReplace=true, TerrainWater=true, TerrainSmooth=true, TerrainNoise=true, TerrainStroke=true, TerrainUndo=true, TerrainRedo=true, TerrainLayer=true, TerrainGen=true, TerrainWaterProps=true, TerrainRain=true, TerrainFlood=true, TerrainHydro=true, ScriptSet=true, Undo=true, Group=true, Ungroup=true, AlignKids=true, DistributeKids=true, MirrorKids=true, PivotReset=true, SelAdd=true, SelClear=true, SelectMany=true, DeleteMany=true, DuplicateMany=true, RemapSet=true, TransformMany=true, ViewportRig=true, MeshNew=true, MeshMoveVert=true, MeshDeleteVert=true, MeshSmooth=true, MeshMirror=true, MeshImportOBJ=true, AnimRig=true, AnimNew=true, AnimKeyAdd=true, AnimKeyDel=true, AnimPoseSet=true, AnimPlay=true, AnimStop=true, AnimScrub=true, AnimIK=true, AnimImport=true, AnimJointSet=true, UiRoot=true, UiNew=true, UiDelete=true, UiDup=true, UiMove=true, UiSize=true, UiText=true, UiImport=true, UiPublish=true, RrwProfile=true, RrwFx=true, RrwSky=true, RrwAtmo=true, RrwClouds=true, RrwLod=true, RrwVfx=true }
+local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, TerrainGenFlat=true, TerrainReplace=true, TerrainWater=true, TerrainSmooth=true, TerrainNoise=true, TerrainStroke=true, TerrainUndo=true, TerrainRedo=true, TerrainLayer=true, TerrainGen=true, TerrainWaterProps=true, TerrainRain=true, TerrainFlood=true, TerrainHydro=true, ScriptSet=true, Undo=true, Group=true, Ungroup=true, AlignKids=true, DistributeKids=true, MirrorKids=true, PivotReset=true, SelAdd=true, SelClear=true, SelectMany=true, DeleteMany=true, DuplicateMany=true, RemapSet=true, TransformMany=true, ViewportRig=true, MeshNew=true, MeshMoveVert=true, MeshDeleteVert=true, MeshSmooth=true, MeshMirror=true, MeshImportOBJ=true, AnimRig=true, AnimNew=true, AnimKeyAdd=true, AnimKeyDel=true, AnimPoseSet=true, AnimPlay=true, AnimStop=true, AnimScrub=true, AnimIK=true, AnimImport=true, AnimJointSet=true, UiRoot=true, UiNew=true, UiDelete=true, UiDup=true, UiMove=true, UiSize=true, UiText=true, UiImport=true, UiPublish=true, RrwProfile=true, RrwFx=true, RrwSky=true, RrwAtmo=true, RrwClouds=true, RrwLod=true, RrwVfx=true, Do15Optimize=true, Do15Relevance=true, WorldGravity=true, WorldSpawn=true, WorldSave=true, WorldClean=true, WorldClear=true }
 local function runRestore()
 	for part, was in pairs(RUN.parts) do
 		if part and part.Parent then
@@ -4143,11 +4142,13 @@ end
 -- Heartbeat (exatamente o canal que o runtime usa). Easing Linear/Constant exato no
 -- preview; Elastic/Cubic/Bounce/CubicV2 usam preview linear (flag approx=true) e o
 -- easing real vale apos publicar a sequencia pelo Studio.
-local EASE_STYLE = { Linear = true, Constant = true, Elastic = true, Cubic = true,
-  Bounce = true, CubicV2 = true }
-local EASE_DIR = { In = true, Out = true, InOut = true }
-local ANIM_PRI = { Idle = true, Movement = true, Action = true, Action2 = true,
-  Action3 = true, Action4 = true, Core = true }
+local ANIMA = {
+  EASE_STYLE = { Linear = true, Constant = true, Elastic = true, Cubic = true,
+    Bounce = true, CubicV2 = true },
+  EASE_DIR = { In = true, Out = true, InOut = true },
+  PRI = { Idle = true, Movement = true, Action = true, Action2 = true,
+    Action3 = true, Action4 = true, Core = true },
+}
 local animPrev = {}
 local function animGetSeq(id)
   local o = getObject(id)
@@ -4274,9 +4275,9 @@ local function animBuildKey(seq, data)
     p.Weight = tonumber(pd.w) or 1
     pcall(function() p.MaskWeight = tonumber(pd.mw) or 1 end)
     local es = tostring(pd.es or "Linear")
-    if EASE_STYLE[es] then pcall(function() p.EasingStyle = Enum.PoseEasingStyle[es] end) end
+    if ANIMA.EASE_STYLE[es] then pcall(function() p.EasingStyle = Enum.PoseEasingStyle[es] end) end
     local ed = tostring(pd.ed or "InOut")
-    if EASE_DIR[ed] then pcall(function() p.EasingDirection = Enum.PoseEasingDirection[ed] end) end
+    if ANIMA.EASE_DIR[ed] then pcall(function() p.EasingDirection = Enum.PoseEasingDirection[ed] end) end
     local parentPath = ""
     for i = 1, #(pd.path or {}) - 1 do parentPath = parentPath .. "/" .. pd.path[i] end
     local par = byPath[parentPath]
@@ -4366,7 +4367,7 @@ function handlers.AnimNew(player, payload)
   seq.Name = tostring(payload.name or "Animacao"):sub(1, 40)
   seq.Loop = payload.loop == true
   local pri = tostring(payload.priority or "Action")
-  if ANIM_PRI[pri] then pcall(function() seq.Priority = Enum.AnimationPriority[pri] end) end
+  if ANIMA.PRI[pri] then pcall(function() seq.Priority = Enum.AnimationPriority[pri] end) end
   local parent = game:GetService("ServerStorage")
   if payload.parentId then
     local ok, p = pcall(getObject, payload.parentId)
@@ -4491,12 +4492,12 @@ function handlers.AnimPoseSet(player, payload)
   if payload.weight ~= nil then pose.Weight = math.clamp(tonumber(payload.weight) or 1, 0, 10) end
   local es = payload.easingStyle and tostring(payload.easingStyle) or nil
   if es then
-    assert(EASE_STYLE[es], "easingStyle: Linear/Constant/Elastic/Cubic/Bounce/CubicV2.")
+    assert(ANIMA.EASE_STYLE[es], "easingStyle: Linear/Constant/Elastic/Cubic/Bounce/CubicV2.")
     pcall(function() pose.EasingStyle = Enum.PoseEasingStyle[es] end)
   end
   local ed = payload.easingDir and tostring(payload.easingDir) or nil
   if ed then
-    assert(EASE_DIR[ed], "easingDir: In/Out/InOut.")
+    assert(ANIMA.EASE_DIR[ed], "easingDir: In/Out/InOut.")
     pcall(function() pose.EasingDirection = Enum.PoseEasingDirection[ed] end)
   end
   queueObject(seq)
@@ -4665,7 +4666,7 @@ function handlers.AnimImport(player, payload)
   seq.Name = tostring(payload.name or data.name or "Animacao"):sub(1, 40)
   seq.Loop = data.loop == true
   local pri = tostring(data.priority or "Action")
-  if ANIM_PRI[pri] then pcall(function() seq.Priority = Enum.AnimationPriority[pri] end) end
+  if ANIMA.PRI[pri] then pcall(function() seq.Priority = Enum.AnimationPriority[pri] end) end
   seq.Parent = game:GetService("ServerStorage")
   for _, kd in ipairs(data.keys) do
     assert(type(kd.time) == "number" and kd.time >= 0 and kd.time <= 120, "key time invalido.")
@@ -4974,9 +4975,10 @@ function handlers.UiPublish(player, payload)
 end
 
 -- ============ R14b: RRW (pipeline de render real: perfil/FX/ceu/clima/LOD/VFX) ============
-local RRW_FX = { BloomEffect = true, BlurEffect = true, ColorCorrectionEffect = true,
-  DepthOfFieldEffect = true, SunRaysEffect = true, ColorGradingEffect = true }
-local RRW_FX_NUM = {
+local RRWS = {
+  FX = { BloomEffect = true, BlurEffect = true, ColorCorrectionEffect = true,
+  DepthOfFieldEffect = true, SunRaysEffect = true, ColorGradingEffect = true },
+  NUM = {
   BloomEffect = { Intensity = { 0, 10 }, Size = { 0, 100 }, Threshold = { 0, 2 } },
   BlurEffect = { Size = { 0, 100 } },
   ColorCorrectionEffect = { Brightness = { -1, 1 }, Contrast = { -1, 1 }, Saturation = { -1, 1 } },
@@ -4984,10 +4986,11 @@ local RRW_FX_NUM = {
     NearIntensity = { 0, 1 }, FarIntensity = { 0, 1 } },
   SunRaysEffect = { Intensity = { 0, 10 }, Spread = { 0, 1 } },
   ColorGradingEffect = {},
+  },
+  sky = { mode = "off", speed = 0.1 },
+  lod = {},
+  fps = { ema = 60, n = 0 },
 }
-local rrwSky = { mode = "off", speed = 0.1 }
-local rrwLod = {}
-local rrwFps = { ema = 60, n = 0 }
 local function uiEnumName2(v)
   if type(v) == "table" and v.Name then return tostring(v.Name) end
   return nil
@@ -5007,17 +5010,17 @@ local function rrwSetStyle(L, style)
 end
 Run.Heartbeat:Connect(function(dt)
   if dt and dt > 0 then
-    rrwFps.n = rrwFps.n + 1
+    RRWS.fps.n = RRWS.fps.n + 1
     local f = 1 / dt
-    rrwFps.ema = rrwFps.ema * 0.95 + math.min(f, 1000) * 0.05
+    RRWS.fps.ema = RRWS.fps.ema * 0.95 + math.min(f, 1000) * 0.05
   end
-  if rrwSky.mode == "cycle" then
+  if RRWS.sky.mode == "cycle" then
     pcall(function()
       local L = rrwLighting()
-      L.ClockTime = ((L.ClockTime or 12) + dt * (rrwSky.speed or 0.1)) % 24
+      L.ClockTime = ((L.ClockTime or 12) + dt * (RRWS.sky.speed or 0.1)) % 24
     end)
   end
-  for name, g in pairs(rrwLod) do
+  for name, g in pairs(RRWS.lod) do
     pcall(function()
       local cam = workspace.CurrentCamera
       if not cam then return end
@@ -5120,14 +5123,14 @@ function handlers.RrwFx(player, payload)
   if op == "list" then
     local out = {}
     for _, c in ipairs(L:GetChildren()) do
-      if RRW_FX[c.ClassName] then
+      if RRWS.FX[c.ClassName] then
         out[#out + 1] = { class = c.ClassName, enabled = c.Enabled ~= false }
       end
     end
     return { items = out }
   end
   local class = tostring(payload.class or "")
-  assert(RRW_FX[class], "fx: Bloom/Blur/ColorCorrection/DepthOfField/SunRays/ColorGrading + Effect.")
+  assert(RRWS.FX[class], "fx: Bloom/Blur/ColorCorrection/DepthOfField/SunRays/ColorGrading + Effect.")
   local fx = L:FindFirstChildOfClass(class)
   if op == "remove" then
     assert(fx, class .. " nao esta ativo.")
@@ -5145,7 +5148,7 @@ function handlers.RrwFx(player, payload)
     register(fx)
   end
   local props = payload.props or {}
-  local spec = RRW_FX_NUM[class] or {}
+  local spec = RRWS.NUM[class] or {}
   for k, lim in pairs(spec) do
     if props[k] ~= nil then
       local v = tonumber(props[k])
@@ -5165,18 +5168,18 @@ end
 function handlers.RrwSky(player, payload)
   local L0 = rrwLighting()
   if payload.mode == nil and payload.clockTime == nil and payload.speed == nil then
-    return { mode = rrwSky.mode, speed = rrwSky.speed, clockTime = L0.ClockTime }
+    return { mode = RRWS.sky.mode, speed = RRWS.sky.speed, clockTime = L0.ClockTime }
   end
-  local mode = tostring(payload.mode or rrwSky.mode)
+  local mode = tostring(payload.mode or RRWS.sky.mode)
   assert(mode == "off" or mode == "static" or mode == "cycle", "mode: off/static/cycle.")
-  rrwSky.mode = mode
-  if payload.speed ~= nil then rrwSky.speed = math.clamp(tonumber(payload.speed) or 0.1, 0.001, 6) end
+  RRWS.sky.mode = mode
+  if payload.speed ~= nil then RRWS.sky.speed = math.clamp(tonumber(payload.speed) or 0.1, 0.001, 6) end
   local L = rrwLighting()
   if payload.clockTime ~= nil then
     L.ClockTime = math.clamp(tonumber(payload.clockTime) or 12, 0, 24) % 24
   end
   queueObject(L)
-  return { mode = mode, speed = rrwSky.speed, clockTime = L.ClockTime }
+  return { mode = mode, speed = RRWS.sky.speed, clockTime = L.ClockTime }
 end
 function handlers.RrwAtmo(player, payload)
   local L = rrwLighting()
@@ -5220,17 +5223,17 @@ function handlers.RrwLod(player, payload)
   local op = tostring(payload.op or "list")
   if op == "list" then
     local out = {}
-    for name, g in pairs(rrwLod) do
+    for name, g in pairs(RRWS.lod) do
       out[#out + 1] = { name = name, active = g.active, tiers = #g.tiers, dist = g.dist or -1 }
     end
     table.sort(out, function(a, b) return a.name < b.name end)
     return { groups = out }
   end
   if op == "remove" then
-    local g = rrwLod[tostring(payload.name or "")]
+    local g = RRWS.lod[tostring(payload.name or "")]
     assert(g, "grupo LOD nao achado.")
     for _, t in ipairs(g.tiers) do pcall(function() t.o.Parent = t.orig end) end
-    rrwLod[tostring(payload.name)] = nil
+    RRWS.lod[tostring(payload.name)] = nil
     return { removed = true }
   end
   assert(op == "register", "op: register/remove/list.")
@@ -5256,10 +5259,10 @@ function handlers.RrwLod(player, payload)
     stash.Parent = game:GetService("ServerStorage")
   end
   for i = 2, #tiers do tiers[i].o.Parent = stash end
-  rrwLod[name] = { tiers = tiers, active = 1, dist = -1, focus = nil }
+  RRWS.lod[name] = { tiers = tiers, active = 1, dist = -1, focus = nil }
   if payload.focusId then
     local ok, fo = pcall(getObject, payload.focusId)
-    if ok and fo and fo:IsA("BasePart") then rrwLod[name].focus = fo.Position end
+    if ok and fo and fo:IsA("BasePart") then RRWS.lod[name].focus = fo.Position end
   end
   return { registered = true, name = name, tiers = #tiers }
 end
@@ -5304,6 +5307,538 @@ function handlers.RrwVfx(player, payload)
   queueObject(parent)
   return { spawned = #made, preset = preset, msg = ("VFX %s (%d objetos)."):format(preset, #made) }
 end
+-- ================= R15a D-O15 (otimizacao real) =================
+do
+local DO15 = { OPS = { notouch = true, noshadow = true, anchor = true }, KINDS = {}, rel = {} }
+function DO15.ws() return game:GetService("Workspace") end
+function DO15.user(o)
+  if not o or not o.Parent then return false end
+  local cn = o.ClassName
+  if cn == "Terrain" or cn == "Camera" then return false end
+  if hidden(o) then return false end
+  if characterPart(o) then return false end
+  return true
+end
+function DO15.stats()
+  local out = { fps = math.floor(RRWS.fps.ema * 10) / 10 }
+  pcall(function()
+    local St = game:GetService("Stats")
+    out.instances = St.InstanceCount
+    out.primitives = St.PrimitivesCount
+    out.moving = St.MovingPrimitivesCount
+    out.contacts = St.ContactsCount
+    out.recvKbps = St.DataReceiveKbps
+    out.sendKbps = St.DataSendKbps
+    out.physMs = St.PhysicsStepTime
+    out.renderMs = St.RenderCPUFrameTime
+    out.drawcalls = St.SceneDrawcallCount
+    out.tris = St.SceneTriangleCount
+    out.memMb = St:GetTotalMemoryUsageMb()
+  end)
+  pcall(function() out.luaKb = math.floor(collectgarbage("count")) end)
+  pcall(function()
+    local w = DO15.ws()
+    out.streaming = w.StreamingEnabled
+    out.targetRadius = w.StreamingTargetRadius
+    out.gravity = w.Gravity
+    out.killY = w.FallenPartsDestroyHeight
+  end)
+  local parts, lights, emit, sc, n = 0, 0, 0, 0, 0
+  for _, d in ipairs(DO15.ws():GetDescendants()) do
+    n = n + 1
+    if n > 20000 then out.truncated = true break end
+    if DO15.user(d) then
+      local cn = d.ClassName
+      if d:IsA("BasePart") and cn ~= "Terrain" then parts = parts + 1 end
+      if cn == "PointLight" or cn == "SpotLight" or cn == "SurfaceLight" then lights = lights + 1 end
+      if cn == "ParticleEmitter" or cn == "Fire" or cn == "Smoke" or cn == "Sparkles" or cn == "Beam" or cn == "Trail" then emit = emit + 1 end
+      if cn == "Script" or cn == "LocalScript" or cn == "ModuleScript" then sc = sc + 1 end
+    end
+  end
+  out.parts, out.lights, out.emitters, out.scripts = parts, lights, emit, sc
+  out.scanned = n
+  return out
+end
+function handlers.Do15Stats(player, payload) return DO15.stats() end
+function DO15.audit()
+  local a = { unanchored = 0, cantouch = 0, castshadow = 0, transparent = 0,
+    oversized = 0, parts = 0, scripts = 0, sounds = 0, decals = 0, mats = {} }
+  local n = 0
+  for _, d in ipairs(DO15.ws():GetDescendants()) do
+    n = n + 1
+    if n > 20000 then a.truncated = true break end
+    if DO15.user(d) then
+      local cn = d.ClassName
+      if d:IsA("BasePart") and cn ~= "Terrain" then
+        a.parts = a.parts + 1
+        if not d.Anchored then a.unanchored = a.unanchored + 1 end
+        if d.CanTouch ~= false then a.cantouch = a.cantouch + 1 end
+        if d.CastShadow ~= false then a.castshadow = a.castshadow + 1 end
+        if (d.Transparency or 0) > 0 then a.transparent = a.transparent + 1 end
+        local sz = d.Size
+        if sz and type(sz.X) == "number" and (sz.X > 2048 or sz.Y > 2048 or sz.Z > 2048) then a.oversized = a.oversized + 1 end
+        local m = d.Material
+        local key = (type(m) == "table" and m.Name) or tostring(m)
+        a.mats[key] = (a.mats[key] or 0) + 1
+      elseif cn == "Script" or cn == "LocalScript" or cn == "ModuleScript" then
+        a.scripts = a.scripts + 1
+      elseif cn == "Sound" then a.sounds = a.sounds + 1
+      elseif cn == "Decal" or cn == "Texture" then a.decals = a.decals + 1
+      end
+    end
+  end
+  a.scanned = n
+  local list = {}
+  for k, v in pairs(a.mats) do list[#list + 1] = { mat = k, n = v } end
+  table.sort(list, function(x, y) return x.n > y.n end)
+  while #list > 8 do table.remove(list) end
+  a.topMats = list
+  a.mats = nil
+  return a
+end
+function handlers.Do15Audit(player, payload) return DO15.audit() end
+function handlers.Do15Optimize(player, payload)
+  local ops = payload.ops or {}
+  assert(type(ops) == "table" and #ops >= 1, "ops: lista nao-vazia.")
+  local want = {}
+  for _, op in ipairs(ops) do
+    op = tostring(op)
+    assert(DO15.OPS[op], "op invalida: " .. op)
+    want[op] = true
+  end
+  if want.anchor then assert(payload.confirm == true, "anchor muda fisica: confirme.") end
+  local snap = {}
+  local changed = { notouch = 0, noshadow = 0, anchor = 0 }
+  local skipped, n, trunc = 0, 0, false
+  for _, d in ipairs(DO15.ws():GetDescendants()) do
+    n = n + 1
+    if n > 20000 then trunc = true break end
+    if #snap >= 2000 then trunc = true break end
+    if d:IsA("BasePart") and d.ClassName ~= "Terrain" and DO15.user(d) then
+      if d:FindFirstChildOfClass("ClickDetector") or d:FindFirstChildOfClass("ProximityPrompt") then
+        skipped = skipped + 1
+      else
+        local e = { o = d }
+        local touched = false
+        if want.notouch and d.CanTouch ~= false then e.ct = d.CanTouch e.hasCt = true d.CanTouch = false changed.notouch = changed.notouch + 1 touched = true end
+        if want.noshadow and d.CastShadow ~= false then e.cs = d.CastShadow e.hasCs = true d.CastShadow = false changed.noshadow = changed.noshadow + 1 touched = true end
+        if want.anchor and not d.Anchored then e.an = d.Anchored e.hasAn = true d.Anchored = true changed.anchor = changed.anchor + 1 touched = true end
+        if touched then snap[#snap + 1] = e queueObject(d) end
+      end
+    end
+  end
+  pushHist(player, { label = "D-O15 otimiza " .. #snap,
+    undo = function()
+      for _, e in ipairs(snap) do
+        if e.hasCt then pcall(function() e.o.CanTouch = e.ct end) end
+        if e.hasCs then pcall(function() e.o.CastShadow = e.cs end) end
+        if e.hasAn then pcall(function() e.o.Anchored = e.an end) end
+      end
+    end,
+    redo = function()
+      for _, e in ipairs(snap) do
+        if e.hasCt then pcall(function() e.o.CanTouch = false end) end
+        if e.hasCs then pcall(function() e.o.CastShadow = false end) end
+        if e.hasAn then pcall(function() e.o.Anchored = true end) end
+      end
+    end })
+  return { changed = changed, skipped = skipped, truncated = trunc }
+end
+function handlers.Do15Preload(player, payload)
+  local ids = payload.ids or {}
+  assert(type(ids) == "table" and #ids >= 1 and #ids <= 50, "ids: 1..50.")
+  local temps = {}
+  for _, id in ipairs(ids) do
+    id = tostring(id)
+    assert(id:match("^rbxassetid://%d+$"), "id invalido: " .. id)
+    local s = Instance.new("Sound")
+    s.Name = "ArkherPreload"
+    s.SoundId = id
+    temps[#temps + 1] = s
+  end
+  local loaded, failed = 0, 0
+  local t0 = os.clock()
+  local ok, err = pcall(function()
+    game:GetService("ContentProvider"):PreloadAsync(temps, function(assetId, status)
+      local nm = (type(status) == "table" and status.Name) or tostring(status)
+      if nm == "Success" then loaded = loaded + 1 else failed = failed + 1 end
+    end)
+  end)
+  for _, s in ipairs(temps) do pcall(function() s:Destroy() end) end
+  assert(ok, "preload falhou: " .. tostring(err))
+  return { loaded = loaded, failed = failed, ms = math.floor((os.clock() - t0) * 1000) }
+end
+DO15.KINDS = {
+  Light = { PointLight = true, SpotLight = true, SurfaceLight = true },
+  Emitter = { ParticleEmitter = true, Fire = true, Smoke = true, Sparkles = true, Beam = true, Trail = true },
+  Decal = { Decal = true, Texture = true },
+  Sound = { Sound = true },
+}
+
+function handlers.Do15Relevance(player, payload)
+  local op = tostring(payload.op or "list")
+  if op == "list" then
+    local out = {}
+    for name, g in pairs(DO15.rel) do
+      out[#out + 1] = { name = name, radius = g.radius, on = g.on, items = g.count, dist = g.dist }
+    end
+    return { groups = out }
+  end
+  if op == "remove" then
+    local g = DO15.rel[tostring(payload.name or "")]
+    assert(g, "grupo inexistente.")
+    for o, st in pairs(g.init) do pcall(function() o.Enabled = st end) end
+    DO15.rel[tostring(payload.name or "")] = nil
+    queueObject(g.root)
+    return { removed = true }
+  end
+  assert(op == "register", "op: register/list/remove.")
+  local name = tostring(payload.name or "")
+  assert(name:match("^[%w_%-%. ]+$") and #name <= 32, "nome invalido.")
+  assert(not DO15.rel[name], "grupo ja existe.")
+  local n = 0
+  for _ in pairs(DO15.rel) do n = n + 1 end
+  assert(n < 16, "limite 16 grupos.")
+  local o = objects[payload.id]
+  assert(o and (o.ClassName == "Model" or o.ClassName == "Folder"), "id precisa ser Model/Folder.")
+  assert(DO15.user(o) and o:IsDescendantOf(DO15.ws()), "grupo fora do escopo.")
+  local radius = math.clamp(tonumber(payload.radius) or 150, 10, 5000)
+  local kinds = payload.kinds or { "Light", "Emitter" }
+  assert(type(kinds) == "table" and #kinds >= 1, "kinds: lista nao-vazia.")
+  local ks = {}
+  for _, k in ipairs(kinds) do
+    k = tostring(k)
+    assert(DO15.KINDS[k], "kind invalido: " .. k)
+    ks[k] = true
+  end
+  local init, count = {}, 0
+  for _, d in ipairs(o:GetDescendants()) do
+    for k in pairs(ks) do
+      if DO15.KINDS[k][d.ClassName] then init[d] = (d.Enabled ~= false) count = count + 1 break end
+    end
+    if count >= 2000 then break end
+  end
+  DO15.rel[name] = { root = o, radius = radius, kinds = ks, init = init, count = count, on = true, dist = 0 }
+  queueObject(o)
+  return { registered = true, items = count }
+end
+Run.Heartbeat:Connect(function(dt)
+  local dead = nil
+  for name, g in pairs(DO15.rel) do
+    if not g.root or not g.root.Parent then
+      dead = dead or {}
+      dead[#dead + 1] = name
+    else
+      local ok, cf = pcall(function() return g.root:GetBoundingBox() end)
+      local cam = DO15.ws().CurrentCamera
+      if ok and cf and cam and cam.CFrame then
+        local dist = (cf.Position - cam.CFrame.Position).Magnitude
+        g.dist = math.floor(dist)
+        local r = g.radius
+        if g.on and dist > r * 1.1 then
+          g.on = false
+          for o in pairs(g.init) do pcall(function() o.Enabled = false end) end
+        elseif not g.on and dist < r * 0.9 then
+          g.on = true
+          for o, st in pairs(g.init) do pcall(function() o.Enabled = st end) end
+        end
+      end
+    end
+  end
+  if dead then for _, name in ipairs(dead) do DO15.rel[name] = nil end end
+end)
+function handlers.Do15Gc(player, payload)
+  local b0 = collectgarbage("count")
+  collectgarbage("collect")
+  local b1 = collectgarbage("count")
+  return { beforeKb = math.floor(b0), afterKb = math.floor(b1), freedKb = math.floor(b0 - b1) }
+end
+function handlers.Do15Report(player, payload)
+  local Http = game:GetService("HttpService")
+  local rep = { v = 1, stats = DO15.stats(), audit = DO15.audit() }
+  local js = Http:JSONEncode(rep)
+  assert(#js <= 2000000, "relatorio grande demais.")
+  return { json = js, bytes = #js }
+end
+end
+-- ================= R15b World (mundo real) =================
+do
+local WLD = {}
+function WLD.ws() return game:GetService("Workspace") end
+function WLD.ss() return game:GetService("ServerStorage") end
+function WLD.user(o)
+  if not o or not o.Parent then return false end
+  local cn = o.ClassName
+  if cn == "Terrain" or cn == "Camera" then return false end
+  if hidden(o) then return false end
+  if characterPart(o) then return false end
+  return true
+end
+function WLD.folder(name)
+  local ss = WLD.ss()
+  local f = ss:FindFirstChild(name)
+  if not f then
+    f = Instance.new("Folder")
+    f.Name = name
+    f.Parent = ss
+  end
+  return f
+end
+function WLD.saveWs(name)
+  local ws = WLD.ws()
+  local kids = {}
+  local total = 0
+  for _, c in ipairs(ws:GetChildren()) do
+    if WLD.user(c) then
+      total = total + 1 + #c:GetDescendants()
+      kids[#kids + 1] = c
+    end
+  end
+  assert(total <= 3000, "mundo grande demais p/ save (3000).")
+  local root = WLD.folder("ArkherWorlds")
+  local f = Instance.new("Folder")
+  f.Name = name
+  f:SetAttribute("items", total)
+  f:SetAttribute("created", os.time())
+  f.Parent = root
+  for _, c in ipairs(kids) do
+    local ok, cl = pcall(function() return c:Clone() end)
+    if ok and cl then cl.Parent = f end
+  end
+  return total
+end
+function handlers.WorldInfo(player, payload)
+  local ws, out = WLD.ws(), {}
+  local parts, models, scripts, sounds, decals, sp = 0, 0, 0, 0, 0, 0
+  local n, trunc = 0, false
+  local mnx, mny, mnz, mxx, mxy, mxz, hasB = 0, 0, 0, 0, 0, 0, false
+  for _, d in ipairs(ws:GetDescendants()) do
+    n = n + 1
+    if n > 20000 then trunc = true break end
+    if WLD.user(d) then
+      local cn = d.ClassName
+      if d:IsA("BasePart") and cn ~= "Terrain" then
+        parts = parts + 1
+        if cn == "SpawnLocation" then sp = sp + 1 end
+        if n <= 5000 then
+          local p = d.Position
+          if p and type(p.X) == "number" then
+            if not hasB then
+              mnx, mny, mnz, mxx, mxy, mxz = p.X, p.Y, p.Z, p.X, p.Y, p.Z
+              hasB = true
+            else
+              if p.X < mnx then mnx = p.X end
+              if p.Y < mny then mny = p.Y end
+              if p.Z < mnz then mnz = p.Z end
+              if p.X > mxx then mxx = p.X end
+              if p.Y > mxy then mxy = p.Y end
+              if p.Z > mxz then mxz = p.Z end
+            end
+          end
+        end
+      elseif cn == "Model" then models = models + 1
+      elseif cn == "Script" or cn == "LocalScript" or cn == "ModuleScript" then scripts = scripts + 1
+      elseif cn == "Sound" then sounds = sounds + 1
+      elseif cn == "Decal" or cn == "Texture" then decals = decals + 1
+      end
+    end
+  end
+  out.parts, out.models, out.scripts = parts, models, scripts
+  out.sounds, out.decals, out.spawns = sounds, decals, sp
+  out.scanned, out.truncated = n, trunc
+  if hasB then out.bounds = { mnx, mny, mnz, mxx, mxy, mxz } end
+  pcall(function()
+    out.gravity = ws.Gravity
+    out.killY = ws.FallenPartsDestroyHeight
+    out.streaming = ws.StreamingEnabled
+    out.targetRadius = ws.StreamingTargetRadius
+  end)
+  local wroot = WLD.ss():FindFirstChild("ArkherWorlds")
+  out.saves = wroot and #wroot:GetChildren() or 0
+  local trash = WLD.ss():FindFirstChild("ArkherTrash")
+  out.trash = trash and #trash:GetChildren() or 0
+  return out
+end
+function handlers.WorldGravity(player, payload)
+  local ws = WLD.ws()
+  local g = math.clamp(tonumber(payload.g) or 196.2, 0, 500)
+  local old = ws.Gravity
+  ws.Gravity = g
+  queueObject(ws)
+  pushHist(player, { label = "World gravidade " .. g,
+    undo = function() pcall(function() ws.Gravity = old end) end,
+    redo = function() pcall(function() ws.Gravity = g end) end })
+  return { g = ws.Gravity }
+end
+function handlers.WorldSpawn(player, payload)
+  local ws = WLD.ws()
+  local op = tostring(payload.op or "list")
+  if op == "list" then
+    local out = {}
+    for _, d in ipairs(ws:GetDescendants()) do
+      if d.ClassName == "SpawnLocation" and WLD.user(d) then
+        register(d)
+        local p = d.Position or { X = 0, Y = 0, Z = 0 }
+        out[#out + 1] = { id = idOf[d], name = d.Name,
+          enabled = d.Enabled ~= false, neutral = d.Neutral ~= false,
+          pos = { p.X, p.Y, p.Z } }
+      end
+    end
+    return { spawns = out }
+  end
+  if op == "add" then
+    local px, py, pz = 0, 30, 0
+    pcall(function()
+      local ch = player.Character
+      local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+      local p = hrp and hrp.Position
+      if p and type(p.X) == "number" then px, py, pz = p.X, p.Y + 5, p.Z end
+    end)
+    if payload.pos then
+      px = math.clamp(tonumber(payload.pos[1]) or px, -10000, 10000)
+      py = math.clamp(tonumber(payload.pos[2]) or py, -10000, 10000)
+      pz = math.clamp(tonumber(payload.pos[3]) or pz, -10000, 10000)
+    end
+    local s = Instance.new("SpawnLocation")
+    s.Name = tostring(payload.name or "SpawnLocation"):sub(1, 40)
+    s.Size = Vector3.new(6, 1, 6)
+    s.CFrame = CFrame.new(px, py, pz)
+    s.Anchored = true
+    s.Neutral = true
+    s.Enabled = true
+    s.Parent = ws
+    register(s)
+    queueObject(s)
+    return { node = record(s) }
+  end
+  local o = objects[payload.id]
+  assert(o and o.ClassName == "SpawnLocation", "id precisa ser SpawnLocation.")
+  assert(WLD.user(o), "spawn fora do escopo.")
+  if op == "toggle" then
+    o.Enabled = not (o.Enabled ~= false)
+    queueObject(o)
+    return { enabled = o.Enabled }
+  end
+  assert(op == "remove", "op: list/add/toggle/remove.")
+  local snap = { parent = o.Parent, cf = o.CFrame, sz = o.Size,
+    en = o.Enabled, ne = o.Neutral, nm = o.Name }
+  local back = nil
+  o:Destroy()
+  pushHist(player, { label = "World remove spawn",
+    undo = function()
+      local s = Instance.new("SpawnLocation")
+      s.Name = snap.nm
+      s.CFrame = snap.cf
+      s.Size = snap.sz
+      s.Enabled = snap.en
+      s.Neutral = snap.ne
+      s.Anchored = true
+      s.Parent = (snap.parent and snap.parent.Parent and snap.parent) or WLD.ws()
+      register(s)
+      queueObject(s)
+      back = s
+    end,
+    redo = function() if back then pcall(function() back:Destroy() end) end end })
+  return { removed = true }
+end
+function handlers.WorldSave(player, payload)
+  local op = tostring(payload.op or "list")
+  local root = WLD.folder("ArkherWorlds")
+  if op == "list" then
+    local out = {}
+    for _, f in ipairs(root:GetChildren()) do
+      out[#out + 1] = { name = f.Name, items = f:GetAttribute("items") or #f:GetDescendants() }
+    end
+    return { saves = out }
+  end
+  if op == "delete" then
+    local f = root:FindFirstChild(tostring(payload.name or ""))
+    assert(f, "save inexistente.")
+    f:Destroy()
+    return { deleted = true }
+  end
+  if op == "load" then
+    local f = root:FindFirstChild(tostring(payload.name or ""))
+    assert(f, "save inexistente.")
+    local ws = WLD.ws()
+    local n = 0
+    for _, c in ipairs(f:GetChildren()) do
+      local ok, cl = pcall(function() return c:Clone() end)
+      if ok and cl then
+        local base, k = cl.Name, 1
+        while ws:FindFirstChild(cl.Name) and k < 100 do
+          k = k + 1
+          cl.Name = base .. " (" .. k .. ")"
+        end
+        cl.Parent = ws
+        n = n + 1
+      end
+    end
+    return { loaded = n }
+  end
+  assert(op == "save", "op: save/load/list/delete.")
+  local name = tostring(payload.name or "")
+  assert(name:match("^[%w_%-%. ]+$") and #name <= 32, "nome invalido.")
+  assert(not root:FindFirstChild(name), "save ja existe (delete primeiro).")
+  assert(#root:GetChildren() < 10, "limite 10 saves.")
+  local total = WLD.saveWs(name)
+  queueObject(root)
+  return { saved = true, items = total }
+end
+function handlers.WorldClean(player, payload)
+  local op = tostring(payload.op or "restore")
+  local trash = WLD.folder("ArkherTrash")
+  if op == "restore" then
+    local n = 0
+    for _, c in ipairs(trash:GetChildren()) do
+      c.Parent = WLD.ws()
+      n = n + 1
+    end
+    return { restored = n }
+  end
+  local ws = WLD.ws()
+  local moved = 0
+  if op == "fallen" then
+    local y = math.clamp(tonumber(payload.y) or -400, -50000, 50000)
+    for _, d in ipairs(ws:GetDescendants()) do
+      if d:IsA("BasePart") and d.ClassName ~= "Terrain" and WLD.user(d) then
+        local p = d.Position
+        if p and type(p.X) == "number" and p.Y < y and d.Parent then
+          d.Parent = trash
+          moved = moved + 1
+        end
+      end
+    end
+    return { moved = moved }
+  end
+  assert(op == "loose", "op: fallen/loose/restore.")
+  for _, d in ipairs(ws:GetDescendants()) do
+    if d:IsA("BasePart") and d.ClassName ~= "Terrain" and WLD.user(d)
+        and not d.Anchored and d.Parent then
+      d.Parent = trash
+      moved = moved + 1
+    end
+  end
+  return { moved = moved }
+end
+function handlers.WorldClear(player, payload)
+  assert(payload.confirm == true, "WorldClear apaga o mundo: confirme.")
+  local root = WLD.folder("ArkherWorlds")
+  local old = root:FindFirstChild("autosafe")
+  if old then old:Destroy() end
+  local items = WLD.saveWs("autosafe")
+  local ws = WLD.ws()
+  local n = 0
+  for _, c in ipairs(ws:GetChildren()) do
+    if WLD.user(c) then
+      c:Destroy()
+      n = n + 1
+    end
+  end
+  queueObject(ws)
+  return { deleted = n, backup = "autosafe", items = items }
+end
+end
 function handlers.RrwStats(player, payload)
   local n, trunc = 0, false
   for _, d in ipairs(workspace:GetDescendants()) do
@@ -5312,12 +5847,12 @@ function handlers.RrwStats(player, payload)
   end
   local L = rrwLighting()
   local fx = 0
-  for _, c in ipairs(L:GetChildren()) do if RRW_FX[c.ClassName] then fx = fx + 1 end end
+  for _, c in ipairs(L:GetChildren()) do if RRWS.FX[c.ClassName] then fx = fx + 1 end end
   local lod = 0
-  for _ in pairs(rrwLod) do lod = lod + 1 end
+  for _ in pairs(RRWS.lod) do lod = lod + 1 end
   local style = nil
   pcall(function() style = uiEnumName2(L.LightingStyle) end)
-  return { fps = math.floor(rrwFps.ema * 10) / 10, parts = n, truncated = trunc,
+  return { fps = math.floor(RRWS.fps.ema * 10) / 10, parts = n, truncated = trunc,
     effects = fx, lodGroups = lod, clockTime = L.ClockTime, style = style }
 end
 

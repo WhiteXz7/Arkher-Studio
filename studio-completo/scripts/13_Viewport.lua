@@ -101,6 +101,8 @@ local MD4_ALL = { "MD4_Rail", "MD4_Mesh", "MD4_Vert", "MD4_Top", "MD4_IO", "MD4_
 local AN5_ALL = { "AN5_Rail", "AN5_Rig", "AN5_Pose", "AN5_Time", "AN5_Keys", "AN5_IO", "AN5_Status" }
 local UI6_ALL = { "UI6_Rail", "UI6_New", "UI6_Props", "UI6_Tree", "UI6_IO", "UI6_Status" }
 local RW7_ALL = { "RW7_Rail", "RW7_Prof", "RW7_FX", "RW7_Sky", "RW7_World", "RW7_LOD", "RW7_Status" }
+local DO8_ALL = { "DO8_Rail", "DO8_Stats", "DO8_Audit", "DO8_Opt", "DO8_Rel", "DO8_Mem", "DO8_Status" }
+local WO9_ALL = { "WO9_Rail", "WO9_Info", "WO9_Grav", "WO9_Spawn", "WO9_Save", "WO9_Clean", "WO9_Status" }
 local DESK_HIDE = { "T2_Panel", "C2_Panel", "S2_Panel", "O2_Panel", "O2_WPanel",
   "TL2_Panel", "CV2_Panel", "SM2_Panel", "TM2_Panel", "FR2_Panel" }
 
@@ -118,12 +120,16 @@ local function setOpen(v)
   for _, n in ipairs(AN5_ALL) do setVisible(n, false) end
   for _, n in ipairs(UI6_ALL) do setVisible(n, false) end
   for _, n in ipairs(RW7_ALL) do setVisible(n, false) end
+    for _, n in ipairs(DO8_ALL) do setVisible(n, false) end
+    for _, n in ipairs(WO9_ALL) do setVisible(n, false) end
   setVisible("M_MD", false)
   setVisible("M_AN", false)
   setVisible("M_UI", false)
   setVisible("M_RW", false)
+    setVisible("M_DO", false)
+    setVisible("M_WO", false)
   if v then
-    for _, ed in ipairs({ "ArkherTerrain", "ArkherModeler", "ArkherAnimator", "ArkherUI", "ArkherRRW" }) do
+    for _, ed in ipairs({ "ArkherTerrain", "ArkherModeler", "ArkherAnimator", "ArkherUI", "ArkherRRW", "ArkherDo15", "ArkherWorld" }) do
       pcall(function()
         local e = _G[ed]
         if e and e.isOpen and e.isOpen() then e.close() end

@@ -20,7 +20,9 @@ NODES = ["LangPy", "Suggest", "Sug0", "Sug7", "NewPlace", "SaveAcct", "Abrir", "
          "MD4_Rail", "MD4_Mesh", "MD4_Vert", "MD4_Top", "MD4_IO", "MD4_Status", "M_MD",
          "AN5_Rail", "AN5_Rig", "AN5_Pose", "AN5_Time", "AN5_Keys", "AN5_IO", "AN5_Status", "M_AN",
          "UI6_Rail", "UI6_New", "UI6_Props", "UI6_Tree", "UI6_IO", "UI6_Status", "M_UI",
-         "RW7_Rail", "RW7_Prof", "RW7_FX", "RW7_Sky", "RW7_World", "RW7_LOD", "RW7_Status", "M_RW"]
+         "RW7_Rail", "RW7_Prof", "RW7_FX", "RW7_Sky", "RW7_World", "RW7_LOD", "RW7_Status", "M_RW",
+         "DO8_Rail", "DO8_Stats", "DO8_Audit", "DO8_Opt", "DO8_Rel", "DO8_Mem", "DO8_Status", "M_DO",
+         "WO9_Rail", "WO9_Info", "WO9_Grav", "WO9_Spawn", "WO9_Save", "WO9_Clean", "WO9_Status", "M_WO"]
 CODE = ["PARTE 6B", "ArkherSEBridge", "doPaidSearch", "buyPaid", "ToolboxPaidSearch", "TeleportTo", "PublishReal", "AccountPlaces", "REBUILD EN", "dsMirrorPut",
         "code grande demais", "handlers.SvcSet", "MENUS.Assets", "handlers.TerrainSmooth",
         "handlers.Group", "handlers.PivotReset", "actions.XPivotReset", "ArkherInput", "MOBILE_MENUS",
@@ -31,11 +33,13 @@ CODE = ["PARTE 6B", "ArkherSEBridge", "doPaidSearch", "buyPaid", "ToolboxPaidSea
         "handlers.MeshNew", "handlers.MeshSmooth", "handlers.MeshExportOBJ", "handlers.MeshImportOBJ", "ArkherModeler", "XModeler",
         "handlers.AnimNew", "handlers.AnimPlay", "handlers.AnimScrub", "handlers.AnimExport", "handlers.AnimImport", "ArkherAnimator", "XAnimator",
         "handlers.UiNew", "handlers.UiExport", "handlers.UiImport", "ArkherUI", "XUI",
-        "handlers.RrwProfile", "handlers.RrwFx", "handlers.RrwLod", "handlers.RrwVfx", "ArkherRRW", "XRRW"]
+        "handlers.RrwProfile", "handlers.RrwFx", "handlers.RrwLod", "handlers.RrwVfx", "ArkherRRW", "XRRW",
+        "handlers.Do15Stats", "handlers.Do15Optimize", "handlers.Do15Relevance", "ArkherDo15", "XDO15",
+        "handlers.WorldSave", "handlers.WorldSpawn", "handlers.WorldClear", "ArkherWorld", "XWorld"]
 SCRIPTS = ["Arkher_01_Nucleo", "Arkher_02_Icones", "Arkher_03_Menus",
            "Arkher_04_Gizmos", "Arkher_05_StudioX", "Arkher_06_RigX",
            "Arkher_07_MeshX", "Arkher_08_RealityX", "Arkher_09_Topbar",
-           "Arkher_10_Studio", "Arkher_11_Input", "Arkher_12_Terrain", "Arkher_13_Viewport", "Arkher_14_Modeler", "Arkher_15_Animator", "Arkher_16_UI", "Arkher_17_RRW", "ArkherEditorServer", "ArkherEngineServer"]
+           "Arkher_10_Studio", "Arkher_11_Input", "Arkher_12_Terrain", "Arkher_13_Viewport", "Arkher_14_Modeler", "Arkher_15_Animator", "Arkher_16_UI", "Arkher_17_RRW", "Arkher_18_Do15", "Arkher_19_World", "ArkherEditorServer", "ArkherEngineServer"]
 
 
 def main():

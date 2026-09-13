@@ -993,8 +993,31 @@ end
 Content = {}
 function Content.fromObject(o) return { __t = "Content", _obj = o } end
 function Content.fromAssetId(id) return { __t = "Content", _id = id } end
-local function assetMethods(s)
+local function statsMethods(s)
   local pr = rawget(s, "__props")
+  for _, k in ipairs({ "InstanceCount", "PrimitivesCount", "MovingPrimitivesCount",
+      "ContactsCount", "SceneDrawcallCount", "SceneTriangleCount" }) do
+    rawset(pr, k, 0)
+  end
+  for _, k in ipairs({ "DataReceiveKbps", "DataSendKbps", "PhysicsReceiveKbps",
+      "PhysicsSendKbps", "FrameTime", "HeartbeatTime", "PhysicsStepTime",
+      "RenderCPUFrameTime", "RenderGPUFrameTime" }) do
+    rawset(pr, k, 0)
+  end
+  rawset(pr, "_memMb", 512)
+  rawset(pr, "GetTotalMemoryUsageMb", function(self) return rawget(self, "__props")._memMb or 512 end)
+end
+local function contentMethods(s)
+  local pr = rawget(s, "__props")
+  rawset(pr, "PreloadAsync", function(self, list, cb)
+    for _, inst in ipairs(list or {}) do
+      local id = inst.SoundId or inst.Name
+      if cb then cb(id, { Name = "Success" }) end
+    end
+  end)
+  rawset(pr, "GetAssetFetchStatus", function(self, id) return { Name = "Success" } end)
+end
+local function assetMethods(s)  local pr = rawget(s, "__props")
   rawset(pr, "CreateEditableMesh", function(self) return EditableMesh.new() end)
   rawset(pr, "CreateEditableMeshAsync", function(self, content, params)
     assert(content and content.__t == "Content", "Content invalido.")
@@ -1024,6 +1047,8 @@ function gameObj:GetService(name)
   if services[name] then return services[name] end
   local s = mkInstance(name); rawget(s,"__props").ClassName=name; rawget(s,"__props").Name=name
   if name == "AssetService" then assetMethods(s) end
+  if name == "Stats" then statsMethods(s) end
+  if name == "ContentProvider" then contentMethods(s) end
   services[name]=s; s.Parent = gameObj
   return s
 end

@@ -19,6 +19,8 @@ TESTS = {
     "Animator R13 (server Anim*/IK/JSON + 15_Animator)": "studio-completo/tools/test_animator15.lua",
     "UI Editor R14 (server Ui* + 16_UI)": "studio-completo/tools/test_ui16.lua",
     "RRW R14 (server Rrw* + 17_RRW)": "studio-completo/tools/test_rrw17.lua",
+    "D-O15 R15 (server Do15* + 18_Do15)": "studio-completo/tools/test_do15_18.lua",
+    "World R15 (server World* + 19_World)": "studio-completo/tools/test_world19.lua",
 }
 ok = True
 for label, path in TESTS.items():

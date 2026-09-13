@@ -102,7 +102,9 @@ local OTHER_EDS = { "TE3_Rail", "TE3_Brush", "TE3_Mat", "TE3_Layers", "TE3_Histo
   "VP3_Meas", "VP3_Snap", "VP3_Status", "MD4_Rail", "MD4_Mesh", "MD4_Vert",
   "MD4_Top", "MD4_IO", "MD4_Status", "UI6_Rail", "UI6_New", "UI6_Props",
   "UI6_Tree", "UI6_IO", "UI6_Status", "RW7_Rail", "RW7_Prof", "RW7_FX",
-  "RW7_Sky", "RW7_World", "RW7_LOD", "RW7_Status" }
+  "RW7_Sky", "RW7_World", "RW7_LOD", "RW7_Status",
+  "DO8_Rail", "DO8_Stats", "DO8_Audit", "DO8_Opt", "DO8_Rel", "DO8_Mem", "DO8_Status",
+  "WO9_Rail", "WO9_Info", "WO9_Grav", "WO9_Spawn", "WO9_Save", "WO9_Clean", "WO9_Status" }
 local DESK_HIDE = { "T2_Panel", "C2_Panel", "S2_Panel", "O2_Panel", "O2_WPanel",
   "TL2_Panel", "CV2_Panel", "SM2_Panel", "TM2_Panel", "FR2_Panel" }
 local EASES = { "Linear", "Constant", "Elastic", "CubicV2", "Bounce", "Cubic" }
@@ -142,8 +144,10 @@ local function setOpen(v)
   setVisible("M_MD", false)
   setVisible("M_UI", false)
   setVisible("M_RW", false)
+  setVisible("M_DO", false)
+  setVisible("M_WO", false)
   if v then
-    for _, ed in ipairs({ "ArkherTerrain", "ArkherViewport", "ArkherModeler", "ArkherUI", "ArkherRRW" }) do
+    for _, ed in ipairs({ "ArkherTerrain", "ArkherViewport", "ArkherModeler", "ArkherUI", "ArkherRRW", "ArkherDo15", "ArkherWorld" }) do
       pcall(function()
         local e = _G[ed]
         if e and e.isOpen and e.isOpen() then e.close() end

@@ -808,6 +808,94 @@ dset_kids += [B("D_S_Reset", 8, 366, 444, 34, "RESET DEFAULTS", BTN, TEXT, 14, F
               L("D_S_Hint", 8, 534, 444, 56, "remap + language apply instantly (this session)", MUTED, 11)]
 dsettings = F("D_Settings", 554, 140, 460, 600, PANEL, dset_kids, {"Visible": False})
 desktop_kids.append(dsettings)
+
+# ---------------- 12g. d-o15 R15 (DO8) ----------------
+do8_rail = F("DO8_Rail", 8, 100, 72, 220, PANEL, [title("D-O15"),
+    B("DO8_Scan", 8, 30, 56, 40, "SCAN", BTN, TEXT, 11, FB),
+    B("DO8_Close", 8, 74, 56, 32, "X", BTN, RED, 14, FB)], HID)
+do8_stats = F("DO8_Stats", 88, 100, 220, 190, PANEL, [title("STATS"),
+    L("DO8_StatBig", 8, 30, 204, 118, "fps -", TEXT, 11, FC),
+    B("DO8_S_Refresh", 8, 152, 100, 30, "REFRESH", BTN, TEXT, 11, FB),
+    B("DO8_S_Report", 112, 152, 100, 30, "REPORT", ACCENT, TEXT, 11, FB)], HID)
+do8_audit = F("DO8_Audit", 88, 298, 220, 190, PANEL, [title("AUDIT"),
+    L("DO8_AuditBig", 8, 30, 204, 118, "run scan", MUTED, 11, FC),
+    B("DO8_A_Scan", 8, 152, 204, 30, "SCAN WORLD", ACCENT, TEXT, 12, FB)], HID)
+do8_opt = F("DO8_Opt", 88, 496, 220, 170, PANEL, [title("OPTIMIZE"),
+    B("DO8_O_Touch", 8, 30, 100, 30, "NO-TOUCH", BTN, TEXT, 11, FB),
+    B("DO8_O_Shadow", 112, 30, 100, 30, "NO-SHADOW", BTN, TEXT, 11, FB),
+    B("DO8_O_Anchor", 8, 64, 100, 30, "ANCHOR", BTN, GOLD, 11, FB),
+    B("DO8_O_Undo", 112, 64, 100, 30, "UNDO", BTN, TEXT, 11, FB),
+    L("DO8_O_Info", 8, 98, 204, 60, "touch+shadow safe; anchor=confirm", MUTED, 10)], HID)
+do8_rel = F("DO8_Rel", 1330, 100, 220, 206, PANEL, [title("RELEVANCE"),
+    T("DO8_R_Name", 8, 30, 120, 26, "group", "", 11),
+    B("DO8_R_Add", 132, 30, 80, 26, "+GRP", ACCENT, TEXT, 11, FB),
+    L("DO8_R_RL", 8, 62, 60, 26, "RADIUS", MUTED, 11, FB),
+    B("DO8_R_RM", 70, 62, 30, 26, "-", BTN, TEXT, 14),
+    L("DO8_R_RV", 104, 62, 50, 26, "150", TEXT, 11, FC, CENTER, INSET),
+    B("DO8_R_RP", 158, 62, 30, 26, "+", BTN, TEXT, 14),
+    B("DO8_R_KLight", 8, 94, 48, 26, "LIT", ACCENT, TEXT, 11, FB),
+    B("DO8_R_KEmit", 60, 94, 48, 26, "EMI", ACCENT, TEXT, 11, FB),
+    B("DO8_R_KDecal", 112, 94, 48, 26, "DEC", BTN, TEXT, 11, FB),
+    B("DO8_R_KSnd", 164, 94, 48, 26, "SND", BTN, TEXT, 11, FB),
+    B("DO8_R_Reg", 8, 124, 100, 28, "REGISTER", ACCENT, TEXT, 11, FB),
+    B("DO8_R_Del", 112, 124, 100, 28, "REMOVE", BTN, RED, 11, FB),
+    L("DO8_R_Info", 8, 156, 204, 42, "select model/folder, +grp", MUTED, 10)], HID)
+do8_mem = F("DO8_Mem", 1330, 314, 220, 150, PANEL, [title("MEMORY"),
+    L("DO8_M_Info", 8, 30, 204, 44, "lua -", TEXT, 11, FC),
+    T("DO8_M_Ids", 8, 78, 204, 26, "rbxassetid://..,..", "", 11),
+    B("DO8_M_GC", 8, 110, 100, 30, "COLLECT", BTN, TEXT, 11, FB),
+    B("DO8_M_Pre", 112, 110, 100, 30, "PRELOAD", BTN, TEXT, 11, FB)], HID)
+do8_status = F("DO8_Status", 88, 820, 700, 30, PANEL,
+               [L("DO8_StatL", 8, 4, 684, 22, "do15", TEXT, 12, FC)], HID)
+mdo_kids = [B("M_DO_Scan", 8, 8, 200, 64, "SCAN", ACCENT, TEXT, 16, FB),
+            B("M_DO_Opt", 216, 8, 200, 64, "SAFE OPT", BTN, TEXT, 16, FB),
+            B("M_DO_GC", 424, 8, 200, 64, "GC", BTN, TEXT, 16, FB),
+            L("M_DO_Hint", 632, 8, 700, 64, "scan + safe optimize + collect", MUTED, 13)]
+mdo = F("M_DO", 0, 690, 1568, 80, MENU_BG, mdo_kids, HID)
+
+# ---------------- 12h. world R15 (WO9) ----------------
+wo9_rail = F("WO9_Rail", 8, 100, 72, 140, PANEL, [title("WORLD"),
+    B("WO9_Close", 8, 30, 56, 32, "X", BTN, RED, 14, FB)], HID)
+wo9_info = F("WO9_Info", 88, 100, 220, 200, PANEL, [title("WORLD"),
+    L("WO9_InfoBig", 8, 30, 204, 128, "parts -", TEXT, 11, FC),
+    B("WO9_I_Refresh", 8, 162, 204, 30, "REFRESH", ACCENT, TEXT, 12, FB)], HID)
+wo9_grav = F("WO9_Grav", 88, 308, 220, 140, PANEL, [title("GRAVITY"),
+    B("WO9_G_M", 8, 30, 50, 30, "-", BTN, TEXT, 14),
+    L("WO9_GV", 62, 30, 100, 30, "196.2", GOLD, 13, FC, CENTER, INSET),
+    B("WO9_G_P", 166, 30, 50, 30, "+", BTN, TEXT, 14),
+    B("WO9_G_Set", 8, 66, 100, 30, "APPLY", ACCENT, TEXT, 11, FB),
+    B("WO9_G_Reset", 112, 66, 100, 30, "EARTH", BTN, TEXT, 11, FB),
+    L("WO9_G_Info", 8, 100, 204, 32, "killY -", MUTED, 10)], HID)
+wo9_spawn = F("WO9_Spawn", 88, 456, 220, 152, PANEL, [title("SPAWN"),
+    L("WO9_S_Info", 8, 30, 204, 44, "no spawns", MUTED, 11, FC),
+    B("WO9_S_Prev", 8, 78, 64, 28, "<", BTN, TEXT, 14),
+    B("WO9_S_Next", 76, 78, 64, 28, ">", BTN, TEXT, 14),
+    B("WO9_S_Add", 144, 78, 68, 28, "+ADD", ACCENT, TEXT, 11, FB),
+    B("WO9_S_Toggle", 8, 110, 100, 28, "ON/OFF", BTN, TEXT, 11, FB),
+    B("WO9_S_Del", 112, 110, 100, 28, "DEL", BTN, RED, 11, FB)], HID)
+wo9_save = F("WO9_Save", 1330, 100, 220, 178, PANEL, [title("SAVE/LOAD"),
+    T("WO9_V_Name", 8, 30, 120, 26, "name", "", 11),
+    B("WO9_V_Save", 132, 30, 80, 26, "SAVE", ACCENT, TEXT, 11, FB),
+    L("WO9_V_Info", 8, 62, 204, 44, "no saves", MUTED, 11, FC),
+    B("WO9_V_Prev", 8, 110, 64, 28, "<", BTN, TEXT, 14),
+    B("WO9_V_Next", 76, 110, 64, 28, ">", BTN, TEXT, 14),
+    B("WO9_V_Load", 144, 110, 68, 28, "LOAD", ACCENT, TEXT, 11, FB),
+    B("WO9_V_Del", 8, 142, 204, 28, "DELETE SAVE", BTN, RED, 11, FB)], HID)
+wo9_clean = F("WO9_Clean", 1330, 286, 220, 178, PANEL, [title("CLEANUP"),
+    T("WO9_C_Y", 8, 30, 120, 26, "-400", "-400", 11),
+    B("WO9_C_Fallen", 132, 30, 80, 26, "FALLEN", BTN, TEXT, 11, FB),
+    B("WO9_C_Loose", 8, 62, 100, 28, "LOOSE", BTN, TEXT, 11, FB),
+    B("WO9_C_Restore", 112, 62, 100, 28, "RESTORE", BTN, TEXT, 11, FB),
+    B("WO9_C_Clear", 8, 94, 204, 28, "CLEAR WORLD", BTN, RED, 11, FB),
+    L("WO9_C_Info", 8, 126, 204, 44, "trash 0 (+autosafe)", MUTED, 10)], HID)
+wo9_status = F("WO9_Status", 88, 820, 700, 30, PANEL,
+               [L("WO9_StatL", 8, 4, 684, 22, "world", TEXT, 12, FC)], HID)
+mwo_kids = [B("M_WO_Save", 8, 8, 200, 64, "SAVE", ACCENT, TEXT, 16, FB),
+            B("M_WO_Spawn", 216, 8, 200, 64, "SPAWN", BTN, TEXT, 16, FB),
+            B("M_WO_Clean", 424, 8, 200, 64, "FALLEN", BTN, TEXT, 16, FB),
+            L("M_WO_Hint", 632, 8, 700, 64, "quicksave + spawn here + fallen", MUTED, 13)]
+mwo = F("M_WO", 0, 690, 1568, 80, MENU_BG, mwo_kids, HID)
+
 for _p in [te3_rail, te3_brush, te3_mat, te3_layers, te3_history, te3_gen, te3_water, te3_status]:
     desktop_kids.append(_p)
 for _p in [vp3_rail, vp3_cam, vp3_tm, vp3_meas, vp3_snap, vp3_status]:
@@ -819,6 +907,10 @@ for _p in [an5_rail, an5_rig, an5_pose, an5_time, an5_keys, an5_io, an5_status]:
 for _p in [ui6_rail, ui6_new, ui6_props, ui6_tree, ui6_io, ui6_status]:
     desktop_kids.append(_p)
 for _p in [rw7_rail, rw7_prof, rw7_fx, rw7_sky, rw7_world, rw7_lod, rw7_status]:
+    desktop_kids.append(_p)
+for _p in [do8_rail, do8_stats, do8_audit, do8_opt, do8_rel, do8_mem, do8_status]:
+    desktop_kids.append(_p)
+for _p in [wo9_rail, wo9_info, wo9_grav, wo9_spawn, wo9_save, wo9_clean, wo9_status]:
     desktop_kids.append(_p)
 desktop = N("Frame", "DesktopRoot",
             {"Position": P(0, 0), "Size": S(1568, 882),
@@ -888,7 +980,7 @@ mobile = N("Frame", "MobileRoot",
            {"Position": P(0, 0), "Size": S(1568, 882),
             "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
             "ClipsDescendants": False, "Visible": False},
-           [mtop, mtools, mdrawer, mprops, mnum, msel, mhelp, mbot, mmarquee, mte, mvp, mmd])
+           [mtop, mtools, mdrawer, mprops, mnum, msel, mhelp, mbot, mmarquee, mte, mvp, mmd, man, mui, mrw, mdo, mwo])
 
 # ---------------- 14. console layout (gamepad-first, baked) ----------------
 ctop = F("C_Top", 0, 0, 1568, 56, MENU_BG,

@@ -477,6 +477,8 @@ def main():
         "Arkher_15_Animator": "15_Animator.lua",
         "Arkher_16_UI": "16_UI.lua",
         "Arkher_17_RRW": "17_RRW.lua",
+        "Arkher_18_Do15": "18_Do15.lua",
+        "Arkher_19_World": "19_World.lua",
     }
     ls_tid = type_ids["LocalScript"]
     # nomes atuais (ordem do INST)

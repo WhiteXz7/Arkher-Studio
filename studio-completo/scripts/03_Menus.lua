@@ -574,6 +574,8 @@ local MENUS = {
     { icon = "Save", label = "Publicar no Roblox…", act = "Publish", tip = "Publica o jogo atual no seu PERFIL (página estilo jogo do Roblox)" },
     { icon = "Folder", label = "Places do meu perfil…", act = "PlacesProfile", tip = "Lista jogos/places do perfil + cria PLACES NOVAS de verdade (CreatePlaceAsync)" },
     { sep = true },
+    { icon = "Open", label = "World Editor", act = "XWorld" },
+    { sep = true },
     { icon = "Info", label = "Ajuda do Studio…", act = "HelpStudio" },
   },
 }
@@ -1499,6 +1501,8 @@ MENUS.Tools = {
   { icon = "Open", label = "Animator", act = "XOpenAnimator" },
   { icon = "Cloud", label = "Publish (Bridge)", act = "XPublishBridge" },
   { sep = true },
+  { icon = "Open", label = "D-O15 Optimize", act = "XDO15" },
+  { sep = true },
   { icon = "nodeLink", label = "Settings", act = "XSettings" },
   { icon = "nodeLink", label = "Idioma: PT-BR", act = "XLangPT" },
   { sep = true },
@@ -2063,6 +2067,14 @@ end
 actions.XRRW = function()
   local r = _G.ArkherRRW
   if r and r.open then r.open() else say("RRW nao carregado (17_RRW).", true) end
+end
+actions.XDO15 = function()
+  local d = _G.ArkherDo15
+  if d and d.open then d.open() else say("D-O15 nao carregado (18_Do15).", true) end
+end
+actions.XWorld = function()
+  local w = _G.ArkherWorld
+  if w and w.open then w.open() else say("World nao carregado (19_World).", true) end
 end
 actions.XOpenTerrain      = function() deckOpen("terrain", "ferramentas") end
 actions.XOpenTerrainGen   = function() deckOpen("terrain", "gerar") end

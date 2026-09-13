@@ -1,7 +1,7 @@
-# ARKHER STUDIO — INVENTÁRIO (R14, 2026-09-13)
+# ARKHER STUDIO — INVENTÁRIO (R15, 2026-09-13)
 
 Base: `ArkherStudio_Completo_X.rbxl` → `ArkherStudio_Completo_GUIX.rbxl`
-(401279 bytes, 10363 instâncias, VERIFY OK). Suite: **901/901**.
+(410994 bytes, 10572 instâncias, VERIFY OK). Suite: **1040/1040**.
 Audits: botões mortos 0, drops 0, P0 75 ok / 1 parcial / 0 ausente.
 
 ## EXISTE (funcionando de verdade, com teste)
@@ -21,11 +21,20 @@ Audits: botões mortos 0, drops 0, P0 75 ok / 1 parcial / 0 ausente.
   LightingStyle+Technology), 6 efeitos pós (clamps), céu static/cycle,
   atmosfera/nuvens, LOD tiers com histerese (troca real por distância),
   4 VFX fire/smoke/emitter/light, stats fps/parts — 90 testes.
-- **Infra**: server 159 handlers + undo/redo + rate limit (283997 bytes);
+- **D-O15 R15** (`18_Do15` + 7 server Do15*): stats reais (Stats svc,
+  fps/mem/triângulos/rede/streaming), audit do mundo, optimize com undo
+  (no-touch/no-shadow/anchor), preload de assets, relevance sets por
+  distância (histerese, restaura estado inicial), GC, report JSON — 67 testes.
+- **World R15** (`19_World` + 7 server World*): info/bounds, gravidade com
+  undo, spawns CRUD (add na posição do player), saves/load em ServerStorage,
+  quarantine/restore, clear com autosafe — 72 testes.
+- **Infra**: server 173 handlers + undo/redo + rate limit;
   ARKHER Input System 4 plataformas (`11_Input` + layouts baked);
   topbar/ribbon/menus reais (`03/09/10`); 4 plataformas sem conversão
   automática de controles.
-- **Shell**: 17 LocalScripts assados (01–17), 2 servers; spec 1567 nós.
+- **Shell**: 19 LocalScripts assados (01–19), 2 servers; spec 1774 nós.
+- Correções R15: limite 200-locais/chunk (namespaces TERD/ANIMA/RRWS/DO15/WLD),
+  strips mobile M_AN/M_UI/M_RW órfãs agora assadas, shell sob Canvas, forwards.
 
 ## EXISTE (herdado, SEM cobertura da suite R10–R14 — usar com cautela)
 
@@ -37,12 +46,10 @@ Audits: botões mortos 0, drops 0, P0 75 ok / 1 parcial / 0 ausente.
 
 ## FALTA (não existe ou não é real)
 
-1. **D-O15 dedicado**: sem editor próprio + sem testes (só menções).
-2. **World Editor**: sem editor dedicado.
-3. **Home/Explorer**: só painéis genéricos; sem editor completo.
-4. **Linguagens**: sem Python/C++/C# e sem visual script funcionais.
-5. **Multi-place**: sem Teleport+cutscene/automação (pós-studio, ok).
-6. **Polimento**: acessibilidade full (contraste/alto), docs in-app.
+1. **Home/Explorer**: só painéis genéricos; sem editor completo.
+2. **Linguagens**: sem Python/C++/C# e sem visual script funcionais.
+3. **Multi-place**: sem Teleport+cutscene/automação (pós-studio, ok).
+4. **Polimento**: acessibilidade full (contraste/alto), docs in-app.
 
 ## HONESTO (limites declarados, não bugs)
 
@@ -51,8 +58,7 @@ Audits: botões mortos 0, drops 0, P0 75 ok / 1 parcial / 0 ausente.
 - UiTree/UiExport/RrwStats são leitura; Grade/luzes sem props numéricas.
 - Undo cobre CRUD UI + perfis RRW; LOD/VFX/FX individuais sem undo.
 
-## % FALTANTE p/ superar a indústria: ~30%
+## % FALTANTE p/ superar a indústria: ~17%
 
-R14 entregou 2 editores completos (UI+RRW, 163 testes). Falta: D-O15 (8%),
-World (5%), Home/Explorer (4%), linguagens+visual script (8%),
-multi-place+polish (5%).
+R15 entregou D-O15 + World (139 testes). Falta: Home/Explorer (4%),
+linguagens+visual script (8%), multi-place+polish (5%).
