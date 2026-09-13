@@ -1422,6 +1422,7 @@ MENUS.Scripts = {
   { icon = "plus", label = "Insert Script", act = "InsertScript" },
 }
 MENUS.UI = {
+  { icon = "Open", label = "UI Editor PRO (live)", act = "XUI" },
   { icon = "Open", label = "Colors", act = "XOpenCores" },
   { icon = "Open", label = "Properties+", act = "XOpenProps" },
   { icon = "Open", label = "Output", act = "XOpenOutput" },
@@ -1439,6 +1440,7 @@ MENUS.FX = {
   { icon = "Cloud", label = "Time of Day", act = "XAtmosTempo" },
 }
 MENUS.Lighting = {
+  { icon = "Open", label = "RRW Render (hybrid)", act = "XRRW" },
   { icon = "Cloud", label = "Sky", act = "XAtmosCeu" },
   { icon = "Cloud", label = "Time of Day", act = "XAtmosTempo" },
   { sep = true },
@@ -2053,6 +2055,14 @@ end
 actions.XAnimator = function()
   local an = _G.ArkherAnimator
   if an and an.open then an.open() else say("Animator nao carregado (15_Animator).", true) end
+end
+actions.XUI = function()
+  local u = _G.ArkherUI
+  if u and u.open then u.open() else say("UI Editor nao carregado (16_UI).", true) end
+end
+actions.XRRW = function()
+  local r = _G.ArkherRRW
+  if r and r.open then r.open() else say("RRW nao carregado (17_RRW).", true) end
 end
 actions.XOpenTerrain      = function() deckOpen("terrain", "ferramentas") end
 actions.XOpenTerrainGen   = function() deckOpen("terrain", "gerar") end

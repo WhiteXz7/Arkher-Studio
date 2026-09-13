@@ -18,7 +18,9 @@ NODES = ["LangPy", "Suggest", "Sug0", "Sug7", "NewPlace", "SaveAcct", "Abrir", "
          "TE3_Rail", "TE3_Brush", "TE3_Mat", "TE3_Layers", "TE3_History", "TE3_Gen", "TE3_Water", "TE3_Status", "M_TE",
          "VP3_Rail", "VP3_Cam", "VP3_Trans", "VP3_Meas", "VP3_Snap", "VP3_Status", "M_VP",
          "MD4_Rail", "MD4_Mesh", "MD4_Vert", "MD4_Top", "MD4_IO", "MD4_Status", "M_MD",
-         "AN5_Rail", "AN5_Rig", "AN5_Pose", "AN5_Time", "AN5_Keys", "AN5_IO", "AN5_Status", "M_AN"]
+         "AN5_Rail", "AN5_Rig", "AN5_Pose", "AN5_Time", "AN5_Keys", "AN5_IO", "AN5_Status", "M_AN",
+         "UI6_Rail", "UI6_New", "UI6_Props", "UI6_Tree", "UI6_IO", "UI6_Status", "M_UI",
+         "RW7_Rail", "RW7_Prof", "RW7_FX", "RW7_Sky", "RW7_World", "RW7_LOD", "RW7_Status", "M_RW"]
 CODE = ["PARTE 6B", "ArkherSEBridge", "doPaidSearch", "buyPaid", "ToolboxPaidSearch", "TeleportTo", "PublishReal", "AccountPlaces", "REBUILD EN", "dsMirrorPut",
         "code grande demais", "handlers.SvcSet", "MENUS.Assets", "handlers.TerrainSmooth",
         "handlers.Group", "handlers.PivotReset", "actions.XPivotReset", "ArkherInput", "MOBILE_MENUS",
@@ -27,11 +29,13 @@ CODE = ["PARTE 6B", "ArkherSEBridge", "doPaidSearch", "buyPaid", "ToolboxPaidSea
         "handlers.TerrainStroke", "handlers.TerrainGen", "handlers.TerrainHydro", "ArkherTerrain", "XTerrainEditor",
         "handlers.TransformMany", "handlers.ViewportFrame", "handlers.RemapSet", "ArkherViewport", "XViewport",
         "handlers.MeshNew", "handlers.MeshSmooth", "handlers.MeshExportOBJ", "handlers.MeshImportOBJ", "ArkherModeler", "XModeler",
-        "handlers.AnimNew", "handlers.AnimPlay", "handlers.AnimScrub", "handlers.AnimExport", "handlers.AnimImport", "ArkherAnimator", "XAnimator"]
+        "handlers.AnimNew", "handlers.AnimPlay", "handlers.AnimScrub", "handlers.AnimExport", "handlers.AnimImport", "ArkherAnimator", "XAnimator",
+        "handlers.UiNew", "handlers.UiExport", "handlers.UiImport", "ArkherUI", "XUI",
+        "handlers.RrwProfile", "handlers.RrwFx", "handlers.RrwLod", "handlers.RrwVfx", "ArkherRRW", "XRRW"]
 SCRIPTS = ["Arkher_01_Nucleo", "Arkher_02_Icones", "Arkher_03_Menus",
            "Arkher_04_Gizmos", "Arkher_05_StudioX", "Arkher_06_RigX",
            "Arkher_07_MeshX", "Arkher_08_RealityX", "Arkher_09_Topbar",
-           "Arkher_10_Studio", "Arkher_11_Input", "Arkher_12_Terrain", "Arkher_13_Viewport", "Arkher_14_Modeler", "Arkher_15_Animator", "ArkherEditorServer", "ArkherEngineServer"]
+           "Arkher_10_Studio", "Arkher_11_Input", "Arkher_12_Terrain", "Arkher_13_Viewport", "Arkher_14_Modeler", "Arkher_15_Animator", "Arkher_16_UI", "Arkher_17_RRW", "ArkherEditorServer", "ArkherEngineServer"]
 
 
 def main():

@@ -3335,7 +3335,7 @@ function handlers.TerrainStats(player)
   return { cells = cells, undo = #TER_UNDO, redo = #TER_REDO, layers = #TER_LAYERS }
 end
 
-local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, TerrainGenFlat=true, TerrainReplace=true, TerrainWater=true, TerrainSmooth=true, TerrainNoise=true, TerrainStroke=true, TerrainUndo=true, TerrainRedo=true, TerrainLayer=true, TerrainGen=true, TerrainWaterProps=true, TerrainRain=true, TerrainFlood=true, TerrainHydro=true, ScriptSet=true, Undo=true, Group=true, Ungroup=true, AlignKids=true, DistributeKids=true, MirrorKids=true, PivotReset=true, SelAdd=true, SelClear=true, SelectMany=true, DeleteMany=true, DuplicateMany=true, RemapSet=true, TransformMany=true, ViewportRig=true, MeshNew=true, MeshMoveVert=true, MeshDeleteVert=true, MeshSmooth=true, MeshMirror=true, MeshImportOBJ=true, AnimRig=true, AnimNew=true, AnimKeyAdd=true, AnimKeyDel=true, AnimPoseSet=true, AnimPlay=true, AnimStop=true, AnimScrub=true, AnimIK=true, AnimImport=true, AnimJointSet=true }
+local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, TerrainGenFlat=true, TerrainReplace=true, TerrainWater=true, TerrainSmooth=true, TerrainNoise=true, TerrainStroke=true, TerrainUndo=true, TerrainRedo=true, TerrainLayer=true, TerrainGen=true, TerrainWaterProps=true, TerrainRain=true, TerrainFlood=true, TerrainHydro=true, ScriptSet=true, Undo=true, Group=true, Ungroup=true, AlignKids=true, DistributeKids=true, MirrorKids=true, PivotReset=true, SelAdd=true, SelClear=true, SelectMany=true, DeleteMany=true, DuplicateMany=true, RemapSet=true, TransformMany=true, ViewportRig=true, MeshNew=true, MeshMoveVert=true, MeshDeleteVert=true, MeshSmooth=true, MeshMirror=true, MeshImportOBJ=true, AnimRig=true, AnimNew=true, AnimKeyAdd=true, AnimKeyDel=true, AnimPoseSet=true, AnimPlay=true, AnimStop=true, AnimScrub=true, AnimIK=true, AnimImport=true, AnimJointSet=true, UiRoot=true, UiNew=true, UiDelete=true, UiDup=true, UiMove=true, UiSize=true, UiText=true, UiImport=true, UiPublish=true, RrwProfile=true, RrwFx=true, RrwSky=true, RrwAtmo=true, RrwClouds=true, RrwLod=true, RrwVfx=true }
 local function runRestore()
 	for part, was in pairs(RUN.parts) do
 		if part and part.Parent then
@@ -4678,6 +4678,647 @@ function handlers.AnimImport(player, payload)
   hCreate(player, seq)
   return { node = record(seq), keys = #data.keys, length = animLength(seq),
     msg = ("Animacao importada (%d keys)."):format(#data.keys) }
+end
+
+-- ============ R14a: UI EDITOR (PlayerGui ao vivo, escopo validado) ============
+local UI_CLASS = { Frame = true, TextLabel = true, TextButton = true, TextBox = true,
+  ImageLabel = true, ImageButton = true, ScrollingFrame = true, ScreenGui = true,
+  UICorner = true, UIStroke = true, UIGradient = true, UIPadding = true,
+  UIListLayout = true, UIGridLayout = true }
+local function uiPlayerGui(player)
+  local pg = player:FindFirstChild("PlayerGui")
+  if not pg then
+    pg = Instance.new("PlayerGui")
+    pg.Name = "PlayerGui"
+    pg.Parent = player
+  end
+  return pg
+end
+local function uiRootGui(player)
+  local pg = uiPlayerGui(player)
+  local g = pg:FindFirstChild("ArkherUI")
+  if not (g and g:IsA("ScreenGui")) then
+    g = Instance.new("ScreenGui")
+    g.Name = "ArkherUI"
+    g.Parent = pg
+    register(g)
+  end
+  return g
+end
+local function uiScope(player, o)
+  local pg = uiPlayerGui(player)
+  local sg = game:GetService("StarterGui")
+  local p = o
+  while p do
+    if p == pg or p == sg then return true end
+    p = p.Parent
+  end
+  return false
+end
+local function uiGet(player, id)
+  local o = getObject(id)
+  assert(o and uiScope(player, o), "UI fora do escopo (PlayerGui/StarterGui).")
+  return o
+end
+local function uiEnumName(v)
+  if type(v) == "table" and v.Name then return tostring(v.Name) end
+  return nil
+end
+local function uiSer(o, depth)
+  depth = depth or 0
+  assert(depth <= 12, "UI profunda demais (12).")
+  assert(UI_CLASS[o.ClassName], "classe UI nao suportada: " .. tostring(o.ClassName))
+  local d = { class = o.ClassName, name = o.Name }
+  local okP, pos = pcall(function() return o.Position end)
+  if okP and pos and type(pos.X) == "table" and pos.X.Scale then
+    d.pos = { pos.X.Scale, pos.X.Offset, pos.Y.Scale, pos.Y.Offset }
+  end
+  local okS, sz = pcall(function() return o.Size end)
+  if okS and sz and type(sz.X) == "table" and sz.X.Scale then
+    d.size = { sz.X.Scale, sz.X.Offset, sz.Y.Scale, sz.Y.Offset }
+  end
+  local function num(k) pcall(function() d[k] = o[k] end) end
+  local function col(k)
+    pcall(function()
+      local c = o[k]
+      if c and c.R then d[k] = { c.R, c.G, c.B } end
+    end)
+  end
+  local function str(k) pcall(function()
+    if type(o[k]) == "string" then d[k] = o[k] end
+  end) end
+  local function en(k) pcall(function()
+    local n = uiEnumName(o[k])
+    if n then d[k] = n end
+  end) end
+  local function boo(k) pcall(function()
+    if type(o[k]) == "boolean" then d[k] = o[k] end
+  end) end
+  num("BackgroundTransparency") num("Rotation") num("ZIndex") num("LayoutOrder")
+  num("TextSize") num("BorderSizePixel") num("Thickness") num("ScrollBarThickness")
+  num("CornerRadius") col("BackgroundColor3") col("TextColor3") col("BorderColor3")
+  col("Color") str("Text") str("PlaceholderText") str("Image")
+  en("Font") en("TextXAlignment") en("TextYAlignment") en("ScaleType")
+  en("HorizontalAlignment") en("VerticalAlignment") en("FillDirection")
+  en("SortOrder") en("AutomaticSize")
+  boo("Visible") boo("Active") boo("ClipsDescendants") boo("AutoButtonColor")
+  boo("TextWrapped") boo("TextScaled") boo("MultiLine") boo("ClearTextOnFocus")
+  boo("ApplyStrokeMode")
+  pcall(function()
+    local ap = o.AnchorPoint
+    if ap and ap.X then d.anchor = { ap.X, ap.Y } end
+  end)
+  pcall(function()
+    local cr = o.CornerRadius
+    if cr and cr.Scale ~= nil then d.corner = { cr.Scale, cr.Offset } d.CornerRadius = nil end
+  end)
+  d.kids = {}
+  for _, c in ipairs(o:GetChildren()) do
+    if UI_CLASS[c.ClassName] then d.kids[#d.kids + 1] = uiSer(c, depth + 1) end
+  end
+  return d
+end
+local function uiCount(d)
+  local n = 1
+  for _, k in ipairs(d.kids or {}) do n = n + uiCount(k) end
+  return n
+end
+local function uiBuild(parent, d)
+  assert(UI_CLASS[d.class], "classe UI nao suportada: " .. tostring(d.class))
+  local o = Instance.new(d.class)
+  o.Name = tostring(d.name or d.class):sub(1, 60)
+  if d.pos then pcall(function()
+    o.Position = UDim2.new(d.pos[1] or 0, d.pos[2] or 0, d.pos[3] or 0, d.pos[4] or 0)
+  end) end
+  if d.size then pcall(function()
+    o.Size = UDim2.new(d.size[1] or 0, d.size[2] or 0, d.size[3] or 0, d.size[4] or 0)
+  end) end
+  if d.anchor then pcall(function() o.AnchorPoint = Vector2.new(d.anchor[1], d.anchor[2]) end) end
+  if d.corner then pcall(function() o.CornerRadius = UDim.new(d.corner[1], d.corner[2]) end) end
+  for _, k in ipairs({ "BackgroundTransparency", "Rotation", "ZIndex", "LayoutOrder",
+    "TextSize", "BorderSizePixel", "Thickness", "ScrollBarThickness" }) do
+    if d[k] ~= nil then pcall(function() o[k] = tonumber(d[k]) or o[k] end) end
+  end
+  for _, k in ipairs({ "BackgroundColor3", "TextColor3", "BorderColor3", "Color" }) do
+    if d[k] then pcall(function() o[k] = Color3.new(d[k][1], d[k][2], d[k][3]) end) end
+  end
+  for _, k in ipairs({ "Text", "PlaceholderText", "Image" }) do
+    if d[k] ~= nil then pcall(function() o[k] = tostring(d[k]):sub(1, 4000) end) end
+  end
+  local enumOf = { Font = "Font", TextXAlignment = "TextXAlignment", TextYAlignment = "TextYAlignment",
+    ScaleType = "ScaleType", HorizontalAlignment = "HorizontalAlignment",
+    VerticalAlignment = "VerticalAlignment", FillDirection = "FillDirection",
+    SortOrder = "SortOrder", AutomaticSize = "AutomaticSize", ApplyStrokeMode = "ApplyStrokeMode" }
+  for k, en in pairs(enumOf) do
+    if d[k] then pcall(function() o[k] = Enum[en][tostring(d[k])] end) end
+  end
+  for _, k in ipairs({ "Visible", "Active", "ClipsDescendants", "AutoButtonColor",
+    "TextWrapped", "TextScaled", "MultiLine", "ClearTextOnFocus" }) do
+    if d[k] ~= nil then pcall(function() o[k] = (d[k] == true) end) end
+  end
+  o.Parent = parent
+  for _, k in ipairs(d.kids or {}) do uiBuild(o, k) end
+  return o
+end
+function handlers.UiRoot(player, payload)
+  local g = uiRootGui(player)
+  queueObject(g)
+  return { node = record(g) }
+end
+function handlers.UiNew(player, payload)
+  local class = tostring(payload.class or "Frame")
+  assert(UI_CLASS[class] and class ~= "ScreenGui", "classe UI: Frame/Label/Button/Box/Image/Scroll/Corner/Stroke/...")
+  local parent = uiRootGui(player)
+  if payload.parentId then
+    local p = uiGet(player, payload.parentId)
+    assert(p:IsA("GuiObject") or p:IsA("LayerCollector"), "pai precisa ser GuiObject/ScreenGui.")
+    parent = p
+  end
+  local o = Instance.new(class)
+  o.Name = tostring(payload.name or class):sub(1, 60)
+  pcall(function() o.Size = UDim2.fromOffset(200, 50) end)
+  pcall(function() o.Position = UDim2.fromOffset(80, 80) end)
+  o.Parent = parent
+  created[player] = (created[player] or 0) + 1
+  register(o)
+  queueObject(parent)
+  hCreate(player, o)
+  return { node = record(o) }
+end
+function handlers.UiDelete(player, payload)
+  local o = uiGet(player, payload.id)
+  assert(not (o:IsA("ScreenGui") and o.Name == "ArkherUI"), "raiz ArkherUI protegida.")
+  local snap = uiSer(o)
+  local parent = o.Parent
+  o:Destroy()
+  queueObject(parent)
+  pushHist(player, {
+    label = "UI delete " .. snap.name,
+    undo = function() pcall(uiBuild, parent, snap) queueObject(parent) end,
+    redo = function()
+      pcall(function()
+        local again = nil
+        for _, c in ipairs(parent:GetChildren()) do
+          if c.Name == snap.name and c.ClassName == snap.class then again = c break end
+        end
+        if again then again:Destroy() end
+      end)
+      queueObject(parent)
+    end,
+  })
+  return { deleted = true }
+end
+function handlers.UiDup(player, payload)
+  local o = uiGet(player, payload.id)
+  local snap = uiSer(o)
+  snap.name = (snap.name .. "Copy"):sub(1, 60)
+  local c = uiBuild(o.Parent, snap)
+  created[player] = (created[player] or 0) + 1
+  register(c)
+  queueObject(o.Parent)
+  hCreate(player, c)
+  return { node = record(c) }
+end
+function handlers.UiMove(player, payload)
+  local o = uiGet(player, payload.id)
+  assert(o:IsA("GuiObject"), "UiMove so em GuiObject.")
+  local pos = o.Position
+  local dx = math.clamp(tonumber(payload.dx) or 0, -5000, 5000)
+  local dy = math.clamp(tonumber(payload.dy) or 0, -5000, 5000)
+  o.Position = UDim2.new(pos.X.Scale, pos.X.Offset + dx, pos.Y.Scale, pos.Y.Offset + dy)
+  return { x = o.Position.X.Offset, y = o.Position.Y.Offset }
+end
+function handlers.UiText(player, payload)
+  local o = uiGet(player, payload.id)
+  assert(o:IsA("TextLabel") or o:IsA("TextButton") or o:IsA("TextBox"), "UiText so em texto.")
+  o.Text = tostring(payload.text or ""):sub(1, 4000)
+  return { text = o.Text }
+end
+function handlers.UiSize(player, payload)
+  local o = uiGet(player, payload.id)
+  assert(o:IsA("GuiObject"), "UiSize so em GuiObject.")
+  local sz = o.Size
+  local dw = math.clamp(tonumber(payload.dw) or 0, -5000, 5000)
+  local dh = math.clamp(tonumber(payload.dh) or 0, -5000, 5000)
+  local nx = math.max(sz.X.Offset + dw, 1)
+  local ny = math.max(sz.Y.Offset + dh, 1)
+  o.Size = UDim2.new(sz.X.Scale, nx, sz.Y.Scale, ny)
+  return { w = nx, h = ny }
+end
+function handlers.UiTree(player, payload)
+  local g = uiRootGui(player)
+  local out = {}
+  local n = 0
+  local function rec(o, depth)
+    if n >= 500 then return end
+    n = n + 1
+    local x, y, w, h = nil, nil, nil, nil
+    pcall(function()
+      local p2 = o.Position
+      x, y = p2.X.Offset, p2.Y.Offset
+    end)
+    pcall(function()
+      local s2 = o.Size
+      w, h = s2.X.Offset, s2.Y.Offset
+    end)
+    out[#out + 1] = { id = idOf[o], name = o.Name, class = o.ClassName, depth = depth,
+      x = x, y = y, w = w, h = h }
+    for _, c in ipairs(o:GetChildren()) do
+      if UI_CLASS[c.ClassName] then rec(c, depth + 1) end
+    end
+  end
+  for _, c in ipairs(g:GetChildren()) do
+    if UI_CLASS[c.ClassName] then rec(c, 0) end
+  end
+  return { items = out, total = n }
+end
+function handlers.UiExport(player, payload)
+  local o = uiGet(player, payload.id)
+  local data = { v = 1, ui = uiSer(o) }
+  local ok, json = pcall(function() return Http:JSONEncode(data) end)
+  assert(ok and json, "Falha ao serializar UI.")
+  assert(#json <= 2000000, "UI grande demais (2MB).")
+  return { json = json, nodes = uiCount(data.ui) }
+end
+function handlers.UiImport(player, payload)
+  local raw = tostring(payload.json or "")
+  assert(#raw > 0 and #raw <= 2000000, "JSON vazio ou grande demais (2MB).")
+  local ok, data = pcall(function() return Http:JSONDecode(raw) end)
+  assert(ok and type(data) == "table" and type(data.ui) == "table", "JSON de UI invalido.")
+  assert(uiCount(data.ui) <= 2000, "UI com nos demais (2000).")
+  local parent = uiRootGui(player)
+  if payload.parentId then
+    local p = uiGet(player, payload.parentId)
+    assert(p:IsA("GuiObject") or p:IsA("LayerCollector"), "pai precisa ser GuiObject/ScreenGui.")
+    parent = p
+  end
+  local o = uiBuild(parent, data.ui)
+  created[player] = (created[player] or 0) + 1
+  register(o)
+  queueObject(parent)
+  hCreate(player, o)
+  return { node = record(o), nodes = uiCount(data.ui), msg = "UI importada." }
+end
+function handlers.UiPublish(player, payload)
+  local o = uiGet(player, payload.id)
+  assert(o:IsA("ScreenGui"), "UiPublish: selecione a ScreenGui raiz.")
+  local sg = game:GetService("StarterGui")
+  local old = sg:FindFirstChild(o.Name)
+  if old then pcall(function() old:Destroy() end) end
+  local snap = uiSer(o)
+  local c = uiBuild(sg, snap)
+  created[player] = (created[player] or 0) + 1
+  register(c)
+  queueObject(sg)
+  return { node = record(c), msg = "UI publicada em StarterGui (vale no respawn)." }
+end
+
+-- ============ R14b: RRW (pipeline de render real: perfil/FX/ceu/clima/LOD/VFX) ============
+local RRW_FX = { BloomEffect = true, BlurEffect = true, ColorCorrectionEffect = true,
+  DepthOfFieldEffect = true, SunRaysEffect = true, ColorGradingEffect = true }
+local RRW_FX_NUM = {
+  BloomEffect = { Intensity = { 0, 10 }, Size = { 0, 100 }, Threshold = { 0, 2 } },
+  BlurEffect = { Size = { 0, 100 } },
+  ColorCorrectionEffect = { Brightness = { -1, 1 }, Contrast = { -1, 1 }, Saturation = { -1, 1 } },
+  DepthOfFieldEffect = { FocusDistance = { 0, 100000 }, InFocusRadius = { 0, 100 },
+    NearIntensity = { 0, 1 }, FarIntensity = { 0, 1 } },
+  SunRaysEffect = { Intensity = { 0, 10 }, Spread = { 0, 1 } },
+  ColorGradingEffect = {},
+}
+local rrwSky = { mode = "off", speed = 0.1 }
+local rrwLod = {}
+local rrwFps = { ema = 60, n = 0 }
+local function uiEnumName2(v)
+  if type(v) == "table" and v.Name then return tostring(v.Name) end
+  return nil
+end
+local function rrwLighting()
+  return game:GetService("Lighting")
+end
+local function rrwSetStyle(L, style)
+  local via = {}
+  pcall(function() L.LightingStyle = Enum.LightingStyle[style] via.style = true end)
+  if style == "Realistic" then
+    pcall(function() L.Technology = Enum.Technology.Future via.tech = true end)
+  elseif style == "Soft" then
+    pcall(function() L.Technology = Enum.Technology.ShadowMap via.tech = true end)
+  end
+  return via
+end
+Run.Heartbeat:Connect(function(dt)
+  if dt and dt > 0 then
+    rrwFps.n = rrwFps.n + 1
+    local f = 1 / dt
+    rrwFps.ema = rrwFps.ema * 0.95 + math.min(f, 1000) * 0.05
+  end
+  if rrwSky.mode == "cycle" then
+    pcall(function()
+      local L = rrwLighting()
+      L.ClockTime = ((L.ClockTime or 12) + dt * (rrwSky.speed or 0.1)) % 24
+    end)
+  end
+  for name, g in pairs(rrwLod) do
+    pcall(function()
+      local cam = workspace.CurrentCamera
+      if not cam then return end
+      local cp = cam.CFrame.Position
+      local fp = g.focus
+      if not fp then
+        local ok, cf = pcall(function() return g.tiers[1].o:GetBoundingBox() end)
+        fp = (ok and cf) and cf.Position or Vector3.new(0, 0, 0)
+      end
+      local dist = (cp - fp).Magnitude
+      g.dist = dist
+      local want = #g.tiers
+      for i, t in ipairs(g.tiers) do
+        if dist <= t.dist then want = i break end
+      end
+      if want ~= g.active then
+        local cur = g.tiers[g.active]
+        local margin = (want > g.active) and 1.1 or 0.9
+        local edge = (want > g.active) and cur.dist or g.tiers[want].dist
+        if (want > g.active and dist > edge * margin) or (want < g.active and dist < edge * margin) then
+          local stash = game:GetService("ServerStorage"):FindFirstChild("ArkherLOD")
+          if not stash then
+            stash = Instance.new("Folder")
+            stash.Name = "ArkherLOD"
+            stash.Parent = game:GetService("ServerStorage")
+          end
+          cur.o.Parent = stash
+          local nw = g.tiers[want]
+          nw.o.Parent = nw.orig
+          g.active = want
+        end
+      end
+    end)
+  end
+end)
+function handlers.RrwProfile(player, payload)
+  local L = rrwLighting()
+  local snapL = nil
+  pcall(function()
+    snapL = { b = L.Brightness, ct = L.ClockTime, gl = L.GeographicLatitude,
+      amb = L.Ambient, oamb = L.OutdoorAmbient, exp = L.ExposureCompensation,
+      gs = L.GlobalShadows, fc = L.FogColor, fs = L.FogStart, fe = L.FogEnd }
+  end)
+  local p = tostring(payload.preset or "Realista")
+  local function C(r, g, b) return Color3.fromRGB(r, g, b) end
+  local style = "Realistic"
+  if p == "Realista" then
+    L.Brightness = 2 L.ClockTime = 14 L.GeographicLatitude = 40
+    L.Ambient = C(70, 70, 80) L.OutdoorAmbient = C(120, 120, 130)
+    L.ExposureCompensation = -0.2 L.GlobalShadows = true
+    L.FogColor = C(190, 200, 210) L.FogStart = 500 L.FogEnd = 100000
+  elseif p == "Showcase" then
+    L.Brightness = 2 L.ClockTime = 17.5 L.GeographicLatitude = 25
+    L.Ambient = C(80, 70, 75) L.OutdoorAmbient = C(150, 120, 110)
+    L.ExposureCompensation = 0 L.GlobalShadows = true
+    L.FogColor = C(200, 180, 170) L.FogStart = 200 L.FogEnd = 50000
+  elseif p == "Horror" then
+    L.Brightness = 1 L.ClockTime = 0 L.GeographicLatitude = 0
+    L.Ambient = C(5, 5, 10) L.OutdoorAmbient = C(10, 12, 25)
+    L.ExposureCompensation = -0.5 L.GlobalShadows = true
+    L.FogColor = C(0, 0, 0) L.FogStart = 0 L.FogEnd = 80
+  elseif p == "Mobile" then
+    style = "Soft"
+    L.Brightness = 2 L.ClockTime = 14 L.GeographicLatitude = 40
+    L.Ambient = C(90, 90, 95) L.OutdoorAmbient = C(130, 130, 135)
+    L.ExposureCompensation = 0 L.GlobalShadows = false
+    L.FogColor = C(190, 200, 210) L.FogStart = 0 L.FogEnd = 0
+  elseif p == "Estudio" then
+    L.Brightness = 3 L.ClockTime = 12 L.GeographicLatitude = 0
+    L.Ambient = C(150, 150, 150) L.OutdoorAmbient = C(180, 180, 180)
+    L.ExposureCompensation = 0.2 L.GlobalShadows = false
+    L.FogColor = C(255, 255, 255) L.FogStart = 0 L.FogEnd = 0
+  else
+    error("preset: Realista/Showcase/Horror/Mobile/Estudio.")
+  end
+  pcall(function() L.ShadowSoftness = 0.2 end)
+  pcall(function() L.EnvironmentDiffuseScale = 1 end)
+  pcall(function() L.EnvironmentSpecularScale = 1 end)
+  local via = rrwSetStyle(L, style)
+  queueObject(L)
+  local oldL = snapL
+  local newL = { b = L.Brightness, ct = L.ClockTime, gl = L.GeographicLatitude,
+    amb = L.Ambient, oamb = L.OutdoorAmbient, exp = L.ExposureCompensation,
+    gs = L.GlobalShadows, fc = L.FogColor, fs = L.FogStart, fe = L.FogEnd }
+  local function applyL(s)
+    L.Brightness = s.b L.ClockTime = s.ct L.GeographicLatitude = s.gl
+    L.Ambient = s.amb L.OutdoorAmbient = s.oamb L.ExposureCompensation = s.exp
+    L.GlobalShadows = s.gs L.FogColor = s.fc L.FogStart = s.fs L.FogEnd = s.fe
+    queueObject(L)
+  end
+  pushHist(player, { label = "RRW perfil " .. p,
+    undo = function() if oldL then pcall(applyL, oldL) end end,
+    redo = function() pcall(applyL, newL) end })
+  return { applied = true, preset = p, style = style, via = via,
+    msg = ("Perfil %s (%s)."):format(p, style) }
+end
+function handlers.RrwFx(player, payload)
+  local L = rrwLighting()
+  local op = tostring(payload.op or "list")
+  if op == "list" then
+    local out = {}
+    for _, c in ipairs(L:GetChildren()) do
+      if RRW_FX[c.ClassName] then
+        out[#out + 1] = { class = c.ClassName, enabled = c.Enabled ~= false }
+      end
+    end
+    return { items = out }
+  end
+  local class = tostring(payload.class or "")
+  assert(RRW_FX[class], "fx: Bloom/Blur/ColorCorrection/DepthOfField/SunRays/ColorGrading + Effect.")
+  local fx = L:FindFirstChildOfClass(class)
+  if op == "remove" then
+    assert(fx, class .. " nao esta ativo.")
+    fx:Destroy()
+    queueObject(L)
+    return { removed = true }
+  end
+  assert(op == "add" or op == "set", "op: add/set/remove/list.")
+  local created = false
+  if not fx then
+    fx = Instance.new(class)
+    fx.Name = class
+    fx.Parent = L
+    created = true
+    register(fx)
+  end
+  local props = payload.props or {}
+  local spec = RRW_FX_NUM[class] or {}
+  for k, lim in pairs(spec) do
+    if props[k] ~= nil then
+      local v = tonumber(props[k])
+      assert(v, k .. " precisa ser numero.")
+      fx[k] = math.clamp(v, lim[1], lim[2])
+    end
+  end
+  if props.TintColor and class == "ColorCorrectionEffect" then
+    local t = props.TintColor
+    fx.TintColor = Color3.new(math.clamp(tonumber(t[1]) or 1, 0, 1),
+      math.clamp(tonumber(t[2]) or 1, 0, 1), math.clamp(tonumber(t[3]) or 1, 0, 1))
+  end
+  if payload.enabled ~= nil then fx.Enabled = payload.enabled == true end
+  queueObject(L)
+  return { ok2 = true, created = created, enabled = fx.Enabled ~= false }
+end
+function handlers.RrwSky(player, payload)
+  local L0 = rrwLighting()
+  if payload.mode == nil and payload.clockTime == nil and payload.speed == nil then
+    return { mode = rrwSky.mode, speed = rrwSky.speed, clockTime = L0.ClockTime }
+  end
+  local mode = tostring(payload.mode or rrwSky.mode)
+  assert(mode == "off" or mode == "static" or mode == "cycle", "mode: off/static/cycle.")
+  rrwSky.mode = mode
+  if payload.speed ~= nil then rrwSky.speed = math.clamp(tonumber(payload.speed) or 0.1, 0.001, 6) end
+  local L = rrwLighting()
+  if payload.clockTime ~= nil then
+    L.ClockTime = math.clamp(tonumber(payload.clockTime) or 12, 0, 24) % 24
+  end
+  queueObject(L)
+  return { mode = mode, speed = rrwSky.speed, clockTime = L.ClockTime }
+end
+function handlers.RrwAtmo(player, payload)
+  local L = rrwLighting()
+  local a = L:FindFirstChildOfClass("Atmosphere")
+  if not a then
+    a = Instance.new("Atmosphere")
+    a.Name = "Atmosphere"
+    a.Parent = L
+    created[player] = (created[player] or 0) + 1
+    register(a)
+  end
+  if payload.density ~= nil then a.Density = math.clamp(tonumber(payload.density) or 0.3, 0, 1) end
+  if payload.offset ~= nil then a.Offset = math.clamp(tonumber(payload.offset) or 0.3, 0, 1) end
+  if payload.decay ~= nil then a.Decay = Color3.new(math.clamp(tonumber(payload.decay[1]) or 1, 0, 1),
+    math.clamp(tonumber(payload.decay[2]) or 1, 0, 1), math.clamp(tonumber(payload.decay[3]) or 1, 0, 1)) end
+  if payload.color ~= nil then a.Color = Color3.new(math.clamp(tonumber(payload.color[1]) or 0.8, 0, 1),
+    math.clamp(tonumber(payload.color[2]) or 0.8, 0, 1), math.clamp(tonumber(payload.color[3]) or 0.8, 0, 1)) end
+  if payload.glare ~= nil then a.Glare = math.clamp(tonumber(payload.glare) or 0, 0, 1) end
+  if payload.haze ~= nil then a.Haze = math.clamp(tonumber(payload.haze) or 0, 10) end
+  queueObject(L)
+  return { ok2 = true, density = a.Density, offset = a.Offset }
+end
+function handlers.RrwClouds(player, payload)
+  local L = rrwLighting()
+  local c = L:FindFirstChildOfClass("Clouds")
+  if not c then
+    c = Instance.new("Clouds")
+    c.Name = "Clouds"
+    c.Parent = L
+    created[player] = (created[player] or 0) + 1
+    register(c)
+  end
+  if payload.cover ~= nil then c.Cover = math.clamp(tonumber(payload.cover) or 0.5, 0, 1) end
+  if payload.density ~= nil then c.Density = math.clamp(tonumber(payload.density) or 0.7, 0, 1) end
+  if payload.color ~= nil then c.Color = Color3.new(math.clamp(tonumber(payload.color[1]) or 1, 0, 1),
+    math.clamp(tonumber(payload.color[2]) or 1, 0, 1), math.clamp(tonumber(payload.color[3]) or 1, 0, 1)) end
+  queueObject(L)
+  return { ok2 = true, cover = c.Cover, density = c.Density }
+end
+function handlers.RrwLod(player, payload)
+  local op = tostring(payload.op or "list")
+  if op == "list" then
+    local out = {}
+    for name, g in pairs(rrwLod) do
+      out[#out + 1] = { name = name, active = g.active, tiers = #g.tiers, dist = g.dist or -1 }
+    end
+    table.sort(out, function(a, b) return a.name < b.name end)
+    return { groups = out }
+  end
+  if op == "remove" then
+    local g = rrwLod[tostring(payload.name or "")]
+    assert(g, "grupo LOD nao achado.")
+    for _, t in ipairs(g.tiers) do pcall(function() t.o.Parent = t.orig end) end
+    rrwLod[tostring(payload.name)] = nil
+    return { removed = true }
+  end
+  assert(op == "register", "op: register/remove/list.")
+  local name = tostring(payload.name or "")
+  assert(#name > 0 and #name <= 40, "nome do grupo invalido.")
+  assert(type(payload.tiers) == "table" and #payload.tiers >= 2 and #payload.tiers <= 5,
+    "tiers: 2..5 (cada um {id, dist}).")
+  local tiers = {}
+  local lastD = -1
+  for _, td in ipairs(payload.tiers) do
+    local o = getObject(td.id)
+    assert(o and o:IsA("Model"), "tier precisa ser Model.")
+    local d = tonumber(td.dist)
+    assert(d and d > 0 and d <= 20000, "dist invalida (0..20000).")
+    assert(d > lastD, "tiers precisam de dist crescente.")
+    lastD = d
+    tiers[#tiers + 1] = { o = o, dist = d, orig = o.Parent }
+  end
+  local stash = game:GetService("ServerStorage"):FindFirstChild("ArkherLOD")
+  if not stash then
+    stash = Instance.new("Folder")
+    stash.Name = "ArkherLOD"
+    stash.Parent = game:GetService("ServerStorage")
+  end
+  for i = 2, #tiers do tiers[i].o.Parent = stash end
+  rrwLod[name] = { tiers = tiers, active = 1, dist = -1, focus = nil }
+  if payload.focusId then
+    local ok, fo = pcall(getObject, payload.focusId)
+    if ok and fo and fo:IsA("BasePart") then rrwLod[name].focus = fo.Position end
+  end
+  return { registered = true, name = name, tiers = #tiers }
+end
+function handlers.RrwVfx(player, payload)
+  local preset = tostring(payload.preset or "")
+  local parent = workspace
+  if payload.parentId then
+    local ok, p = pcall(getObject, payload.parentId)
+    if ok and p then parent = p end
+  end
+  local made = {}
+  local function emit(class, nm, props)
+    local e = Instance.new(class)
+    e.Name = nm
+    for k, v in pairs(props or {}) do pcall(function() e[k] = v end) end
+    e.Parent = parent
+    made[#made + 1] = e
+    return e
+  end
+  if preset == "Tocha" then
+    emit("Fire", "ArkherFire", { Size = 5, Heat = 9 })
+    emit("PointLight", "ArkherLight", { Brightness = 2, Range = 16,
+      Color = Color3.fromRGB(255, 170, 60) })
+  elseif preset == "Fumaca" then
+    emit("Smoke", "ArkherSmoke", { Size = 8, Opacity = 0.6 })
+  elseif preset == "Magia" then
+    emit("ParticleEmitter", "ArkherMagic", { Rate = 50, Lifetime = NumberRange.new(0.5, 1.5),
+      Speed = NumberRange.new(4, 10), Size = NumberSequence.new(1),
+      Transparency = NumberSequence.new(0.2), LightEmission = 0.8 })
+    emit("PointLight", "ArkherLight", { Brightness = 3, Range = 20,
+      Color = Color3.fromRGB(120, 200, 255) })
+  elseif preset == "Brilho" then
+    emit("Sparkles", "ArkherSparkles", {})
+    emit("PointLight", "ArkherLight", { Brightness = 1, Range = 12 })
+  else
+    error("preset: Tocha/Fumaca/Magia/Brilho.")
+  end
+  for _, e in ipairs(made) do
+    created[player] = (created[player] or 0) + 1
+    register(e)
+  end
+  queueObject(parent)
+  return { spawned = #made, preset = preset, msg = ("VFX %s (%d objetos)."):format(preset, #made) }
+end
+function handlers.RrwStats(player, payload)
+  local n, trunc = 0, false
+  for _, d in ipairs(workspace:GetDescendants()) do
+    if d:IsA("BasePart") then n = n + 1 end
+    if n >= 20000 then trunc = true break end
+  end
+  local L = rrwLighting()
+  local fx = 0
+  for _, c in ipairs(L:GetChildren()) do if RRW_FX[c.ClassName] then fx = fx + 1 end end
+  local lod = 0
+  for _ in pairs(rrwLod) do lod = lod + 1 end
+  local style = nil
+  pcall(function() style = uiEnumName2(L.LightingStyle) end)
+  return { fps = math.floor(rrwFps.ema * 10) / 10, parts = n, truncated = trunc,
+    effects = fx, lodGroups = lod, clockTime = L.ClockTime, style = style }
 end
 
 function handlers.PivotReset(player, payload)

@@ -18,8 +18,8 @@ Método: **grep honesto** nas fontes reais + marcadores dentro da placa X descom
 
 | Exigência | Status | Ocorrências | Evidência |
 |---|---|---|---|
-| RRW — Renderer of the Reality of Real World (não raster clássico) | ✅ | 134 | `studio-completo/AUDITORIA.md:17` |
-| Representação em níveis de descrição (LOD por contexto, não tudo o tempo todo) | ✅ | 56 | `studio-completo/AUDITORIA.md:22` |
+| RRW — Renderer of the Reality of Real World (não raster clássico) | ✅ | 187 | `studio-completo/AUDITORIA.md:17` |
+| Representação em níveis de descrição (LOD por contexto, não tudo o tempo todo) | ✅ | 92 | `studio-completo/AUDITORIA.md:22` |
 | Auto-bind: objetos do mundo entram no RRW sozinhos | ✅ | 14 | `studio-completo/LEIA-ME.md:430` |
 | Matéria/substâncias (química: H2O, densidades, salinidade…) | ✅ | 38 | `studio-completo/AUDITORIA.md:24` |
 | Óptica/luz espectro (Kelvin → RGB físico, Planck/CIE) | ✅ | 39 | `studio-completo/AUDITORIA.md:25` |
@@ -49,17 +49,17 @@ Método: **grep honesto** nas fontes reais + marcadores dentro da placa X descom
 | PROPS EXAUSTIVAS (todas as curadas por IsA-chain) + aplicação funcional | ✅ | 57 | `studio-completo/AUDITORIA.md:81` |
 | Color picker REAL aplicando no selecionado | ✅ | 5 | `studio-completo/scripts/08_RealityX.lua:2790` |
 | Gizmos Move/Rotate/Scale no 3D (Handles reais + drag server-autorizado) | ✅ | 31 | `studio-completo/AUDITORIA.md:51` |
-| Undo/Redo com histórico (50, server-side) | ✅ | 33 | `studio-completo/scripts/server.lua:11` |
+| Undo/Redo com histórico (50, server-side) | ✅ | 35 | `studio-completo/scripts/server.lua:11` |
 | Seleção real server-side (Select + SelectedGet) | ✅ | 17 | `studio-completo/AUDITORIA.md:53` |
 | Spawn de part com FORMAS reais (Shape/classe) | ✅ | 21 | `studio-completo/AUDITORIA.md:86` |
 | Toolbox REAL do Roblox (Creator Store: GetFreeModelsAsync + LoadAsset) | ✅ | 16 | `studio-completo/AUDITORIA.md:55` |
 | OUTPUT real (LogService MessageOut/history) + filtros | ✅ | 8 | `studio-completo/LEIA-ME.md:312` |
 | Command bar que EXECUTA (spawn/set/cmd/math…) | ✅ | 5 | `studio-completo/scripts/08_RealityX.lua:3177` |
 | Submenus reais nos menus + tooltips + headers de seção | ✅ | 7 | `studio-completo/scripts/03_Menus.lua:604` |
-| UI adaptável a dispositivo (escala por largura + wrap de botões) | ✅ | 18 | `studio-completo/LEIA-ME.md:291` |
+| UI adaptável a dispositivo (escala por largura + wrap de botões) | ✅ | 19 | `studio-completo/LEIA-ME.md:291` |
 | Abrir criar/projetos (New/Open; baseplates oficiais) | ✅ | 3 | `studio-completo/scripts/server.lua:684` |
 | Salvar na nuvem própria (CloudSave/List/Open) | ✅ | 88 | `studio-completo/LEIA-ME.md:9` |
-| Publicar jogo no PERFIL do dev (página estilo jogo do Roblox) | ✅ | 43 | `studio-completo/scripts/server.lua:879` |
+| Publicar jogo no PERFIL do dev (página estilo jogo do Roblox) | ✅ | 51 | `studio-completo/scripts/server.lua:879` |
 | Criar PLACES novas no perfil (AssetService.CreatePlaceAsync) | ✅ | 20 | `studio-completo/AUDITORIA.md:63` |
 | Colaboração (equipe, convites, co-editores) | ✅ | 12 | `studio-completo/AUDITORIA.md:78` |
 | Datastores simulados (persistência DataSet/List/Get) | ✅ | 11 | `studio-completo/LEIA-ME.md:70` |
@@ -72,7 +72,7 @@ Método: **grep honesto** nas fontes reais + marcadores dentro da placa X descom
 | Color picker INLINE nas propriedades (só aparece no clique do quadrado) | ✅ | 5 | `studio-completo/scripts/10_Studio.lua:141` |
 | Python bridge SEM erro (HttpService via servidor; PyStatus/PyRun) | ✅ | 30 | `studio-completo/LEIA-ME.md:276` |
 | Part com submenu de formas NA TOPBAR (estilo Studio) | ✅ | 6 | `studio-completo/tools/auditoria.py:197` |
-| CSG real (Union/Negate = PartOperation + histórico) | ✅ | 12 | `studio-completo/scripts/03_Menus.lua:2151` |
+| CSG real (Union/Negate = PartOperation + histórico) | ✅ | 12 | `studio-completo/scripts/03_Menus.lua:2161` |
 | Sculpt de terreno com falloff real (gaussiano, Laplaciano) | ✅ | 13 | `studio-completo/docs/PESQUISA_TERRAIN.md:12` |
 | Collision Groups editor (PhysicsService real) | ✅ | 5 | `studio-completo/scripts/08_RealityX.lua:3941` |
 | Presença no collab (quem está editando o quê) | ✅ | 5 | `studio-completo/scripts/03_Menus.lua:1094` |
@@ -82,7 +82,7 @@ Método: **grep honesto** nas fontes reais + marcadores dentro da placa X descom
 | COLOR PICKER real dentro das Properties (HSV gradientes + RGB/hex) | ✅ | 24 | `studio-completo/scripts/08_RealityX.lua:2466` |
 | Menu '+' com catálogo gigante (+1k objects) via CreateAny (Instance.new pcall) | ✅ | 53 | `studio-completo/AUDITORIA.md:83` |
 | Toolbox estilo Studio com thumbnails reais (rbxthumb) + insert na frente da câmera | ✅ | 13 | `studio-completo/LEIA-ME.md:188` |
-| Menus da faixa (ESTÚDIO/MODELAGEM/...) clicáveis (overlay morto + duplo sinal) | ✅ | 225 | `studio-completo/LEIA-ME.md:169` |
+| Menus da faixa (ESTÚDIO/MODELAGEM/...) clicáveis (overlay morto + duplo sinal) | ✅ | 227 | `studio-completo/LEIA-ME.md:169` |
 | Spawn de pecas na frente da camera via servidor (QuickPart) | ✅ | 21 | `studio-completo/AUDITORIA.md:86` |
 | Toolbox insert com fallback REAL (InsertService:LoadAsset server-side) | ✅ | 16 | `studio-completo/AUDITORIA.md:55` |
 | Baseplate garantida (boot automatico + botao BASEPLATE) | ✅ | 7 | `studio-completo/scripts/server.lua:2242` |

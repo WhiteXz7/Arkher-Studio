@@ -43,7 +43,7 @@ local function api(action, payload)
     return clientBus:Invoke("API", { action = action, payload = payload or {} })
   end)
   if not ok then return nil, tostring(r) end
-  if type(r) == "table" and r.error then return nil, tostring(r) end
+  if type(r) == "table" and r.error then return nil, tostring(r.error) end
   return (type(r) == "table" and r.result) or r, nil
 end
 local say = function(text, bad)
@@ -98,7 +98,9 @@ local OTHER_EDS = { "TE3_Rail", "TE3_Brush", "TE3_Mat", "TE3_Layers", "TE3_Histo
   "TE3_Gen", "TE3_Water", "TE3_Status", "VP3_Rail", "VP3_Cam", "VP3_Trans",
   "VP3_Meas", "VP3_Snap", "VP3_Status",
   "AN5_Rail", "AN5_Rig", "AN5_Pose", "AN5_Time", "AN5_Keys", "AN5_IO",
-  "AN5_Status" }
+  "AN5_Status", "UI6_Rail", "UI6_New", "UI6_Props", "UI6_Tree", "UI6_IO",
+  "UI6_Status", "RW7_Rail", "RW7_Prof", "RW7_FX", "RW7_Sky", "RW7_World",
+  "RW7_LOD", "RW7_Status" }
 local DESK_HIDE = { "T2_Panel", "C2_Panel", "S2_Panel", "O2_Panel", "O2_WPanel",
   "TL2_Panel", "CV2_Panel", "SM2_Panel", "TM2_Panel", "FR2_Panel" }
 
@@ -118,8 +120,10 @@ local function setOpen(v)
   for _, n in ipairs(OTHER_EDS) do setVisible(n, false) end
   setVisible("M_VP", false)
   setVisible("M_AN", false)
+  setVisible("M_UI", false)
+  setVisible("M_RW", false)
   if v then
-    for _, ed in ipairs({ "ArkherTerrain", "ArkherViewport", "ArkherAnimator" }) do
+    for _, ed in ipairs({ "ArkherTerrain", "ArkherViewport", "ArkherAnimator", "ArkherUI", "ArkherRRW" }) do
       pcall(function()
         local e = _G[ed]
         if e and e.isOpen and e.isOpen() then e.close() end

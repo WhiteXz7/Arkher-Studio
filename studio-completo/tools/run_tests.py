@@ -17,6 +17,8 @@ TESTS = {
     "Viewport R11 (server remap/many/rig + 13_Viewport)": "studio-completo/tools/test_viewport13.lua",
     "Modeler R12 (server Mesh*/OBJ + 14_Modeler)": "studio-completo/tools/test_modeler14.lua",
     "Animator R13 (server Anim*/IK/JSON + 15_Animator)": "studio-completo/tools/test_animator15.lua",
+    "UI Editor R14 (server Ui* + 16_UI)": "studio-completo/tools/test_ui16.lua",
+    "RRW R14 (server Rrw* + 17_RRW)": "studio-completo/tools/test_rrw17.lua",
 }
 ok = True
 for label, path in TESTS.items():

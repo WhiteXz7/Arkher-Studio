@@ -655,6 +655,134 @@ man_kids = [B("M_AN_New", 8, 8, 200, 64, "NEW SEQ", ACCENT, TEXT, 16, FB),
             B("M_AN_Key", 424, 8, 200, 64, "ADD KEY", BTN, TEXT, 16, FB),
             L("M_AN_Hint", 632, 8, 700, 64, "new + play + key at cursor", MUTED, 13)]
 man = F("M_AN", 0, 690, 1568, 80, MENU_BG, man_kids, HID)
+# ---------------- 12e. ui editor R14 (UI6) ----------------
+ui6_rail_kids = [title("UI")]
+for i, key in enumerate(["Select", "Move"]):
+    ui6_rail_kids.append(B("UI6_T_" + key, 8, 30 + i * 44, 56, 40,
+                            key[:3].upper(), BTN, TEXT, 11, FB))
+ui6_rail_kids.append(B("UI6_Close", 8, 30 + 2 * 44, 56, 32, "X", BTN, RED, 14, FB))
+ui6_rail = F("UI6_Rail", 8, 100, 72, 220, PANEL, ui6_rail_kids, HID)
+
+ui6_new_kids = [title("NEW")]
+for i, (nm, tx) in enumerate([("Frame", "FRAME"), ("Label", "LABEL"), ("Button", "BUTTON"),
+    ("Box", "TEXTBOX"), ("Image", "IMAGE"), ("Scroll", "SCROLL"),
+    ("Corner", "CORNER"), ("Stroke", "STROKE")]):
+    ui6_new_kids.append(B("UI6_N_" + nm, 8 + (i % 2) * 104, 30 + (i // 2) * 34, 100, 30,
+                           tx, ACCENT if i < 6 else BTN, TEXT, 11, FB))
+ui6_new_kids.append(L("UI6_Info", 8, 170, 204, 44, "no selection", MUTED, 11, FC))
+ui6_new = F("UI6_New", 88, 100, 220, 222, PANEL, ui6_new_kids, HID)
+
+ui6_props_kids = [title("POS + SIZE")]
+for i, (ax, key) in enumerate([("X", "X"), ("Y", "Y")]):
+    y = 30 + i * 30
+    ui6_props_kids += [L("UI6_" + key + "L", 8, y, 20, 26, ax, MUTED, 11, FB),
+        B("UI6_" + key + "_M", 28, y, 40, 26, "-", BTN, TEXT, 14),
+        L("UI6_" + key + "V", 72, y, 76, 26, "0", TEXT, 12, FC, CENTER, INSET),
+        B("UI6_" + key + "_P", 152, y, 40, 26, "+", BTN, TEXT, 14)]
+for i, (ax, key) in enumerate([("W", "W"), ("H", "H")]):
+    y = 92 + i * 30
+    ui6_props_kids += [L("UI6_" + key + "L", 8, y, 20, 26, ax, MUTED, 11, FB),
+        B("UI6_" + key + "_M", 28, y, 40, 26, "-", BTN, TEXT, 14),
+        L("UI6_" + key + "V", 72, y, 76, 26, "0", TEXT, 12, FC, CENTER, INSET),
+        B("UI6_" + key + "_P", 152, y, 40, 26, "+", BTN, TEXT, 14)]
+ui6_props_kids += [T("UI6_Text", 8, 154, 140, 30, "text...", "", 12),
+    B("UI6_T_Apply", 152, 154, 60, 30, "SET", ACCENT, TEXT, 12, FB),
+    B("UI6_Dup", 8, 190, 100, 30, "DUPLI", BTN, TEXT, 12, FB),
+    B("UI6_Del", 112, 190, 100, 30, "DEL", BTN, RED, 12, FB)]
+ui6_props = F("UI6_Props", 88, 330, 220, 228, PANEL, ui6_props_kids, HID)
+
+ui6_tree_kids = [title("TREE"),
+    B("UI6_T_Prev", 8, 30, 50, 26, "<", BTN, TEXT, 14),
+    L("UI6_T_Name", 62, 30, 100, 26, "- -", GOLD, 11, FC, CENTER, INSET),
+    B("UI6_T_Next", 166, 30, 50, 26, ">", BTN, TEXT, 14),
+    B("UI6_Pub", 8, 62, 204, 30, "PUBLISH UI", ACCENT, TEXT, 12, FB),
+    L("UI6_T_Hint", 8, 98, 204, 40, "publish = StarterGui (respawn)", MUTED, 10)]
+ui6_tree = F("UI6_Tree", 1330, 100, 220, 146, PANEL, ui6_tree_kids, HID)
+
+ui6_io_kids = [title("UI JSON"),
+    T("UI6_IO_Text", 8, 30, 204, 90, "paste UI JSON here", "", 11,
+      {"MultiLine": True, "TextWrapped": True, "TextYAlignment": {"en": "TextYAlignment.Top"}}),
+    B("UI6_IO_Import", 8, 126, 100, 30, "IMPORT", ACCENT, TEXT, 12, FB),
+    B("UI6_IO_Export", 112, 126, 100, 30, "EXPORT", BTN, TEXT, 12, FB),
+    L("UI6_IO_Stat", 8, 162, 204, 22, "ui -", MUTED, 11)]
+ui6_io = F("UI6_IO", 1330, 254, 220, 192, PANEL, ui6_io_kids, HID)
+
+ui6_status = F("UI6_Status", 88, 820, 700, 30, PANEL,
+               [L("UI6_StatL", 8, 4, 684, 22, "ui editor", TEXT, 12, FC)], HID)
+
+mui_kids = [B("M_UI_New", 8, 8, 200, 64, "NEW FRAME", ACCENT, TEXT, 16, FB),
+            B("M_UI_Dup", 216, 8, 200, 64, "DUPLI", BTN, TEXT, 16, FB),
+            B("M_UI_Del", 424, 8, 200, 64, "DEL", BTN, TEXT, 16, FB),
+            L("M_UI_Hint", 632, 8, 700, 64, "frame + duplicate + delete", MUTED, 13)]
+mui = F("M_UI", 0, 690, 1568, 80, MENU_BG, mui_kids, HID)
+
+# ---------------- 12f. rrw R14 (RW7) ----------------
+rw7_rail_kids = [title("RRW"),
+    B("RW7_T_Place", 8, 30, 56, 40, "PLC", BTN, TEXT, 11, FB),
+    B("RW7_Close", 8, 74, 56, 32, "X", BTN, RED, 14, FB)]
+rw7_rail = F("RW7_Rail", 8, 100, 72, 220, PANEL, rw7_rail_kids, HID)
+
+rw7_prof_kids = [title("PROFILE")]
+for i, nm in enumerate(["Realista", "Showcase", "Horror", "Mobile", "Estudio"]):
+    rw7_prof_kids.append(B("RW7_P_" + nm, 8 + (i % 2) * 104, 30 + (i // 2) * 34, 100, 30,
+                            nm.upper(), ACCENT if i == 0 else BTN, TEXT, 11, FB))
+rw7_prof_kids.append(L("RW7_P_Info", 8, 136, 204, 44, "style -", MUTED, 11, FC))
+rw7_prof = F("RW7_Prof", 88, 100, 220, 188, PANEL, rw7_prof_kids, HID)
+
+rw7_fx_kids = [title("POST FX")]
+for i, (nm, tx) in enumerate([("Bloom", "BLOOM"), ("Blur", "BLUR"), ("Color", "COLOR"),
+    ("DOF", "DOF"), ("Rays", "RAYS"), ("Grade", "GRADE")]):
+    rw7_fx_kids.append(B("RW7_F_" + nm, 8 + (i % 2) * 104, 30 + (i // 2) * 34, 100, 30,
+                           tx, BTN, TEXT, 11, FB))
+rw7_fx_kids += [L("RW7_I_L", 8, 136, 70, 26, "INTEN", MUTED, 11, FB),
+    B("RW7_I_M", 80, 136, 40, 26, "-", BTN, TEXT, 14),
+    L("RW7_IV", 124, 136, 44, 26, "1", TEXT, 12, FC, CENTER, INSET),
+    B("RW7_I_P", 172, 136, 40, 26, "+", BTN, TEXT, 14),
+    L("RW7_F_Info", 8, 168, 204, 40, "click = toggle; inten = main prop", MUTED, 10)]
+rw7_fx = F("RW7_FX", 88, 296, 220, 216, PANEL, rw7_fx_kids, HID)
+
+rw7_sky_kids = [title("SKY"),
+    B("RW7_S_TM", 8, 30, 50, 26, "-1H", BTN, TEXT, 11, FB),
+    L("RW7_S_TV", 62, 30, 100, 26, "12:00", GOLD, 13, FC, CENTER, INSET),
+    B("RW7_S_TP", 166, 30, 50, 26, "+1H", BTN, TEXT, 11, FB),
+    B("RW7_S_Cycle", 8, 62, 100, 30, "CYCLE OFF", BTN, TEXT, 11, FB),
+    B("RW7_S_SM", 112, 62, 30, 30, "-", BTN, TEXT, 14),
+    L("RW7_S_SV", 146, 62, 36, 30, ".1", TEXT, 11, FC, CENTER, INSET),
+    B("RW7_S_SP", 186, 62, 26, 30, "+", BTN, TEXT, 14)]
+rw7_sky = F("RW7_Sky", 1330, 100, 220, 100, PANEL, rw7_sky_kids, HID)
+
+rw7_world_kids = [title("ATMO + VFX"),
+    L("RW7_A_L", 8, 30, 70, 26, "ATMO", MUTED, 11, FB),
+    B("RW7_A_M", 80, 30, 40, 26, "-", BTN, TEXT, 14),
+    L("RW7_AV", 124, 30, 44, 26, ".3", TEXT, 12, FC, CENTER, INSET),
+    B("RW7_A_P", 172, 30, 40, 26, "+", BTN, TEXT, 14),
+    L("RW7_C_L", 8, 62, 70, 26, "CLOUD", MUTED, 11, FB),
+    B("RW7_C_M", 80, 62, 40, 26, "-", BTN, TEXT, 14),
+    L("RW7_CV", 124, 62, 44, 26, ".5", TEXT, 12, FC, CENTER, INSET),
+    B("RW7_C_P", 172, 62, 40, 26, "+", BTN, TEXT, 14),
+    B("RW7_V_Torch", 8, 94, 100, 28, "TORCH", BTN, TEXT, 11, FB),
+    B("RW7_V_Smoke", 112, 94, 100, 28, "SMOKE", BTN, TEXT, 11, FB),
+    B("RW7_V_Magic", 8, 126, 100, 28, "MAGIC", BTN, TEXT, 11, FB),
+    B("RW7_V_Glow", 112, 126, 100, 28, "GLOW", BTN, TEXT, 11, FB)]
+rw7_world = F("RW7_World", 1330, 208, 220, 162, PANEL, rw7_world_kids, HID)
+
+rw7_lod_kids = [title("LOD"),
+    T("RW7_L_Name", 8, 30, 120, 26, "group", "", 11),
+    B("RW7_L_Add", 132, 30, 80, 26, "+TIER", ACCENT, TEXT, 11, FB),
+    L("RW7_L_Info", 8, 62, 204, 44, "tiers: select model, +tier xN", MUTED, 10),
+    B("RW7_L_Reg", 8, 110, 100, 28, "REGISTER", ACCENT, TEXT, 11, FB),
+    B("RW7_L_Del", 112, 110, 100, 28, "REMOVE", BTN, RED, 11, FB)]
+rw7_lod = F("RW7_LOD", 1330, 378, 220, 146, PANEL, rw7_lod_kids, HID)
+
+rw7_status = F("RW7_Status", 88, 820, 700, 30, PANEL,
+               [L("RW7_StatL", 8, 4, 684, 22, "rrw", TEXT, 12, FC)], HID)
+
+mrw_kids = [B("M_RW_Prof", 8, 8, 200, 64, "PROFILE", ACCENT, TEXT, 16, FB),
+            B("M_RW_FX", 216, 8, 200, 64, "BLOOM", BTN, TEXT, 16, FB),
+            B("M_RW_Sky", 424, 8, 200, 64, "CYCLE", BTN, TEXT, 16, FB),
+            L("M_RW_Hint", 632, 8, 700, 64, "cycle profile + bloom + day cycle", MUTED, 13)]
+mrw = F("M_RW", 0, 690, 1568, 80, MENU_BG, mrw_kids, HID)
+
 
 
 desktop_kids = ([menu, ribbon, terrain, console, selection, crumb, compass, coords,
@@ -687,6 +815,10 @@ for _p in [vp3_rail, vp3_cam, vp3_tm, vp3_meas, vp3_snap, vp3_status]:
 for _p in [md4_rail, md4_mesh, md4_vert, md4_top, md4_io, md4_status]:
     desktop_kids.append(_p)
 for _p in [an5_rail, an5_rig, an5_pose, an5_time, an5_keys, an5_io, an5_status]:
+    desktop_kids.append(_p)
+for _p in [ui6_rail, ui6_new, ui6_props, ui6_tree, ui6_io, ui6_status]:
+    desktop_kids.append(_p)
+for _p in [rw7_rail, rw7_prof, rw7_fx, rw7_sky, rw7_world, rw7_lod, rw7_status]:
     desktop_kids.append(_p)
 desktop = N("Frame", "DesktopRoot",
             {"Position": P(0, 0), "Size": S(1568, 882),

@@ -298,6 +298,8 @@ UDim2.fromOffset = function(x,y) return UDim2.new(0,x,0,y) end
 UDim2.fromScale = function(a,b) return UDim2.new(a,0,b,0) end
 UDim = {} function UDim.new(a,b) return {Scale=a or 0,Offset=b or 0,__t="UDim"} end
 ColorSequence = {} function ColorSequence.new(...) return {__t="ColorSequence"} end
+NumberRange = {} function NumberRange.new(a,b) return {Min=a or 0,Max=(b==nil and a) or b or 0,__t="NumberRange"} end
+NumberSequence = {} function NumberSequence.new(...) return {__t="NumberSequence"} end
 Vector2 = {} function Vector2.new(x,y) return {X=x or 0,Y=y or 0,__t="Vector2"} end
 Vector3int16 = {} function Vector3int16.new(x,y,z) return {X=x or 0,Y=y or 0,Z=z or 0,__t="Vector3int16"} end
 Region3 = {}
@@ -345,6 +347,10 @@ local CLASS_SUPER = {
   AnimationClip="Instance", KeyframeSequence="AnimationClip", Keyframe="Instance",
   PoseBase="Instance", Pose="PoseBase", Animation="Instance", Animator="Instance",
   AnimationController="Instance", Humanoid="Instance", IKControl="Instance", Bone="Instance",
+  PostEffect="Instance", BloomEffect="PostEffect", BlurEffect="PostEffect",
+  ColorCorrectionEffect="PostEffect", DepthOfFieldEffect="PostEffect",
+  SunRaysEffect="PostEffect", ColorGradingEffect="PostEffect",
+  Atmosphere="Instance", Clouds="Instance", Sky="Instance",
   UICorner="Instance", UIStroke="Instance", UIGradient="Instance", UIPadding="Instance",
   UIListLayout="Instance", UIGridLayout="Instance", UIAspectRatioConstraint="Instance", UISizeConstraint="Instance",
   Folder="Instance", Model="Instance",
