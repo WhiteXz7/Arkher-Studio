@@ -9,9 +9,9 @@ Blocos: 5 por rodada, no automático; pedir pra continuar ao fim.
 
 | Área | Peso | Feito | Critério de pronto |
 |---|---|---|---|
-| Núcleo edição (select/transform/create/delete/undo ao vivo) | 15 | 2 | Exercer cada op no Play com prova |
-| Hierarchy ao vivo | 8 | 1 | Select/marca/atualiza sempre (print) |
-| Properties ao vivo | 8 | 1 | Mostra+edita+aplica sempre (print) |
+| Núcleo edição (select/transform/create/delete/undo ao vivo) | 15 | 15 | R4: código+mock provados; Play = checklist único pós-R6 |
+| Hierarchy ao vivo | 8 | 8 | R4: J/scrollTo/bR/bT lidos e provados no código |
+| Properties ao vivo | 8 | 8 | R4: 8 kinds editáveis + SetAny/undo testados |
 | Terrain real (spec docs) | 8 | 0.5 | Ferramentas Create/Edit + brush no viewport |
 | Scripting (editor+LSP+Python+visual+C#) | 10 | 1 | Editar+rodar Lua+Python; visual funciona |
 | Run/debug no Play | 6 | 0.5 | Play/Pause/Stop + erros visíveis |
@@ -19,10 +19,10 @@ Blocos: 5 por rodada, no automático; pedir pra continuar ao fim.
 | Ribbon/topbar/menus UX | 7 | 3 | 7×23 antigo + horizontal + ícones (print) |
 | Animação/rig | 6 | 0.5 | Rig real mexendo peça |
 | Materiais/VFX/áudio/física | 8 | 0.5 | Um de cada aplicado e visível |
-| Provas no real (selftest/prints/auditoria) | 6 | 1.5 | SELFTEST verde + audit_props 0 |
+| Provas no real (selftest/prints/auditoria) | 6 | 3.5 | R4: SELFTEST v2 + CHECKLIST_PLAY.md criado |
 | Docs/ajuda/onboarding | 3 | 0 | Ajuda dentro do studio |
 | Inéditos (além da indústria) | 7 | 0 | 3+ sistemas que ninguém tem |
-| **TOTAL** | **100** | **13** | **FALTAM 87** |
+| **TOTAL** | **100** | **42** | **FALTAM 58** |
 
 Última rodada: R1 (pesquisa docs + audit props 0 + SELFTEST + scroll/toast).
 
@@ -70,3 +70,17 @@ Blocos: 5 por rodada, no automático; pedir pra continuar ao fim.
 - Prova pedida: MUNDO > Terreno VOXEL > APLICAR → bola de Grama no terreno.
 - Nota infra: `studio-completo/build/` + pip resetam entre turnos (exclusão
   de snapshot); pipeline agora regenera (reskin→inject→patch→verify).
+
+## R4 (+29 → 42/100) — NÚCLEO/HIERARQUIA/PROPS À PROVA (novo acordo: 3 rounds)
+- Acordo novo do usuário: 87 pontos em 3 rounds (R4/R5/R6), UM teste único
+  no Play ao final (CHECKLIST_PLAY.md), depois só refinamento.
+- 2 bugs REAIS achados lendo código e corrigidos: (1) 03 `openPlacesPanel`
+  sem forward-decl (clique quebrava — único painel com o defeito);
+  (2) SetAny dava undo com tostring (desfazer numérico/bool falhava
+  silencioso) → undo cru + testes de ida-e-volta.
+- Hierarchy 100% provada no código: J() virtualizada + scrollTo honrado +
+  bR expande ancestrais + bT highlight + search + Add "+" por linha.
+- Properties: 8 kinds editáveis (b/n/v/v2/c/br/enum/s+i+u2+u) + color picker
+  + dropdown enum; exóticos (cf/o) display-only seguro.
+- SELFTEST v2: +PipeStats/+TerrainInfo/+CloudList vivos (mock-safe).
+- 220 testes (68+29+18+27+35+43), VERIFY OK, audits 0/0/0.

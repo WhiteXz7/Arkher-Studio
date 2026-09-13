@@ -211,6 +211,33 @@ check(fmat and fmat.error, "TerrainFill material falso: rejeita")
 local cl = invokeWait("TerrainClear", {})
 check(cl and cl.ok and terCalls[#terCalls].shape == "clear", "TerrainClear: Clear ok")
 
+print("\n== R4 nucleo (undo cru + PropsAll) ==")
+local wsSnap = invokeWait("Snapshot", {})
+local wsId2 = findId(wsSnap, "Workspace")
+local cp = invokeWait("CreateAny", { class = "Part", parentId = wsId2 })
+local cpid = cp and cp.id
+check(cpid ~= nil, "R4: Part criado p/ teste")
+local t0 = cpid and invokeWait("SetAny", { id = cpid, name = "Transparency", kind = "n", value = 0.5 })
+check(t0 and t0.ok == true, "R4: SetAny Transparency=0.5")
+local paT = cpid and invokeWait("PropsAll", { id = cpid })
+local tf = nil
+if paT and paT.fields then for _, f in ipairs(paT.fields) do if f.name == "Transparency" then tf = f end end end
+check(tf and tf.value == 0.5, "R4: PropsAll mostra 0.5")
+local un1 = invokeWait("Undo", {})
+local paT2 = cpid and invokeWait("PropsAll", { id = cpid })
+local tf2 = nil
+if paT2 and paT2.fields then for _, f in ipairs(paT2.fields) do if f.name == "Transparency" then tf2 = f end end end
+check(un1 and tf2 and tf2.value == 0, "R4: Undo restaura Transparency=0 (undo cru)")
+local b0 = cpid and invokeWait("SetAny", { id = cpid, name = "Anchored", kind = "b", value = false })
+local un2 = invokeWait("Undo", {})
+local paB = cpid and invokeWait("PropsAll", { id = cpid })
+local bf = nil
+if paB and paB.fields then for _, f in ipairs(paB.fields) do if f.name == "Anchored" then bf = f end end end
+check(b0 and b0.ok and un2 and bf and bf.value == true, "R4: Undo restaura Anchored=true (bool cru)")
+local names = {}
+if paB and paB.fields then for _, f in ipairs(paB.fields) do names[f.name] = f.kind end end
+check(names["Position"] and names["Size"] and names["Color"] and names["Name"], "R4: PropsAll Part tem Position/Size/Color/Name")
+
 print("\n================================")
 print(string.format("RESULTADO: %d passaram, %d falharam", pass, fail))
 if fail > 0 then os.exit(1) else os.exit(0) end

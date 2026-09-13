@@ -367,6 +367,18 @@ if strip and ribbon then
 					if ch.Name:sub(1, 5) == "Deck_" then nd = nd + 1 end end end
 			ok(nv == 40, "40 V2 (" .. nv .. ")")
 			ok(nd == 25, "25 Decks (" .. nd .. ")")
+			local ps = busApi("PipeStats", {})
+			if ps and ps.deltaFlush ~= nil then
+				ok(true, "PipeStats vivo (flush=" .. tostring(ps.deltaFlush) .. " nodes=" .. tostring(ps.nodeCount) .. ")")
+			else print("[ArkherX] SELFTEST INFO PipeStats sem resposta (mock?)") end
+			local ti = busApi("TerrainInfo", {})
+			if ti and ti.cells ~= nil then
+				ok(true, "TerrainInfo vivo (" .. tostring(ti.cells) .. " voxels)")
+			else print("[ArkherX] SELFTEST INFO TerrainInfo sem resposta (sem Terrain/mock?)") end
+			local cl = busApi("CloudList", {})
+			if cl and cl.clouds ~= nil then
+				ok(true, "CloudList vivo (" .. tostring(#(cl.clouds or {})) .. " nuvens)")
+			else print("[ArkherX] SELFTEST INFO CloudList sem resposta (mock/offline?)") end
 		end)
 		print("[ArkherX] SELFTEST fim: " .. P .. " pass, " .. F .. " fail.")
 		say("SelfTest: " .. P .. " pass, " .. F .. " fail (7 abas x 23 botoes).")

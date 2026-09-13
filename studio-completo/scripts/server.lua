@@ -2248,7 +2248,7 @@ function handlers.SetAny(player, payload)
 	if not okSet then return { error = "Roblox recusou " .. name .. ": " .. tostring(errSet) } end
 	local okNew, new0 = pcall(function() return o[name] end)
 	if okOld and okNew and tostring(old) ~= tostring(new0) then
-		pcall(function() hSet(player, o, name, tostring(old), tostring(new0)) end)
+		pcall(function() hSet(player, o, name, old, new0) end) -- R4: undo cru (tostring quebrava desfazer numerico/bool)
 	end
 	pcall(function() queueObject(o) end)
 	return { ok = true, applied = name, now = tostring(new0) }

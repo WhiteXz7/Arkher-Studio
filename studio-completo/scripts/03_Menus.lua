@@ -160,7 +160,7 @@ end
 local openSettingsDialog  -- forward declaration (definida abaixo)
 local openPublishDialog, openCloudPanel, openDataPanel, openToolboxPanel
 local openCollaborationPanel, openLocalizationPanel, openProjectSettingsPanel, openPluginsPanel
-local openProfilePanel, doCloudSave
+local openProfilePanel, doCloudSave, openPlacesPanel
 local actions = {}
 
 -- ---- FILE ----
@@ -1154,7 +1154,7 @@ openCollaborationPanel = function()
 end
 
 -- ---------- PLACES DO PERFIL (criar places novas de verdade) ----------
-local function openPlacesPanel()
+openPlacesPanel = function()
   local pl, pe = api("ProfileList")
   local d, body = modalDialog("Places do meu perfil", 680, 520)
   local games = (pl and pl.result and pl.result.games) or {}
