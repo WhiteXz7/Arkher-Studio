@@ -1380,6 +1380,7 @@ MENUS.Models = {
   { icon = "nodeLink", label = "Mirror Z", act = "XMirrZ" },
 }
 MENUS.Terrain = {
+  { icon = "Open", label = "Terrain Editor PRO (brush)", act = "XTerrainEditor" },
   { icon = "Open", label = "Terrain Editor X", act = "XOpenTerrain" },
   { icon = "Open", label = "Terrain Generator", act = "XOpenTerrainGen" },
   { icon = "Open", label = "Voxel Probe", act = "XOpenTerrainVoxel" },
@@ -2034,6 +2035,10 @@ actions.AnimGoA = function() animDo("AnimGo", "A") end
 actions.AnimGoB = function() animDo("AnimGo", "B") end
 actions.AnimStop = function() local r, err = api("AnimStop", {}) if err then say(err, true) else say("Parada.") end end
 actions.XOpenTerrainVoxel = function() openTerrainVoxelPanel() end
+actions.XTerrainEditor = function()
+  local te = _G.ArkherTerrain
+  if te and te.open then te.open() else say("Terrain Editor PRO nao carregado (12_Terrain).", true) end
+end
 actions.XOpenTerrain      = function() deckOpen("terrain", "ferramentas") end
 actions.XOpenTerrainGen   = function() deckOpen("terrain", "gerar") end
 actions.XOpenTerrainProbe = function() deckOpen("terrain", "sonda") end

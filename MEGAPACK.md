@@ -208,3 +208,29 @@ Blocos: 5 por rodada, no automático; pedir pra continuar ao fim.
   (set vive no 11+server; gizmo/01 seguem single); títulos dinâmicos ficam EN
   (S2/O2/SM2/TM2 reescrevem); prova em device VR físico; persistência do
   remap (hoje sessão); lasso no touch/gamepad (só PC tem L).
+
+## R10 — Terrain Editor REAL (engine voxel + client pincel + bake TE3)
+- Engine (server.lua, +~330 linhas): dab de 12 pincéis (draw/sculpt/raise/
+  lower/flatten/smooth/erode/crater/paint/replace/water/drain), ruído com
+  seed, simetria x/z, snapshots ReadVoxels (cap 50), pincel ≤64; strokes
+  agrupados (begin/dab/end + apply=false fecha sem dab extra); Undo/Redo
+  captura-tudo-depois-restaura-reverso (snaps sobrepostos exatos).
+  10 handlers: TerrainStroke/Undo/Redo/Layer/Gen/WaterProps/Rain/Flood/
+  Hydro/Stats. Padrão shell p/ os 10 editores.
+- Client (`12_Terrain.lua`, ~810 linhas): toolbar 12 tools + tooltips, 12
+  sliders (função pura xToValue; arrasto real + fallback honesto), 21
+  swatches com cores REAIS lidas do Terrain, simetria/plano/source, gizmo
+  3D de 3 discos, strokes mouse+toque (begin/dab/end), guards overUI e
+  typing, UI de layers/history/gen/água, strip mobile M_TE, API
+  `_G.ArkherTerrain`. 03_Menus: ação XTerrainEditor + linha no menu.
+- Spec 632→1048 nós (+416: TE3 rail/brush/mat/layers/history/gen/water/
+  status + M_TE; ícones vetoriais sem emoji); placa 350721→365832B,
+  9422→9839 inst. Arkher_12_Terrain injetado (guix+shell2); server
+  assado com 215507 bytes.
+- Testes: 472 verdes (141+32+18+27+41+43+82+49+39: test_terrain 49/49,
+  test_terrain12 39/39 full-stack), VERIFY OK (+14 marcadores R10:
+  9 nós TE3/M_TE + handlers.TerrainStroke/Gen/Hydro + ArkherTerrain +
+  XTerrainEditor + script Arkher_12_Terrain), audits limpos (0 mortos,
+  0 drops, 75 ok/1 parcial/0 ausente).
+- HONESTO/RESTANTE: Console/VR abrem o editor mas pintam só na R11;
+  remap persiste só na sessão; prova em device físico pendente.

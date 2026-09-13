@@ -12,6 +12,8 @@ TESTS = {
     "Cliente ROUND12 (Ribbon X + Properties/Insert/Toolbox + menus clicaveis)": "studio-completo/tools/test_client_round12.lua",
     "GUIX Adopt (08 adota bake sem duplicar + 05/06/07/09 wiring)": "studio-completo/tools/test_guix_adopt.lua",
     "Input System (11 detect/layouts/4 controllers)": "studio-completo/tools/test_input.lua",
+    "Terrain R10 (pinceis voxel/undo/layers/gen/hidro)": "studio-completo/tools/test_terrain.lua",
+    "Terrain R10 client (12_Terrain wiring/strokes/paineis)": "studio-completo/tools/test_terrain12.lua",
 }
 ok = True
 for label, path in TESTS.items():

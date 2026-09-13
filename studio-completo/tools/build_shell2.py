@@ -55,14 +55,14 @@ def F(name, x, y, w, h, bg=PANEL, kids=None, extra=None):
     k = [corner(), stroke()] + list(kids or [])
     return N("Frame", name, p, k)
 
-def B(name, x, y, w, h, text, bg=BTN, fg=TEXT, size=13, font=FG, align=CENTER, extra=None):
+def B(name, x, y, w, h, text, bg=BTN, fg=TEXT, size=13, font=FG, align=CENTER, extra=None, kids=None):
     p = {"Position": P(x, y), "Size": S(w, h), "Text": text,
          "BackgroundColor3": bg, "BorderSizePixel": 0,
          "TextColor3": fg, "TextSize": float(size), "Font": font,
          "TextXAlignment": align, "AutoButtonColor": True}
     if extra:
         p.update(extra)
-    return N("TextButton", name, p, [corner(4)])
+    return N("TextButton", name, p, [corner(4)] + list(kids or []))
 
 def L(name, x, y, w, h, text, fg=TEXT, size=13, font=FG, align=LEFT, bg=None):
     p = {"Position": P(x, y), "Size": S(w, h), "Text": text,
@@ -82,13 +82,13 @@ def T(name, x, y, w, h, placeholder="", text="", size=13):
               "TextColor3": TEXT, "TextSize": float(size), "Font": FG,
               "TextXAlignment": LEFT, "ClearTextOnFocus": False}, [corner(4)])
 
-def SC(name, x, y, w, h, bg=INSET):
+def SC(name, x, y, w, h, bg=INSET, kids=None):
     return N("ScrollingFrame", name,
              {"Position": P(x, y), "Size": S(w, h),
               "BackgroundColor3": bg, "BorderSizePixel": 0,
               "CanvasSize": {"u2": [0.0, 0, 0.0, 0]},
               "ScrollBarImageColor3": BORDER, "ScrollBarThickness": 6,
-              "AutomaticCanvasSize": {"en": "AutomaticSize.Y"}}, [corner(4)])
+              "AutomaticCanvasSize": {"en": "AutomaticSize.Y"}}, [corner(4)] + list(kids or []))
 
 def title(text):
     return L("Title", 10, 6, 200, 20, text, GOLD, 13, FB)
@@ -298,6 +298,155 @@ footer = [B("F2_Out", 8, 823, 70, 26, "☰ Output", BTN, TEXT, 12),
           L("F2_Mem", 1378, 823, 60, 26, "0MB", TEXT, 12, FB, CENTER),
           B("F2_Publish", 1442, 823, 118, 26, "☁ Publish", ACCENT, TEXT, 13, FB)]
 
+# ---------------- 14. TERRAIN EDITOR R10 (engine UI, icones vetoriais, sem emoji) ----------------
+def IC(nm, x, y, w, h, c, circ=False, rot=0):
+    p = {"Position": P(x, y), "Size": S(w, h), "BackgroundColor3": c, "BorderSizePixel": 0}
+    if rot:
+        p["Rotation"] = float(rot)
+    k = [N("UICorner", "Corner", {"CornerRadius": {"u1": [0.5, 0.0]}})] if circ else []
+    return N("Frame", nm, p, k)
+
+ICONS = {
+    "draw": [IC("i", 20, 12, 16, 16, ACCENT, True)],
+    "sculpt": [IC("o", 20, 12, 16, 16, TEXT, True), IC("i", 24, 16, 8, 8, BTN, True)],
+    "raise": [IC("b", 26, 14, 4, 12, TEXT), IC("h", 24, 8, 8, 8, TEXT, False, 45)],
+    "lower": [IC("b", 26, 14, 4, 12, TEXT), IC("h", 24, 24, 8, 8, TEXT, False, 45)],
+    "flatten": [IC("b", 16, 18, 24, 4, ACCENT)],
+    "smooth": [IC("d1", 18, 18, 5, 5, TEXT, True), IC("d2", 25, 14, 5, 5, TEXT, True), IC("d3", 32, 18, 5, 5, TEXT, True)],
+    "erode": [IC("d1", 20, 12, 4, 4, MUTED), IC("d2", 28, 16, 3, 3, MUTED), IC("d3", 22, 22, 3, 3, MUTED), IC("d4", 30, 24, 4, 4, MUTED)],
+    "crater": [IC("o", 18, 10, 20, 20, ACCENT, True), IC("i", 23, 15, 10, 10, BTN, True), IC("d", 26, 18, 4, 4, TEXT, True)],
+    "paint": [IC("s", 20, 12, 16, 16, TEXT), IC("h", 20, 12, 16, 8, ACCENT)],
+    "replace": [IC("a", 17, 14, 10, 12, TEXT), IC("b", 29, 14, 10, 12, ACCENT)],
+    "water": [IC("w1", 17, 15, 22, 3, ACCENT), IC("w2", 19, 22, 20, 3, ACCENT)],
+    "drain": [IC("b", 26, 10, 4, 10, TEXT), IC("h", 24, 16, 8, 8, TEXT, False, 45), IC("l", 18, 28, 20, 2, MUTED)],
+    "undo": [IC("b", 22, 18, 12, 4, TEXT), IC("h", 18, 16, 8, 8, TEXT, False, 45)],
+    "redo": [IC("b", 22, 18, 12, 4, TEXT), IC("h", 30, 16, 8, 8, TEXT, False, 45)],
+}
+ICON_X = [IC("x1", 20, 14, 16, 3, TEXT, False, 45), IC("x2", 20, 14, 16, 3, TEXT, False, -45)]
+
+def SLIDER(prefix, x, y, w, name, val):
+    trackw = w - 150
+    return [L(prefix + "_Name", x, y, 80, 22, name, MUTED, 12, FB),
+            B(prefix + "_Track", x + 82, y + 7, trackw, 8, "", INSET, TEXT, 11, FG, CENTER, {"AutoButtonColor": False}),
+            B(prefix + "_Knob", x + 82, y + 1, 14, 20, "", ACCENT, TEXT, 11, FG, CENTER, {"AutoButtonColor": False}),
+            L(prefix + "_Val", x + 86 + trackw, y, 60, 22, val, TEXT, 12, FC)]
+
+HID = {"Visible": False}
+rail_kids = [title("TERRAIN")]
+for i, key in enumerate(["draw", "sculpt", "raise", "lower", "flatten", "smooth", "erode",
+                         "crater", "paint", "replace", "water", "drain"]):
+    rail_kids.append(B("TE3_T_" + key, 8, 30 + i * 44, 56, 40, "", BTN, TEXT, 11, FG, CENTER, None, ICONS[key]))
+rail_kids.append(B("TE3_Close", 8, 30 + 12 * 44, 56, 32, "", BTN, TEXT, 11, FG, CENTER, None, ICON_X))
+te3_rail = F("TE3_Rail", 8, 100, 72, 600, PANEL, rail_kids, HID)
+
+brush_kids = [title("BRUSH")]
+_by = 30
+for prefix, nm, val in [("TE3_Size", "Size", "8"), ("TE3_Str", "Strength", "50"),
+                        ("TE3_Fal", "Falloff", "50"), ("TE3_Har", "Hardness", "50"),
+                        ("TE3_Noi", "Noise", "0")]:
+    brush_kids += SLIDER(prefix, 8, _by, 256, nm, val)
+    _by += 30
+brush_kids.append(L("TE3_SymL", 8, 182, 70, 24, "Mirror", MUTED, 12, FB))
+for i, s in enumerate(["None", "X", "Z", "XZ"]):
+    brush_kids.append(B("TE3_Sym_" + s, 80 + i * 46, 182, 42, 24, s, BTN, TEXT, 11))
+brush_kids.append(B("TE3_PlaneSet", 8, 212, 90, 26, "SET PLANE", BTN, TEXT, 11))
+brush_kids.append(L("TE3_PlaneVal", 102, 212, 150, 26, "Y: --", TEXT, 12, FC))
+brush_kids.append(L("TE3_SrcL", 8, 244, 70, 24, "Source", MUTED, 12, FB))
+brush_kids.append(B("TE3_Src", 80, 244, 130, 24, "Grass", BTN, TEXT, 11))
+te3_brush = F("TE3_Brush", 88, 100, 272, 280, PANEL, brush_kids, HID)
+
+MATS21 = ["Grass", "LeafyGrass", "Ground", "Mud", "Sand", "Sandstone", "Rock", "Slate",
+          "Basalt", "Limestone", "Pavement", "Concrete", "Brick", "Cobblestone", "Asphalt",
+          "Salt", "Snow", "Ice", "Glacier", "CrackedLava", "WoodPlanks"]
+mat_kids = [title("MATERIAL")]
+for i, m in enumerate(MATS21):
+    c, r = i % 6, i // 6
+    mat_kids.append(B("TE3_M_" + m, 8 + c * 43, 30 + r * 43, 38, 38, "", BTN))
+mat_kids.append(L("TE3_MatName", 8, 202, 256, 20, "Grass", GOLD, 12, FB))
+te3_mat = F("TE3_Mat", 88, 388, 272, 232, PANEL, mat_kids, HID)
+
+lay_rows = []
+for i in range(8):
+    lay_rows.append(F("TE3_LRow" + str(i), 0, i * 30, 330, 28, INSET, [
+        B("TE3_LName" + str(i), 6, 4, 128, 20, "-", INSET, TEXT, 12, FB, LEFT),
+        L("TE3_LOps" + str(i), 136, 4, 34, 20, "", MUTED, 11, FC),
+        B("TE3_LShow" + str(i), 172, 3, 52, 22, "Hide", BTN, TEXT, 11),
+        B("TE3_LClear" + str(i), 228, 3, 52, 22, "Clear", BTN, TEXT, 11),
+        B("TE3_LDel" + str(i), 284, 3, 40, 22, "X", BTN, RED, 11)], HID))
+lay_kids = [title("LAYERS"), SC("TE3_LScroll", 8, 28, 344, 150, INSET, lay_rows),
+            T("TE3_LName", 8, 184, 120, 24, "layer name"),
+            B("TE3_LSizeS", 132, 184, 34, 24, "S", BTN, TEXT, 11),
+            B("TE3_LSizeM", 170, 184, 34, 24, "M", BTN, TEXT, 11),
+            B("TE3_LSizeL", 208, 184, 34, 24, "L", BTN, TEXT, 11),
+            B("TE3_LAdd", 250, 184, 102, 24, "ADD", ACCENT, TEXT, 11),
+            L("TE3_LHint", 8, 212, 344, 20, "8 max - regions cannot overlap", MUTED, 11)]
+te3_layers = F("TE3_Layers", 1200, 100, 360, 240, PANEL, lay_kids, HID)
+
+his_kids = [title("HISTORY"),
+            B("TE3_Undo", 8, 28, 120, 30, "UNDO", BTN, TEXT, 12, FB, CENTER, None, ICONS["undo"]),
+            B("TE3_Redo", 136, 28, 120, 30, "REDO", BTN, TEXT, 12, FB, CENTER, None, ICONS["redo"]),
+            L("TE3_Depth", 264, 28, 88, 30, "0/0", MUTED, 12, FC)]
+for i in range(6):
+    his_kids.append(L("TE3_H" + str(i), 8, 62 + i * 18, 344, 18, "", TEXT, 11, FC))
+te3_history = F("TE3_History", 1200, 348, 360, 180, PANEL, his_kids, HID)
+
+gen_kids = [title("GENERATE"),
+            L("TE3_GSeedL", 8, 30, 60, 24, "Seed", MUTED, 12, FB),
+            B("TE3_GSeedM", 70, 30, 30, 24, "-", BTN, TEXT, 14),
+            L("TE3_GSeedV", 104, 30, 80, 24, "7", TEXT, 13, FC, CENTER),
+            B("TE3_GSeedP", 188, 30, 30, 24, "+", BTN, TEXT, 14),
+            L("TE3_GSizeL", 226, 30, 40, 24, "Size", MUTED, 12, FB),
+            B("TE3_GSizeS", 268, 30, 28, 24, "S", BTN, TEXT, 11),
+            B("TE3_GSizeM", 298, 30, 28, 24, "M", BTN, TEXT, 11),
+            B("TE3_GSizeL", 328, 30, 28, 24, "L", BTN, TEXT, 11)]
+gen_kids += SLIDER("TE3_GHei", 8, 58, 344, "Height", "48")
+gen_kids += [L("TE3_GBioL", 8, 90, 60, 24, "Biome", MUTED, 12, FB),
+             B("TE3_GBio", 70, 90, 130, 24, "meadow", BTN, TEXT, 12),
+             L("TE3_GEroL", 208, 90, 60, 24, "Erosion", MUTED, 12, FB),
+             B("TE3_GEroM", 268, 90, 28, 24, "-", BTN, TEXT, 14),
+             L("TE3_GEroV", 298, 90, 28, 24, "1", TEXT, 13, FC, CENTER),
+             B("TE3_GEroP", 328, 90, 28, 24, "+", BTN, TEXT, 14)]
+gen_kids += SLIDER("TE3_GWat", 8, 122, 344, "Water", "OFF")
+gen_kids += [B("TE3_Gen", 8, 154, 168, 30, "GENERATE", ACCENT, TEXT, 12, FB),
+             B("TE3_Keep", 184, 154, 80, 30, "KEEP", BTN, GREEN, 12, FB),
+             B("TE3_Discard", 268, 154, 84, 30, "UNDO", BTN, RED, 12, FB),
+             L("TE3_GStat", 8, 188, 344, 36, "seed 7 - 128 - h48 - meadow", MUTED, 11, FC)]
+te3_gen = F("TE3_Gen", 1200, 536, 360, 232, PANEL, gen_kids, HID)
+
+wat_kids = [title("WATER & GROWTH")]
+_wy = 30
+for prefix, nm, val in [("TE3_WTra", "Clear", "0.30"), ("TE3_WRef", "Reflect", "1.00"),
+                        ("TE3_WWav", "Waves", "0.00"), ("TE3_WSpd", "W.Speed", "10")]:
+    wat_kids += SLIDER(prefix, 8, _wy, 250, nm, val)
+    _wy += 30
+wat_kids += [B("TE3_WC1", 8, 150, 60, 24, "TEAL", BTN, TEXT, 11),
+             B("TE3_WC2", 72, 150, 60, 24, "BLUE", BTN, TEXT, 11),
+             B("TE3_WC3", 136, 150, 60, 24, "GREEN", BTN, TEXT, 11),
+             B("TE3_Decor", 200, 150, 100, 24, "GRASS: ON", BTN, TEXT, 11)]
+wat_kids += SLIDER("TE3_Grass", 8, 180, 250, "G.Leng", "0.50")
+wat_kids += [B("TE3_Rain", 280, 30, 150, 30, "RAIN: OFF", BTN, TEXT, 12, FB),
+             L("TE3_FloodL", 280, 64, 60, 24, "Flood Y", MUTED, 12, FB),
+             B("TE3_FloodM", 340, 64, 28, 24, "-", BTN, TEXT, 14),
+             L("TE3_FloodV", 368, 64, 34, 24, "4", TEXT, 12, FC, CENTER),
+             B("TE3_FloodP", 402, 64, 28, 24, "+", BTN, TEXT, 14),
+             B("TE3_Flood", 280, 92, 150, 30, "FLOOD", ACCENT, TEXT, 12, FB),
+             B("TE3_Hydro", 280, 126, 150, 30, "SCAN WATER", BTN, TEXT, 12, FB),
+             L("TE3_HydroV", 280, 160, 150, 44, "no scan", MUTED, 11, FC)]
+te3_water = F("TE3_Water", 376, 620, 440, 248, PANEL, wat_kids, HID)
+
+te3_status = F("TE3_Status", 368, 100, 824, 30, PANEL,
+               [L("TE3_StatL", 8, 5, 808, 20, "TERRAIN EDITOR", GOLD, 12, FB)], HID)
+
+mte_kids = [B("M_TE_Prev", 8, 8, 64, 64, "<", BTN, TEXT, 24),
+            L("M_TE_Tool", 80, 8, 200, 64, "DRAW", GOLD, 16, FB),
+            B("M_TE_Next", 288, 8, 64, 64, ">", BTN, TEXT, 24),
+            B("M_TE_SizeM", 360, 8, 64, 64, "-", BTN, TEXT, 24),
+            L("M_TE_SizeV", 432, 8, 80, 64, "8", TEXT, 18, FC, CENTER),
+            B("M_TE_SizeP", 520, 8, 64, 64, "+", BTN, TEXT, 24),
+            B("M_TE_Mat", 592, 8, 150, 64, "Grass", BTN, TEXT, 14),
+            L("M_TE_Hint", 750, 8, 500, 64, "drag on terrain to paint", MUTED, 13)]
+mte = F("M_TE", 0, 690, 1568, 80, MENU_BG, mte_kids, HID)
+
 desktop_kids = ([menu, ribbon, terrain, console, selection, crumb, compass, coords,
           play, layers, region, mapp, gizmo, timeline, curves, sim, team,
           farright, farhelp] + footer)
@@ -321,6 +470,8 @@ dset_kids += [B("D_S_Reset", 8, 366, 444, 34, "RESET DEFAULTS", BTN, TEXT, 14, F
               L("D_S_Hint", 8, 534, 444, 56, "remap + language apply instantly (this session)", MUTED, 11)]
 dsettings = F("D_Settings", 554, 140, 460, 600, PANEL, dset_kids, {"Visible": False})
 desktop_kids.append(dsettings)
+for _p in [te3_rail, te3_brush, te3_mat, te3_layers, te3_history, te3_gen, te3_water, te3_status]:
+    desktop_kids.append(_p)
 desktop = N("Frame", "DesktopRoot",
             {"Position": P(0, 0), "Size": S(1568, 882),
              "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
@@ -382,12 +533,14 @@ mbot_kids = [B("M_B_Confirm", 8, 8, 200, 80, "✓ CONFIRM", ACCENT, TEXT, 18, FB
              L("M_B_Hint", 1324, 8, 236, 80, "contextual actions appear here", MUTED, 12, FG)]
 mbot = F("M_Bottom", 0, 786, 1568, 96, MENU_BG, mbot_kids)
 mmarquee = F("M_Marquee", 0, 0, 10, 10, INSET, [], {"Visible": False, "BackgroundTransparency": 0.45})
+
+
 mobile = N("Frame", "MobileRoot",
 
            {"Position": P(0, 0), "Size": S(1568, 882),
             "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
             "ClipsDescendants": False, "Visible": False},
-           [mtop, mtools, mdrawer, mprops, mnum, msel, mhelp, mbot, mmarquee])
+           [mtop, mtools, mdrawer, mprops, mnum, msel, mhelp, mbot, mmarquee, mte])
 
 # ---------------- 14. console layout (gamepad-first, baked) ----------------
 ctop = F("C_Top", 0, 0, 1568, 56, MENU_BG,

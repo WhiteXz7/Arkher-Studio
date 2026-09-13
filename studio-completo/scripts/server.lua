@@ -2835,7 +2835,507 @@ function handlers.TerrainNoise(player, payload)
 	ter:WriteVoxels(region, 4, mats, occs)
 	return { msg = ("Noise r=%s f=%s aplicado."):format(tostring(r), tostring(force)) }
 end
-local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, TerrainGenFlat=true, TerrainReplace=true, TerrainWater=true, TerrainSmooth=true, TerrainNoise=true, ScriptSet=true, Undo=true, Group=true, Ungroup=true, AlignKids=true, DistributeKids=true, MirrorKids=true, PivotReset=true, SelAdd=true, SelClear=true, SelectMany=true, DeleteMany=true, DuplicateMany=true }
+-- ============ R10: Terrain Editor engine (pincel real sobre voxels) ============
+-- Mesma API no jogo e no mock (Fill/Read/Write/Replace/Copy/Paste). Grid 4,
+-- res 4, regions alinhadas (ExpandToGrid), limite 4M voxels (docs Terrain).
+local TER_TOOLS = { draw = true, sculpt = true, raise = true, lower = true,
+  flatten = true, smooth = true, erode = true, crater = true, paint = true,
+  replace = true, water = true, drain = true }
+local function terHash(x, y, z, seed)
+  local h = (x * 374761393 + y * 668265263 + z * 2147483647 + seed * 1442695041) % 4294967296
+  h = (h * 668265263 + 1274126177) % 4294967296
+  return (math.floor(h / 65536) % 32768) / 32767
+end
+local function terVNoise(x, y, z, seed)
+  local xi, yi, zi = math.floor(x), math.floor(y), math.floor(z)
+  local xf, yf, zf = x - xi, y - yi, z - zi
+  local s = function(t) return t * t * (3 - 2 * t) end
+  local u, v, w = s(xf), s(yf), s(zf)
+  local c000 = terHash(xi, yi, zi, seed) local c100 = terHash(xi + 1, yi, zi, seed)
+  local c010 = terHash(xi, yi + 1, zi, seed) local c110 = terHash(xi + 1, yi + 1, zi, seed)
+  local c001 = terHash(xi, yi, zi + 1, seed) local c101 = terHash(xi + 1, yi, zi + 1, seed)
+  local c011 = terHash(xi, yi + 1, zi + 1, seed) local c111 = terHash(xi + 1, yi + 1, zi + 1, seed)
+  local x00 = c000 + (c100 - c000) * u local x10 = c010 + (c110 - c010) * u
+  local x01 = c001 + (c101 - c001) * u local x11 = c011 + (c111 - c011) * u
+  local y0 = x00 + (x10 - x00) * v local y1 = x01 + (x11 - x01) * v
+  return y0 + (y1 - y0) * w
+end
+local function terFbm(x, z, seed, oct)
+  local amp, f, sum, norm = 0.5, 1 / 48, 0, 0
+  for i = 1, (oct or 4) do
+    sum = sum + amp * terVNoise(x * f, seed * 0.731 + i * 17.3, z * f, seed + i * 101)
+    norm = norm + amp amp = amp * 0.5 f = f * 2
+  end
+  return sum / math.max(norm, 1e-6)
+end
+local function terWeight(d, falloff, hardness)
+  if d >= 1 then return 0 end
+  if d <= hardness then return 1 end
+  local t = (d - hardness) / math.max(1 - hardness, 1e-6)
+  local s = t * t * (3 - 2 * t)
+  return (1 - s) ^ (0.5 + falloff * 2)
+end
+local function terCenters(ctr, sym)
+  sym = tostring(sym or "none")
+  local list = { { x = ctr.x, y = ctr.y, z = ctr.z } }
+  if sym == "x" or sym == "xz" then list[#list + 1] = { x = -ctr.x, y = ctr.y, z = ctr.z } end
+  if sym == "z" or sym == "xz" then list[#list+1] = { x = ctr.x, y = ctr.y, z = -ctr.z } end
+  if sym == "xz" then list[#list + 1] = { x = -ctr.x, y = ctr.y, z = -ctr.z } end
+  return list
+end
+local TER_UNDO, TER_REDO = {}, {}
+local TER_STROKES = {}
+local function terSnap(ter, r3)
+  local mn = r3.Min
+  local bx, by, bz = mn.X / 4, mn.Y / 4, mn.Z / 4
+  local ri = Region3int16.new(Vector3int16.new(bx, by, bz), Vector3int16.new(
+    bx + (r3.Max.X - mn.X) / 4 - 1, by + (r3.Max.Y - mn.Y) / 4 - 1, bz + (r3.Max.Z - mn.Z) / 4 - 1))
+  local ok, treg = pcall(function() return ter:CopyRegion(ri) end)
+  if not ok then return nil end
+  return { corner = { bx, by, bz }, treg = treg,
+    sizeX = (r3.Max.X - mn.X) / 4, sizeY = (r3.Max.Y - mn.Y) / 4, sizeZ = (r3.Max.Z - mn.Z) / 4 }
+end
+local function terRestore(ter, snap)
+  ter:PasteRegion(snap.treg, Vector3int16.new(snap.corner[1], snap.corner[2], snap.corner[3]), true)
+end
+local function terPushUndo(label, snaps)
+  TER_UNDO[#TER_UNDO + 1] = { label = label, snaps = snaps }
+  if #TER_UNDO > 50 then table.remove(TER_UNDO, 1) end
+  TER_REDO = {}
+end
+-- aplica 1 dab (read -> modifica -> write). p: tool,cx,cy,cz,radius,strength,
+-- material,falloff,hardness,noise,seed,planeY,source
+local function terApplyDab(ter, p)
+  local r = math.clamp(tonumber(p.radius) or 8, 1, 64)
+  local s = math.clamp(tonumber(p.strength) or 0.5, 0, 1)
+  local fall = math.clamp(tonumber(p.falloff) or 0.5, 0, 1)
+  local hard = math.clamp(tonumber(p.hardness) or 0.5, 0, 1)
+  local nz = math.clamp(tonumber(p.noise) or 0, 0, 1)
+  local seed = math.floor(tonumber(p.seed) or 1)
+  local mat = terrainMat(p.material or "Grass")
+  local r3 = Region3.new(
+    Vector3.new(p.cx - r - 4, p.cy - r - 4, p.cz - r - 4),
+    Vector3.new(p.cx + r + 4, p.cy + r + 4, p.cz + r + 4)):ExpandToGrid(4)
+  local snap = terSnap(ter, r3)
+  local ch = ter:ReadVoxelChannels(r3, 4, { "SolidMaterial", "SolidOccupancy", "LiquidOccupancy" })
+  local size = ch.Size
+  local sx, sy, sz = size.X, size.Y, size.Z
+  local SM, SO, LO = ch.SolidMaterial, ch.SolidOccupancy, ch.LiquidOccupancy
+  local OC = nil
+  if p.tool == "smooth" then
+    OC = {}
+    for x = 1, sx do OC[x] = {} for y = 1, sy do OC[x][y] = {}
+      for z = 1, sz do OC[x][y][z] = SO[x][y][z] end end end
+  end
+  local touched = 0
+  local lo = r3.Min
+  local planeY = tonumber(p.planeY) or p.cy
+  local srcN = p.source and terrainMat(p.source).Name or nil
+  local AIR = Enum.Material.Air
+  for x = 1, sx do
+    local wx = lo.X + (x - 1) * 4 + 2
+    for y = 1, sy do
+      local wy = lo.Y + (y - 1) * 4 + 2
+      for z = 1, sz do
+        local wz = lo.Z + (z - 1) * 4 + 2
+        local dx, dy, dz = wx - p.cx, wy - p.cy, wz - p.cz
+        local d = math.sqrt(dx * dx + dy * dy + dz * dz) / r
+        if d <= 1 then
+          local w = terWeight(d, fall, hard)
+          if nz > 0 then
+            w = w * (1 - nz * 0.5 + nz * terVNoise(wx * 0.11, wy * 0.11, wz * 0.11, seed))
+          end
+          if w > 0.001 then
+            local m = SM[x][y][z]
+            local mN = (type(m) == "table" and m.Name) or "Air"
+            local o = SO[x][y][z]
+            local tool = p.tool
+            if tool == "draw" then
+              local no = math.min(1, o + s * w)
+              if no > 0 and o <= 0 then SM[x][y][z] = mat end
+              SO[x][y][z] = no
+            elseif tool == "sculpt" then
+              local no = math.max(0, o - s * w * 2)
+              SO[x][y][z] = no
+              if no <= 0 then SM[x][y][z] = AIR end
+            elseif tool == "raise" then
+              local no = math.min(1, o + s * w * 0.5)
+              if no > 0 and o <= 0 then SM[x][y][z] = mat end
+              SO[x][y][z] = no
+            elseif tool == "lower" then
+              local no = math.max(0, o - s * w * 0.5)
+              SO[x][y][z] = no
+              if no <= 0 then SM[x][y][z] = AIR end
+            elseif tool == "flatten" then
+              local target = math.clamp((planeY - wy) / 4 + 0.5, 0, 1)
+              local no = o + (target - o) * s * w
+              if no > 0.001 and o <= 0.001 then SM[x][y][z] = mat end
+              if no <= 0.001 then SM[x][y][z] = AIR no = 0 end
+              SO[x][y][z] = math.clamp(no, 0, 1)
+            elseif tool == "smooth" then
+              local sum, n = 0, 0
+              for ax = -1, 1 do for ay = -1, 1 do for az = -1, 1 do
+                local rx = OC[x + ax]
+                if rx and rx[y + ay] and rx[y + ay][z + az] then
+                  sum = sum + rx[y + ay][z + az] n = n + 1
+                end
+              end end end
+              if n > 0 then SO[x][y][z] = o + (sum / n - o) * s * w end
+            elseif tool == "erode" then
+              local n2 = terVNoise(wx * 0.23, wy * 0.23, wz * 0.23, seed + 7)
+              local no = math.max(0, o - s * w * (0.3 + 0.7 * n2))
+              SO[x][y][z] = no
+              if no <= 0 then SM[x][y][z] = AIR end
+            elseif tool == "crater" then
+              local cw = (d < 0.7) and (1 - d / 0.7) or 0
+              local rim = math.exp(-(((d - 0.75) / 0.18) ^ 2))
+              local no = math.clamp(o - s * cw * 1.5 + s * rim * 0.9, 0, 1)
+              if no > 0 and o <= 0 then SM[x][y][z] = mat end
+              if no <= 0 then SM[x][y][z] = AIR end
+              SO[x][y][z] = no
+            elseif tool == "paint" then
+              if o > 0 and mN ~= "Air" then SM[x][y][z] = mat end
+            elseif tool == "replace" then
+              if o > 0 and (not srcN or mN == srcN) then SM[x][y][z] = mat end
+            elseif tool == "water" then
+              if o < 1 then LO[x][y][z] = math.min(1, LO[x][y][z] + s * w) end
+            elseif tool == "drain" then
+              LO[x][y][z] = math.max(0, LO[x][y][z] - s * w * 2)
+            end
+            touched = touched + 1
+          end
+        end
+      end
+    end
+  end
+  ter:WriteVoxelChannels(r3, 4, { SolidMaterial = SM, SolidOccupancy = SO, LiquidOccupancy = LO })
+  return { snap = snap, touched = touched }
+end
+-- camadas nao-destrutivas: regiao fixa + snapshot base + ops (re-execucao).
+-- Regioes nao podem sobrepor (garante correcao do hide/show).
+local TER_LAYERS = {}
+local function terLayerFind(name)
+  for _, L in ipairs(TER_LAYERS) do if L.name == name then return L end end
+  return nil
+end
+local function terBoxOverlap(a, b)
+  return a.x0 < b.x1 and a.x1 > b.x0 and a.z0 < b.z1 and a.z1 > b.z0
+end
+function handlers.TerrainStroke(player, payload)
+  local tool = tostring(payload.tool or "")
+  assert(TER_TOOLS[tool], "tool invalida (draw/sculpt/raise/lower/flatten/smooth/erode/crater/paint/replace/water/drain).")
+  local ctr = terrainCenter(payload.center, player)
+  local ter = terrainOrFail()
+  if payload.apply == false then
+    local ST = TER_STROKES[player]
+    if ST and #ST.snaps > 0 then
+      terPushUndo(tool .. " (stroke)", ST.snaps)
+      TER_STROKES[player] = nil
+      return { msg = "Stroke fechado.", dabs = #ST.snaps }
+    end
+    return { msg = "Stroke vazio.", dabs = 0 }
+  end
+  local p = { tool = tool, radius = payload.radius, strength = payload.strength,
+    material = payload.material, falloff = payload.falloff, hardness = payload.hardness,
+    noise = payload.noise, seed = payload.seed, planeY = payload.planeY, source = payload.source }
+  local snaps, touched, dabs = {}, 0, 0
+  for _, c in ipairs(terCenters({ x = ctr.X, y = ctr.Y, z = ctr.Z }, payload.symmetry)) do
+    p.cx, p.cy, p.cz = c.x, c.y, c.z
+    local r1 = terApplyDab(ter, p)
+    if r1.snap then snaps[#snaps + 1] = r1.snap end
+    touched = touched + r1.touched dabs = dabs + 1
+  end
+  local mode = tostring(payload.stroke or "")
+  if mode == "" or mode == "single" then
+    terPushUndo(tool, snaps)
+  else
+    local ST = TER_STROKES[player] or { snaps = {} }
+    TER_STROKES[player] = ST
+    if mode == "begin" then ST.snaps = snaps
+    else for _, s in ipairs(snaps) do ST.snaps[#ST.snaps + 1] = s end end
+    if mode == "end" then
+      terPushUndo(tool .. " (stroke)", ST.snaps)
+      TER_STROKES[player] = nil
+    end
+  end
+  local recorded = terLayerRecord(ter, payload, p, ctr)
+  return { msg = ("%s: %d voxels (%d dab)."):format(tool, touched, dabs),
+    touched = touched, dabs = dabs, recorded = recorded }
+end
+function handlers.TerrainUndo(player)
+  local e = table.remove(TER_UNDO)
+  assert(e, "Nada p/ desfazer no terreno.")
+  local ter = terrainOrFail()
+  local redo = { label = e.label, snaps = {} }
+  for _, s in ipairs(e.snaps) do
+    local r3 = Region3.new(
+      Vector3.new(s.corner[1] * 4, s.corner[2] * 4, s.corner[3] * 4),
+      Vector3.new((s.corner[1] + (s.sizeX or 8)) * 4, (s.corner[2] + (s.sizeY or 8)) * 4, (s.corner[3] + (s.sizeZ or 8)) * 4))
+    local cur = terSnap(ter, r3)
+    if cur then cur.sizeX, cur.sizeY, cur.sizeZ = s.sizeX, s.sizeY, s.sizeZ redo.snaps[#redo.snaps + 1] = cur end
+  end
+  for i = #e.snaps, 1, -1 do terRestore(ter, e.snaps[i]) end
+  TER_REDO[#TER_REDO + 1] = redo
+  return { msg = "Desfeito: " .. tostring(e.label) .. "." }
+end
+function handlers.TerrainRedo(player)
+  local e = table.remove(TER_REDO)
+  assert(e, "Nada p/ refazer no terreno.")
+  local ter = terrainOrFail()
+  local undo = { label = e.label, snaps = {} }
+  for _, s in ipairs(e.snaps) do
+    local r3 = Region3.new(
+      Vector3.new(s.corner[1] * 4, s.corner[2] * 4, s.corner[3] * 4),
+      Vector3.new((s.corner[1] + (s.sizeX or 8)) * 4, (s.corner[2] + (s.sizeY or 8)) * 4, (s.corner[3] + (s.sizeZ or 8)) * 4))
+    local cur = terSnap(ter, r3)
+    if cur then cur.sizeX, cur.sizeY, cur.sizeZ = s.sizeX, s.sizeY, s.sizeZ undo.snaps[#undo.snaps + 1] = cur end
+  end
+  for i = #e.snaps, 1, -1 do terRestore(ter, e.snaps[i]) end
+  TER_UNDO[#TER_UNDO + 1] = undo
+  return { msg = "Refeito: " .. tostring(e.label) .. "." }
+end
+function terLayerRecord(ter, payload, p, ctr)
+  local lname = tostring(payload.layer or (TER_LAYERS[1] and TER_LAYERS[1].name) or "")
+  if lname == "" then return false end
+  local L = terLayerFind(lname)
+  if not L or not L.visible then return false end
+  if ctr.X < L.box.x0 or ctr.X > L.box.x1 or ctr.Z < L.box.z0 or ctr.Z > L.box.z1 then return false end
+  if #L.ops >= 100 then return false end
+  L.ops[#L.ops + 1] = { tool = p.tool, cx = ctr.X, cy = ctr.Y, cz = ctr.Z, radius = p.radius,
+    strength = p.strength, material = p.material, falloff = p.falloff, hardness = p.hardness,
+    noise = p.noise, seed = p.seed, planeY = p.planeY, source = p.source, symmetry = payload.symmetry }
+  return true
+end
+function handlers.TerrainLayer(player, payload)
+  local op = tostring(payload.op or "list")
+  local ter = terrainOrFail()
+  if op == "list" then
+    local out = {}
+    for _, L in ipairs(TER_LAYERS) do
+      out[#out + 1] = { name = L.name, visible = L.visible, ops = #L.ops, box = L.box }
+    end
+    return { layers = out }
+  elseif op == "add" then
+    assert(#TER_LAYERS < 8, "Maximo 8 camadas.")
+    local nm = tostring(payload.name or ("Layer" .. (#TER_LAYERS + 1)))
+    assert(nm ~= "" and not terLayerFind(nm), "Nome de camada invalido/duplicado.")
+    local cx, cz = tonumber(payload.cx) or 0, tonumber(payload.cz) or 0
+    local sx, sz = math.clamp(tonumber(payload.sx) or 256, 32, 1024), math.clamp(tonumber(payload.sz) or 256, 32, 1024)
+    local sy = math.clamp(tonumber(payload.sy) or 128, 32, 512)
+    local box = { x0 = cx - sx / 2, x1 = cx + sx / 2, z0 = cz - sz / 2, z1 = cz + sz / 2 }
+    for _, L in ipairs(TER_LAYERS) do assert(not terBoxOverlap(box, L.box), "Regioes de camada nao podem sobrepor.") end
+    local r3 = Region3.new(Vector3.new(box.x0, -64, box.z0), Vector3.new(box.x1, -64 + sy, box.z1)):ExpandToGrid(4)
+    local base = terSnap(ter, r3)
+    assert(base, "Falha no snapshot base da camada.")
+    TER_LAYERS[#TER_LAYERS + 1] = { name = nm, visible = true, ops = {}, box = box, sy = sy, base = base, region = r3 }
+    return { msg = "Camada " .. nm .. " criada.", layers = #TER_LAYERS }
+  elseif op == "toggle" or op == "show" or op == "hide" then
+    local L = terLayerFind(tostring(payload.name or ""))
+    assert(L, "Camada nao encontrada.")
+    local want = (op == "show") and true or (op == "hide") and false or (not L.visible)
+    if want == L.visible then return { msg = "Camada " .. L.name .. " ja estava " .. (want and "visivel." or "oculta.") } end
+    local pre = terSnap(ter, L.region)
+    terRestore(ter, L.base)
+    L.visible = want
+    if want then for _, o in ipairs(L.ops) do terApplyDab(ter, o) end end
+    if pre then terPushUndo("layer:" .. L.name, { pre }) end
+    return { msg = "Camada " .. L.name .. (want and " visivel." or " oculta."), visible = want }
+  elseif op == "remove" then
+    local L = terLayerFind(tostring(payload.name or ""))
+    assert(L, "Camada nao encontrada.")
+    for i, v in ipairs(TER_LAYERS) do if v == L then table.remove(TER_LAYERS, i) break end end
+    return { msg = "Camada " .. L.name .. " removida (voxels mantidos)." }
+  elseif op == "clear" then
+    local L = terLayerFind(tostring(payload.name or ""))
+    assert(L, "Camada nao encontrada.")
+    local pre = terSnap(ter, L.region)
+    terRestore(ter, L.base)
+    L.ops = {}
+    L.visible = true
+    if pre then terPushUndo("layer-clear:" .. L.name, { pre }) end
+    return { msg = "Camada " .. L.name .. " limpa (voltou ao base)." }
+  end
+  assert(false, "op: list/add/toggle/show/hide/remove/clear.")
+end
+local TER_BIOMES = {
+  meadow = { top = "Grass", topHigh = "Snow", shore = "Sand", mid = "Ground", deep = "Rock" },
+  desert = { top = "Sand", topHigh = "Sandstone", shore = "Sand", mid = "Sandstone", deep = "Rock" },
+  arctic = { top = "Snow", topHigh = "Glacier", shore = "Ice", mid = "Rock", deep = "Slate" },
+  volcanic = { top = "Basalt", topHigh = "Basalt", shore = "CrackedLava", mid = "Basalt", deep = "Rock" },
+}
+function handlers.TerrainGen(player, payload)
+  local seed = math.floor(tonumber(payload.seed) or 1)
+  local size = math.clamp(math.floor(tonumber(payload.size) or 256), 64, 512)
+  local height = math.clamp(math.floor(tonumber(payload.height) or 48), 8, 128)
+  local cx, cz = tonumber(payload.cx) or 0, tonumber(payload.cz) or 0
+  local baseY = math.floor(tonumber(payload.baseY) or 0)
+  local biome = TER_BIOMES[tostring(payload.biome or "meadow")] or TER_BIOMES.meadow
+  local waterLevel = payload.waterLevel and math.floor(tonumber(payload.waterLevel)) or nil
+  local passes = math.clamp(math.floor(tonumber(payload.erosion) or 1), 0, 3)
+  local ter = terrainOrFail()
+  local n = size / 4
+  local H = {}
+  for ix = 1, n do H[ix] = {} for iz = 1, n do
+    H[ix][iz] = baseY + (terFbm(cx + (ix - 1) * 4, cz + (iz - 1) * 4, seed, 4) ^ 1.2) * height
+  end end
+  for _ = 1, passes do
+    for ix = 1, n do for iz = 1, n do
+      local lo, li, lz = H[ix][iz], ix, iz
+      if ix > 1 and H[ix-1][iz] < lo then lo, li, lz = H[ix-1][iz], ix-1, iz end
+      if ix < n and H[ix+1][iz] < lo then lo, li, lz = H[ix+1][iz], ix+1, iz end
+      if iz > 1 and H[ix][iz-1] < lo then lo, li, lz = H[ix][iz-1], ix, iz-1 end
+      if iz < n and H[ix][iz+1] < lo then lo, li, lz = H[ix][iz+1], ix, iz+1 end
+      local slope = H[ix][iz] - lo
+      if slope > 5 then
+        local mv = (slope - 5) * 0.25
+        H[ix][iz] = H[ix][iz] - mv H[li][lz] = H[li][lz] + mv
+      end
+    end end
+  end
+  local topY = baseY + height + 8
+  local r3 = Region3.new(Vector3.new(cx - size / 2, -64, cz - size / 2),
+    Vector3.new(cx + size / 2, topY, cz + size / 2)):ExpandToGrid(4)
+  local snap = terSnap(ter, r3)
+  local lo = r3.Min
+  local sx = (r3.Max.X - lo.X) / 4
+  local sy = (r3.Max.Y - lo.Y) / 4
+  local sz = (r3.Max.Z - lo.Z) / 4
+  local SM, SO, LO = {}, {}, {}
+  local minH, maxH, waterCells, cells = 1e9, -1e9, 0, 0
+  for x = 1, sx do SM[x], SO[x], LO[x] = {}, {}, {} end
+  for ix = 1, n do for iz = 1, n do
+    local h = H[ix][iz]
+    if h < minH then minH = h end
+    if h > maxH then maxH = h end
+    local surf = biome.top
+    if waterLevel and h < waterLevel + 4 then surf = biome.shore end
+    if h > baseY + height * 0.78 then surf = biome.topHigh end
+    for y = 1, sy do
+      local wy0 = lo.Y + (y - 1) * 4
+      local d = h - wy0
+      local gm = Enum.Material.Air
+      local go, gw = 0, 0
+      if d >= 4 then
+        go = 1
+        gm = Enum.Material[(h - wy0 > 12 and ((h - wy0 > 24 and biome.deep) or biome.mid)) or surf]
+      elseif d > 0 then
+        go = math.max(d / 4, 0.15) gm = Enum.Material[surf]
+      elseif waterLevel and wy0 < waterLevel then
+        gw = 1
+      end
+      SM[ix][y], SO[ix][y], LO[ix][y] = SM[ix][y] or {}, SO[ix][y] or {}, LO[ix][y] or {}
+      SM[ix][y][iz], SO[ix][y][iz], LO[ix][y][iz] = gm, go, gw
+      if go > 0 then cells = cells + 1 end
+      if gw > 0 then waterCells = waterCells + 1 end
+    end
+  end end
+  -- preenche colunas fora do grid n (bordas do ExpandToGrid): ar
+  for x = n + 1, sx do for y = 1, sy do SM[x][y], SO[x][y], LO[x][y] = {}, {}, {}
+    for z = 1, sz do SM[x][y][z], SO[x][y][z], LO[x][y][z] = Enum.Material.Air, 0, 0 end end end
+  for x = 1, n do for y = 1, sy do for z = n + 1, sz do
+    SM[x][y][z], SO[x][y][z], LO[x][y][z] = Enum.Material.Air, 0, 0
+  end end end
+  ter:WriteVoxelChannels(r3, 4, { SolidMaterial = SM, SolidOccupancy = SO, LiquidOccupancy = LO })
+  if snap then terPushUndo("gen", { snap }) end
+  return { msg = ("Gerado seed=%d (%dx%d, %d voxels, %d agua)."):format(seed, size, size, cells, waterCells),
+    cells = cells, waterCells = waterCells, minH = math.floor(minH), maxH = math.floor(maxH) }
+end
+function handlers.TerrainWaterProps(player, payload)
+  local ter = terrainOrFail()
+  local echo = {}
+  if payload.transparency ~= nil then
+    ter.WaterTransparency = math.clamp(tonumber(payload.transparency) or 0.3, 0, 1)
+    echo.transparency = ter.WaterTransparency
+  end
+  if payload.reflectance ~= nil then
+    ter.WaterReflectance = math.clamp(tonumber(payload.reflectance) or 1, 0, 1)
+    echo.reflectance = ter.WaterReflectance
+  end
+  if payload.waveSize ~= nil then
+    ter.WaterWaveSize = math.clamp(tonumber(payload.waveSize) or 0, 0, 1)
+    echo.waveSize = ter.WaterWaveSize
+  end
+  if payload.waveSpeed ~= nil then
+    ter.WaterWaveSpeed = math.clamp(tonumber(payload.waveSpeed) or 10, 0, 100)
+    echo.waveSpeed = ter.WaterWaveSpeed
+  end
+  if payload.color then
+    local c = payload.color
+    ter.WaterColor = Color3.fromRGB(math.clamp(tonumber(c.r) or 13, 0, 255),
+      math.clamp(tonumber(c.g) or 84, 0, 255), math.clamp(tonumber(c.b) or 92, 0, 255))
+    local wc = ter.WaterColor
+    echo.color = { math.floor(wc.R * 255), math.floor(wc.G * 255), math.floor(wc.B * 255) }
+  end
+  if payload.decoration ~= nil then ter.Decoration = not not payload.decoration echo.decoration = ter.Decoration end
+  if payload.grass ~= nil then ter.GrassLength = math.clamp(tonumber(payload.grass) or 0.5, 0.1, 1) echo.grass = ter.GrassLength end
+  return { msg = "Agua/vegetacao atualizadas.", props = echo }
+end
+function handlers.TerrainRain(player, payload)
+  local on = not not payload.on
+  local old = workspace:FindFirstChild("ArkherRainRig")
+  if old then pcall(function() old:Destroy() end) end
+  if not on then return { msg = "Chuva desligada.", on = false } end
+  local cx, cz = tonumber(payload.cx) or 0, tonumber(payload.cz) or 0
+  local r = math.clamp(tonumber(payload.radius) or 64, 16, 256)
+  local rig = Instance.new("Part")
+  rig.Name = "ArkherRainRig"
+  rig.Size = Vector3.new(r * 2, 1, r * 2)
+  rig.CFrame = CFrame.new(cx, 140, cz)
+  rig.Anchored = true rig.CanCollide = false rig.Transparency = 1
+  rig.Parent = workspace
+  local em = Instance.new("ParticleEmitter")
+  em.Rate = math.clamp(math.floor(r * r / 4), 100, 2000)
+  em.Speed = 90
+  em.Enabled = true
+  em.Parent = rig
+  return { msg = ("Chuva ligada (rate %d)."):format(em.Rate), on = true }
+end
+function handlers.TerrainFlood(player, payload)
+  local y = math.floor(tonumber(payload.y) or 8)
+  assert(y >= -64 and y <= 512, "y -64..512.")
+  local cx, cz = tonumber(payload.cx) or 0, tonumber(payload.cz) or 0
+  local sx = math.clamp(math.floor(tonumber(payload.sx) or 128), 16, 1024)
+  local sz = math.clamp(math.floor(tonumber(payload.sz) or 128), 16, 1024)
+  local ter = terrainOrFail()
+  local r3 = Region3.new(Vector3.new(cx - sx / 2, y - 8, cz - sz / 2),
+    Vector3.new(cx + sx / 2, y, cz + sz / 2)):ExpandToGrid(4)
+  local snap = terSnap(ter, r3)
+  ter:FillRegion(r3, 4, Enum.Material.Water)
+  if snap then terPushUndo("flood", { snap }) end
+  return { msg = ("Enchente ate y=%d (%dx%d)."):format(y, sx, sz) }
+end
+function handlers.TerrainHydro(player, payload)
+  local cx, cz = tonumber(payload.cx) or 0, tonumber(payload.cz) or 0
+  local sx = math.clamp(math.floor(tonumber(payload.sx) or 128), 16, 512)
+  local sz = math.clamp(math.floor(tonumber(payload.sz) or 128), 16, 512)
+  local sy = math.clamp(math.floor(tonumber(payload.sy) or 64), 16, 256)
+  local y0 = math.floor(tonumber(payload.y0) or -32)
+  local ter = terrainOrFail()
+  local r3 = Region3.new(Vector3.new(cx - sx / 2, y0, cz - sz / 2),
+    Vector3.new(cx + sx / 2, y0 + sy, cz + sz / 2)):ExpandToGrid(4)
+  local cells = ((r3.Max.X - r3.Min.X) / 4) * ((r3.Max.Y - r3.Min.Y) / 4) * ((r3.Max.Z - r3.Min.Z) / 4)
+  assert(cells <= 250000, "Setor grande demais p/ diagnostico (250k voxels).")
+  local ch = ter:ReadVoxelChannels(r3, 4, { "LiquidOccupancy" })
+  local size = ch.Size
+  local waterCells, maxDepth = 0, 0
+  for x = 1, size.X do for z = 1, size.Z do
+    local depth = 0
+    for y = 1, size.Y do
+      if ch.LiquidOccupancy[x][y][z] > 0.05 then waterCells = waterCells + 1 depth = depth + 1 end
+    end
+    if depth > maxDepth then maxDepth = depth end
+  end end
+  return { waterCells = waterCells, volume = waterCells * 64, maxDepth = maxDepth * 4,
+    msg = ("Agua: %d voxels, %d studs3, prof max %d."):format(waterCells, waterCells * 64, maxDepth * 4) }
+end
+function handlers.TerrainStats(player)
+  local ter = terrainOrFail()
+  local cells = 0
+  pcall(function() cells = ter:CountCells() end)
+  return { cells = cells, undo = #TER_UNDO, redo = #TER_REDO, layers = #TER_LAYERS }
+end
+
+local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, TerrainGenFlat=true, TerrainReplace=true, TerrainWater=true, TerrainSmooth=true, TerrainNoise=true, TerrainStroke=true, TerrainUndo=true, TerrainRedo=true, TerrainLayer=true, TerrainGen=true, TerrainWaterProps=true, TerrainRain=true, TerrainFlood=true, TerrainHydro=true, ScriptSet=true, Undo=true, Group=true, Ungroup=true, AlignKids=true, DistributeKids=true, MirrorKids=true, PivotReset=true, SelAdd=true, SelClear=true, SelectMany=true, DeleteMany=true, DuplicateMany=true }
 local function runRestore()
 	for part, was in pairs(RUN.parts) do
 		if part and part.Parent then

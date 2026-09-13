@@ -65,15 +65,15 @@ Método: **grep honesto** nas fontes reais + marcadores dentro da placa X descom
 | Datastores simulados (persistência DataSet/List/Get) | ✅ | 11 | `studio-completo/LEIA-ME.md:70` |
 | i18n/locale (strings por idioma) | ✅ | 16 | `studio-completo/AUDITORIA.md:66` |
 | Templates de projeto / Import-Export JSON | ✅ | 22 | `studio-completo/scripts/server.lua:28` |
-| Editor de scripts (abrir Source real, editar, aplicar) | ✅ | 270 | `studio-completo/AUDITORIA.md:68` |
+| Editor de scripts (abrir Source real, editar, aplicar) | ✅ | 271 | `studio-completo/AUDITORIA.md:68` |
 | Painel de testes/build automatizados (pipeline python .rbxl) | ✅ | 12 | `studio-completo/LEIA-ME.md:21` |
 | TOPBAR: botões/ícones X nativos DENTRO do Ribbon real (sem overlay) | ✅ | 9 | `studio-completo/tools/auditoria.py:189` |
 | Ícones desenhados/atlas de sistemas (procedural em frames + atlas de ícones) | ✅ | 5 | `studio-completo/tools/auditoria.py:189` |
 | Color picker INLINE nas propriedades (só aparece no clique do quadrado) | ✅ | 5 | `studio-completo/scripts/10_Studio.lua:141` |
 | Python bridge SEM erro (HttpService via servidor; PyStatus/PyRun) | ✅ | 30 | `studio-completo/LEIA-ME.md:276` |
 | Part com submenu de formas NA TOPBAR (estilo Studio) | ✅ | 6 | `studio-completo/tools/auditoria.py:197` |
-| CSG real (Union/Negate = PartOperation + histórico) | ✅ | 12 | `studio-completo/scripts/03_Menus.lua:2131` |
-| Sculpt de terreno com falloff real (gaussiano, Laplaciano) | ✅ | 12 | `studio-completo/docs/PESQUISA_TERRAIN.md:12` |
+| CSG real (Union/Negate = PartOperation + histórico) | ✅ | 12 | `studio-completo/scripts/03_Menus.lua:2136` |
+| Sculpt de terreno com falloff real (gaussiano, Laplaciano) | ✅ | 13 | `studio-completo/docs/PESQUISA_TERRAIN.md:12` |
 | Collision Groups editor (PhysicsService real) | ✅ | 5 | `studio-completo/scripts/08_RealityX.lua:3941` |
 | Presença no collab (quem está editando o quê) | ✅ | 5 | `studio-completo/scripts/03_Menus.lua:1094` |
 | Plugin manager real (liga/desliga pumps via atributos) | ✅ | 17 | `studio-completo/scripts/engine_server.lua:1055` |
@@ -82,7 +82,7 @@ Método: **grep honesto** nas fontes reais + marcadores dentro da placa X descom
 | COLOR PICKER real dentro das Properties (HSV gradientes + RGB/hex) | ✅ | 24 | `studio-completo/scripts/08_RealityX.lua:2466` |
 | Menu '+' com catálogo gigante (+1k objects) via CreateAny (Instance.new pcall) | ✅ | 53 | `studio-completo/AUDITORIA.md:83` |
 | Toolbox estilo Studio com thumbnails reais (rbxthumb) + insert na frente da câmera | ✅ | 13 | `studio-completo/LEIA-ME.md:188` |
-| Menus da faixa (ESTÚDIO/MODELAGEM/...) clicáveis (overlay morto + duplo sinal) | ✅ | 221 | `studio-completo/LEIA-ME.md:169` |
+| Menus da faixa (ESTÚDIO/MODELAGEM/...) clicáveis (overlay morto + duplo sinal) | ✅ | 222 | `studio-completo/LEIA-ME.md:169` |
 | Spawn de pecas na frente da camera via servidor (QuickPart) | ✅ | 21 | `studio-completo/AUDITORIA.md:86` |
 | Toolbox insert com fallback REAL (InsertService:LoadAsset server-side) | ✅ | 16 | `studio-completo/AUDITORIA.md:55` |
 | Baseplate garantida (boot automatico + botao BASEPLATE) | ✅ | 7 | `studio-completo/scripts/server.lua:2242` |

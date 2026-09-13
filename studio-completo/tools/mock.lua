@@ -156,6 +156,24 @@ UDim2.fromScale = function(a,b) return UDim2.new(a,0,b,0) end
 UDim = {} function UDim.new(a,b) return {Scale=a or 0,Offset=b or 0,__t="UDim"} end
 ColorSequence = {} function ColorSequence.new(...) return {__t="ColorSequence"} end
 Vector2 = {} function Vector2.new(x,y) return {X=x or 0,Y=y or 0,__t="Vector2"} end
+Vector3int16 = {} function Vector3int16.new(x,y,z) return {X=x or 0,Y=y or 0,Z=z or 0,__t="Vector3int16"} end
+Region3 = {}
+function Region3.new(a, b)
+  local mn = Vector3.new(math.min(a.X,b.X), math.min(a.Y,b.Y), math.min(a.Z,b.Z))
+  local mx = Vector3.new(math.max(a.X,b.X), math.max(a.Y,b.Y), math.max(a.Z,b.Z))
+  local r = { Min = mn, Max = mx, Size = mx - mn, CFrame = CFrame.new((mn.X+mx.X)/2,(mn.Y+mx.Y)/2,(mn.Z+mx.Z)/2), __t="Region3" }
+  function r:ExpandToGrid(res)
+    res = res or 4
+    local f = function(v) return math.floor(v/res)*res end
+    local c = function(v) return math.ceil(v/res)*res end
+    return Region3.new(Vector3.new(f(mn.X),f(mn.Y),f(mn.Z)), Vector3.new(c(mx.X),c(mx.Y),c(mx.Z)))
+  end
+  return r
+end
+Region3int16 = {}
+function Region3int16.new(a, b)
+  return { Min = a, Max = b, __t="Region3int16" }
+end
 
 -- ============ Event ============
 local Event = {} Event.__index = Event
@@ -390,6 +408,232 @@ function METHODS:FindFirstAncestor(n)
   return nil
 end
 function METHODS:IsA(c) return isA(self,c) end
+
+-- ============ R10 Terrain voxel (mesma API do real: Fill/Read/Write/Replace) ============
+local MAT_COLORS = {
+  Grass={106,171,64}, LeafyGrass={90,160,70}, Sand={214,199,148}, Snow={240,244,245},
+  Mud={102,72,46}, Ground={106,88,72}, Asphalt={60,62,67}, Salt={235,235,235},
+  Ice={180,220,235}, Glacier={150,200,220}, Rock={110,110,112}, Sandstone={196,177,136},
+  Limestone={206,206,190}, Pavement={150,148,140}, Brick={156,84,68}, Cobblestone={130,128,124},
+  Concrete={150,150,150}, Basalt={70,70,75}, Slate={90,95,105}, CrackedLava={200,80,30},
+  WoodPlanks={139,109,70}, Water={30,120,140}, Air={0,0,0},
+}
+local function voxStore(self)
+  local p = rawget(self, "__props")
+  if not p._vox then p._vox = {} end
+  return p._vox
+end
+local function matName(m)
+  if type(m) == "string" then return m end
+  if type(m) == "table" and m.Name then return m.Name end
+  return "Air"
+end
+local function voxSet(st, x, y, z, m, o, w)
+  local k = x .. "," .. y .. "," .. z
+  if (o or 0) <= 0 and (w or 0) <= 0 then st[k] = nil
+  else st[k] = { m = m, o = math.max(0, math.min(1, o or 0)), w = math.max(0, math.min(1, w or 0)) } end
+end
+local function voxGet(st, x, y, z)
+  local c = st[x .. "," .. y .. "," .. z]
+  if c then return c.m, c.o, c.w end
+  return "Air", 0, 0
+end
+local function voxRegion(region, res)
+  assert(res == 4, "resolution deve ser 4")
+  local mn, mx = region.Min, region.Max
+  for _, v in ipairs({ mn.X, mn.Y, mn.Z, mx.X, mx.Y, mn.Z, mx.X, mx.Y, mx.Z }) do end
+  for _, v in ipairs({ mn.X, mn.Y, mn.Z, mx.X, mx.Y, mx.Z }) do
+    assert(v % 4 == 0, "region fora do grid voxel (use ExpandToGrid)")
+  end
+  local sx, sy, sz = (mx.X-mn.X)/4, (mx.Y-mn.Y)/4, (mx.Z-mn.Z)/4
+  assert(sx*sy*sz <= 4194304, "region grande demais (4M voxels)")
+  return mn, sx, sy, sz
+end
+local function voxFillBall(self, c, r, m)
+  local st = voxStore(self)
+  local mn = matName(m)
+  local x0, x1 = math.floor((c.X-r)/4), math.floor((c.X+r)/4)
+  local y0, y1 = math.floor((c.Y-r)/4), math.floor((c.Y+r)/4)
+  local z0, z1 = math.floor((c.Z-r)/4), math.floor((c.Z+r)/4)
+  for x = x0, x1 do for y = y0, y1 do for z = z0, z1 do
+    local dx, dy, dz = x*4+2-c.X, y*4+2-c.Y, z*4+2-c.Z
+    if dx*dx+dy*dy+dz*dz <= r*r then
+      if mn == "Air" then voxSet(st, x, y, z, "Air", 0, 0)
+      elseif mn == "Water" then voxSet(st, x, y, z, "Air", 0, 1)
+      else voxSet(st, x, y, z, mn, 1, 0) end
+    end
+  end end end
+end
+function METHODS:FillBall(c, r, m) return voxFillBall(self, c, r, m) end
+function METHODS:FillRegion(region, res, m)
+  local st = voxStore(self)
+  local mn = matName(m)
+  local lo, sx, sy, sz = voxRegion(region, res)
+  local bx, by, bz = lo.X/4, lo.Y/4, lo.Z/4
+  for x = 1, sx do for y = 1, sy do for z = 1, sz do
+    if mn == "Air" then voxSet(st, bx+x-1, by+y-1, bz+z-1, "Air", 0, 0)
+    elseif mn == "Water" then voxSet(st, bx+x-1, by+y-1, bz+z-1, "Air", 0, 1)
+    else voxSet(st, bx+x-1, by+y-1, bz+z-1, mn, 1, 0) end
+  end end end
+end
+function METHODS:FillBlock(cf, size, m)
+  local p = cf.Position or cf
+  local hx, hy, hz = size.X/2, size.Y/2, size.Z/2
+  local r = Region3.new(
+    Vector3.new(math.floor((p.X-hx)/4)*4, math.floor((p.Y-hy)/4)*4, math.floor((p.Z-hz)/4)*4),
+    Vector3.new(math.ceil((p.X+hx)/4)*4, math.ceil((p.Y+hy)/4)*4, math.ceil((p.Z+hz)/4)*4))
+  return self:FillRegion(r, 4, m)
+end
+function METHODS:FillCylinder(cf, h, r, m)
+  local st = voxStore(self)
+  local mn = matName(m)
+  local p = cf.Position or cf
+  local x0, x1 = math.floor((p.X-r)/4), math.floor((p.X+r)/4)
+  local y0, y1 = math.floor((p.Y-h/2)/4), math.floor((p.Y+h/2)/4)
+  local z0, z1 = math.floor((p.Z-r)/4), math.floor((p.Z+r)/4)
+  for x = x0, x1 do for y = y0, y1 do for z = z0, z1 do
+    local dx, dz = x*4+2-p.X, z*4+2-p.Z
+    if dx*dx+dz*dz <= r*r then
+      if mn == "Air" then voxSet(st, x, y, z, "Air", 0, 0)
+      elseif mn == "Water" then voxSet(st, x, y, z, "Air", 0, 1)
+      else voxSet(st, x, y, z, mn, 1, 0) end
+    end
+  end end end
+end
+function METHODS:ReadVoxels(region, res)
+  local st = voxStore(self)
+  local lo, sx, sy, sz = voxRegion(region, res)
+  local bx, by, bz = lo.X/4, lo.Y/4, lo.Z/4
+  local mats, occs = { Size = Vector3.new(sx, sy, sz) }, { Size = Vector3.new(sx, sy, sz) }
+  for x = 1, sx do mats[x], occs[x] = {}, {} for y = 1, sy do mats[x][y], occs[x][y] = {}, {} for z = 1, sz do
+    local m, o, w = voxGet(st, bx+x-1, by+y-1, bz+z-1)
+    if w > 0 and o <= 0 then mats[x][y][z], occs[x][y][z] = Enum.Material.Water, w
+    else mats[x][y][z], occs[x][y][z] = Enum.Material[m], o end
+  end end end
+  return mats, occs
+end
+function METHODS:WriteVoxels(region, res, mats, occs)
+  local st = voxStore(self)
+  local lo, sx, sy, sz = voxRegion(region, res)
+  local bx, by, bz = lo.X/4, lo.Y/4, lo.Z/4
+  for x = 1, sx do for y = 1, sy do for z = 1, sz do
+    local mn = matName(mats[x][y][z])
+    local o = occs[x][y][z] or 0
+    if mn == "Water" then voxSet(st, bx+x-1, by+y-1, bz+z-1, "Air", 0, o)
+    else voxSet(st, bx+x-1, by+y-1, bz+z-1, mn, o, 0) end
+  end end end
+end
+function METHODS:ReadVoxelChannels(region, res, ids)
+  local st = voxStore(self)
+  local lo, sx, sy, sz = voxRegion(region, res)
+  local bx, by, bz = lo.X/4, lo.Y/4, lo.Z/4
+  local out = { Size = Vector3.new(sx, sy, sz) }
+  local want = {}
+  for _, id in ipairs(ids or {}) do want[id] = true end
+  if want.SolidMaterial then out.SolidMaterial = {} end
+  if want.SolidOccupancy then out.SolidOccupancy = {} end
+  if want.LiquidOccupancy then out.LiquidOccupancy = {} end
+  for x = 1, sx do
+    if out.SolidMaterial then out.SolidMaterial[x] = {} end
+    if out.SolidOccupancy then out.SolidOccupancy[x] = {} end
+    if out.LiquidOccupancy then out.LiquidOccupancy[x] = {} end
+    for y = 1, sy do
+      if out.SolidMaterial then out.SolidMaterial[x][y] = {} end
+      if out.SolidOccupancy then out.SolidOccupancy[x][y] = {} end
+      if out.LiquidOccupancy then out.LiquidOccupancy[x][y] = {} end
+      for z = 1, sz do
+        local m, o, w = voxGet(st, bx+x-1, by+y-1, bz+z-1)
+        if out.SolidMaterial then out.SolidMaterial[x][y][z] = Enum.Material[m] end
+        if out.SolidOccupancy then out.SolidOccupancy[x][y][z] = o end
+        if out.LiquidOccupancy then out.LiquidOccupancy[x][y][z] = w end
+      end
+    end
+  end
+  return out
+end
+function METHODS:WriteVoxelChannels(region, res, ch)
+  local st = voxStore(self)
+  local lo, sx, sy, sz = voxRegion(region, res)
+  local bx, by, bz = lo.X/4, lo.Y/4, lo.Z/4
+  for x = 1, sx do for y = 1, sy do for z = 1, sz do
+    local m, o, w = voxGet(st, bx+x-1, by+y-1, bz+z-1)
+    if ch.SolidMaterial and ch.SolidMaterial[x] and ch.SolidMaterial[x][y] then
+      m = matName(ch.SolidMaterial[x][y][z]) end
+    if ch.SolidOccupancy and ch.SolidOccupancy[x] and ch.SolidOccupancy[x][y] then
+      o = ch.SolidOccupancy[x][y][z] or o end
+    if ch.LiquidOccupancy and ch.LiquidOccupancy[x] and ch.LiquidOccupancy[x][y] then
+      w = ch.LiquidOccupancy[x][y][z] or w end
+    if m == "Water" then m, o = "Air", 0 end
+    voxSet(st, bx+x-1, by+y-1, bz+z-1, m, o, w)
+  end end end
+end
+function METHODS:ReplaceMaterial(region, res, src, tgt)
+  local st = voxStore(self)
+  local s, t = matName(src), matName(tgt)
+  local lo, sx, sy, sz = voxRegion(region, res)
+  local bx, by, bz = lo.X/4, lo.Y/4, lo.Z/4
+  local n = 0
+  for x = 1, sx do for y = 1, sy do for z = 1, sz do
+    local m, o, w = voxGet(st, bx+x-1, by+y-1, bz+z-1)
+    if m == s and o > 0 then voxSet(st, bx+x-1, by+y-1, bz+z-1, t, o, w) n = n + 1 end
+  end end end
+  return n
+end
+function METHODS:Clear()
+  local p = rawget(self, "__props")
+  if not p._vox then error("Clear: not a Terrain") end
+  p._vox = {}
+end
+function METHODS:CopyRegion(ri)
+  local st = voxStore(self)
+  local mn, mx = ri.Min, ri.Max
+  local cells = {}
+  for x = mn.X, mx.X do for y = mn.Y, mx.Y do for z = mn.Z, mx.Z do
+    local m, o, w = voxGet(st, x, y, z)
+    if o > 0 or w > 0 then cells[x..","..y..","..z] = { m, o, w } end
+  end end end
+  return { __t = "TerrainRegion", min = { mn.X, mn.Y, mn.Z },
+    max = { mx.X, mx.Y, mx.Z }, cells = cells }
+end
+function METHODS:PasteRegion(treg, corner, pasteEmpty)
+  local st = voxStore(self)
+  local ox, oy, oz = corner.X - treg.min[1], corner.Y - treg.min[2], corner.Z - treg.min[3]
+  for x = treg.min[1], treg.max[1] do for y = treg.min[2], treg.max[2] do for z = treg.min[3], treg.max[3] do
+    local c = treg.cells[x..","..y..","..z]
+    if c then voxSet(st, x+ox, y+oy, z+oz, c[1], c[2], c[3])
+    elseif pasteEmpty then voxSet(st, x+ox, y+oy, z+oz, "Air", 0, 0) end
+  end end end
+end
+function METHODS:CountCells()
+  local n = 0
+  for _, c in pairs(voxStore(self)) do if c.m ~= "Air" and c.o > 0 then n = n + 1 end end
+  return n
+end
+function METHODS:WorldToCell(p)
+  return Vector3.new(math.floor(p.X/4), math.floor(p.Y/4), math.floor(p.Z/4))
+end
+function METHODS:CellCenterToWorld(x, y, z)
+  return Vector3.new(x*4+2, y*4+2, z*4+2)
+end
+function METHODS:CellCornerToWorld(x, y, z)
+  return Vector3.new(x*4, y*4, z*4)
+end
+function METHODS:GetMaterialColor(m)
+  local mn = matName(m)
+  assert(mn ~= "Air" and mn ~= "Water", "Air/Water sem cor custom")
+  local p = rawget(self, "__props")
+  if p._matColors and p._matColors[mn] then return p._matColors[mn] end
+  local d = MAT_COLORS[mn] or { 128, 128, 128 }
+  return Color3.fromRGB(d[1], d[2], d[3])
+end
+function METHODS:SetMaterialColor(m, c)
+  local mn = matName(m)
+  assert(mn ~= "Air" and mn ~= "Water", "Air/Water sem cor custom")
+  local p = rawget(self, "__props")
+  if not p._matColors then p._matColors = {} end
+  p._matColors[mn] = c
+end
+
 function METHODS:IsDescendantOf(other)
   local p = self
   while p do if p == other then return true end p = rawget(p,"__props").Parent end
