@@ -497,13 +497,6 @@ function handlers.BlockRun(player, payload)
 	r.lua = lua
 	return r
 end
-function handlers.ScriptGet(player, payload)
-	local o = getObject(payload.id)
-	assert(o:IsA("LuaSourceContainer"), "Nao e Script.")
-	local ok, src = pcall(function() return o.Source end)
-	if not ok then return { error = "Source ilegivel aqui (leia no Studio)." } end
-	return { source = src or "", className = o.ClassName, name = o.Name }
-end
 function handlers.ScriptSet(player, payload)
 	local o = getObject(payload.id)
 	assert(o:IsA("LuaSourceContainer"), "Nao e Script.")
@@ -5837,6 +5830,41 @@ function handlers.WorldClear(player, payload)
   end
   queueObject(ws)
   return { deleted = n, backup = "autosafe", items = items }
+end
+end
+-- ================= R16 estudio total (home/script/places) =================
+do
+local ST16 = {}
+function handlers.ScriptGet(player, payload)
+  local o = getObject(payload.id)
+  assert(o:IsA("LuaSourceContainer"), "Nao e Script.")
+  local src = ""
+  pcall(function() src = o.Source or "" end)
+  assert(#src < 200000, "Grande demais.")
+  return { source = src, len = #src, class = o.ClassName, name = o.Name }
+end
+function handlers.PlaceList(player, payload)
+  local uid = tonumber(payload.universeId or 0) or 0
+  if uid <= 0 then pcall(function() uid = game.GameId or 0 end) end
+  assert(uid and uid > 0, "Universo desconhecido (jogo nao publicado?).")
+  local AS = game:GetService("AssetService")
+  local pages = nil
+  local ok, err = pcall(function() pages = AS:GetGamePlacesAsync(uid) end)
+  assert(ok and pages, "GetGamePlaces recusou: " .. tostring(err):sub(1, 150))
+  local out, n = {}, 0
+  local ok2, err2 = pcall(function()
+    while true do
+      for _, pl in ipairs(pages:GetCurrentPage()) do
+        n = n + 1
+        if n > 50 then break end
+        out[#out + 1] = { placeId = pl.PlaceId, name = pl.Name }
+      end
+      if pages.IsFinished or n > 50 then break end
+      pages:AdvanceToNextPageAsync()
+    end
+  end)
+  assert(ok2, "paginacao falhou: " .. tostring(err2):sub(1, 150))
+  return { places = out, universeId = uid }
 end
 end
 function handlers.RrwStats(player, payload)

@@ -575,6 +575,9 @@ local MENUS = {
     { icon = "Folder", label = "Places do meu perfil…", act = "PlacesProfile", tip = "Lista jogos/places do perfil + cria PLACES NOVAS de verdade (CreatePlaceAsync)" },
     { sep = true },
     { icon = "Open", label = "World Editor", act = "XWorld" },
+    { icon = "Open", label = "Home / Explorer", act = "XHome" },
+    { icon = "Open", label = "Script Studio", act = "XScript" },
+    { icon = "Open", label = "Places", act = "XPlaces" },
     { sep = true },
     { icon = "Info", label = "Ajuda do Studio…", act = "HelpStudio" },
   },
@@ -2075,6 +2078,18 @@ end
 actions.XWorld = function()
   local w = _G.ArkherWorld
   if w and w.open then w.open() else say("World nao carregado (19_World).", true) end
+end
+actions.XHome = function()
+  local h = _G.ArkherHome
+  if h and h.open then h.open() else say("Home nao carregado (20_Home).", true) end
+end
+actions.XScript = function()
+  local sc = _G.ArkherScript
+  if sc and sc.open then sc.open() else say("Script Studio nao carregado (21_Script).", true) end
+end
+actions.XPlaces = function()
+  local pl = _G.ArkherPlaces
+  if pl and pl.open then pl.open() else say("Places nao carregado (22_Places).", true) end
 end
 actions.XOpenTerrain      = function() deckOpen("terrain", "ferramentas") end
 actions.XOpenTerrainGen   = function() deckOpen("terrain", "gerar") end

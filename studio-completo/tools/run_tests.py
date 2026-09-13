@@ -21,6 +21,9 @@ TESTS = {
     "RRW R14 (server Rrw* + 17_RRW)": "studio-completo/tools/test_rrw17.lua",
     "D-O15 R15 (server Do15* + 18_Do15)": "studio-completo/tools/test_do15_18.lua",
     "World R15 (server World* + 19_World)": "studio-completo/tools/test_world19.lua",
+    "Home R16 (20_Home explorer/props)": "studio-completo/tools/test_home20.lua",
+    "Script R16 (server ScriptGet + 21_Script)": "studio-completo/tools/test_script21.lua",
+    "Places R16 (server PlaceList + 22_Places)": "studio-completo/tools/test_places22.lua",
 }
 ok = True
 for label, path in TESTS.items():

@@ -1017,8 +1017,62 @@ local function contentMethods(s)
   end)
   rawset(pr, "GetAssetFetchStatus", function(self, id) return { Name = "Success" } end)
 end
+-- R16: TweenInfo + TweenService:Create + LogService:ClearOutput
+TweenInfo = {}
+function TweenInfo.new(t, style, dir, rep, rev, dt)
+  return { Time = tonumber(t) or 1, EasingStyle = style, EasingDirection = dir,
+    RepeatCount = rep or 0, Reverses = rev or false, DelayTime = dt or 0, __t = "TweenInfo" }
+end
+local function tweenMethods(s)
+  local pr = rawget(s, "__props")
+  rawset(pr, "_tweens", {})
+  rawset(pr, "Create", function(self, target, info, props)
+    assert(target ~= nil, "alvo do tween invalido.")
+    assert(type(info) == "table" and info.Time, "TweenInfo invalido.")
+    assert(type(props) == "table", "props do tween invalidas.")
+    local tw = { Completed = Event.new("Completed"), _cancelled = false,
+      _target = target, _info = info, _props = props, __t = "Tween" }
+    function tw:Play()
+      if self._cancelled then return end
+      for k, v in pairs(self._props) do
+        pcall(function() self._target[k] = v end)
+      end
+      rawget(self, "Completed"):Fire(Enum.PlaybackState.Completed)
+    end
+    function tw:Cancel() self._cancelled = true end
+    function tw:Pause() end
+    table.insert(rawget(self, "__props")._tweens, tw)
+    return tw
+  end)
+end
+local function logMethods(s)
+  rawset(rawget(s, "__props"), "ClearOutput", function(self) end)
+end
+local function teleportMethods(s)
+  local pr = rawget(s, "__props")
+  rawset(pr, "_teleports", {})
+  rawset(pr, "TeleportAsync", function(self, pid, players)
+    assert(tonumber(pid) and tonumber(pid) > 0, "placeId invalido.")
+    table.insert(rawget(self, "__props")._teleports, { placeId = pid, n = players and #players or 0 })
+    return true
+  end)
+end
 local function assetMethods(s)  local pr = rawget(s, "__props")
   rawset(pr, "CreateEditableMesh", function(self) return EditableMesh.new() end)
+  rawset(pr, "_places", {})
+  rawset(pr, "GetGamePlacesAsync", function(self, uid)
+    assert(tonumber(uid) and tonumber(uid) > 0, "universeId invalido.")
+    local pages = { _i = 1, IsFinished = true }
+    local list = rawget(self, "__props")._places
+    function pages:GetCurrentPage() return list end
+    function pages:AdvanceToNextPageAsync() self.IsFinished = true end
+    return pages
+  end)
+  rawset(pr, "CreatePlaceAsync", function(self, name, tpl, desc)
+    assert(type(name) == "string" and #name > 2, "Nome muito curto para a place.")
+    rawget(self, "__props")._lastPlace = { name = name, tpl = tpl }
+    return 900000000 + (#name * 7 + (tonumber(tpl) or 0)) % 99999
+  end)
   rawset(pr, "CreateEditableMeshAsync", function(self, content, params)
     assert(content and content.__t == "Content", "Content invalido.")
     if content._obj and content._obj.__t == "EditableMesh" then
@@ -1049,6 +1103,9 @@ function gameObj:GetService(name)
   if name == "AssetService" then assetMethods(s) end
   if name == "Stats" then statsMethods(s) end
   if name == "ContentProvider" then contentMethods(s) end
+  if name == "TeleportService" then teleportMethods(s) end
+  if name == "TweenService" then tweenMethods(s) end
+  if name == "LogService" then logMethods(s) end
   services[name]=s; s.Parent = gameObj
   return s
 end

@@ -896,6 +896,122 @@ mwo_kids = [B("M_WO_Save", 8, 8, 200, 64, "SAVE", ACCENT, TEXT, 16, FB),
             L("M_WO_Hint", 632, 8, 700, 64, "quicksave + spawn here + fallen", MUTED, 13)]
 mwo = F("M_WO", 0, 690, 1568, 80, MENU_BG, mwo_kids, HID)
 
+
+# ---------------- 12i. home/explorer R16 (HO10) ----------------
+ho10_rail = F("HO10_Rail", 8, 100, 72, 140, PANEL, [title("HOME"),
+    B("HO10_Close", 8, 30, 56, 32, "X", BTN, RED, 14, FB)], HID)
+ho10_file = F("HO10_File", 88, 100, 220, 172, PANEL, [title("PROJECT"),
+    B("HO10_F_New", 8, 30, 100, 30, "NEW", BTN, TEXT, 11, FB),
+    B("HO10_F_Open", 112, 30, 100, 30, "OPEN", BTN, TEXT, 11, FB),
+    B("HO10_F_Save", 8, 66, 100, 30, "SAVE", ACCENT, TEXT, 11, FB),
+    B("HO10_F_Pub", 112, 66, 100, 30, "PUBLISH", BTN, TEXT, 11, FB),
+    B("HO10_F_Undo", 8, 102, 204, 26, "UNDO", BTN, TEXT, 11, FB),
+    L("HO10_F_Info", 8, 132, 204, 30, "file ops via menus", MUTED, 10)], HID)
+ho10_tree = F("HO10_Tree", 88, 258, 220, 196, PANEL, [title("EXPLORER"),
+    T("HO10_T_Filter", 8, 30, 204, 26, "filter", "", 11),
+    L("HO10_T_Info", 8, 62, 204, 60, "no selection", TEXT, 11, FC),
+    B("HO10_T_Prev", 8, 126, 64, 28, "<", BTN, TEXT, 14),
+    B("HO10_T_Next", 76, 126, 64, 28, ">", BTN, TEXT, 14),
+    B("HO10_T_Sel", 144, 126, 68, 28, "SELECT", ACCENT, TEXT, 11, FB),
+    B("HO10_T_Refresh", 8, 158, 204, 28, "REFRESH", BTN, TEXT, 11, FB)], HID)
+ho10_props = F("HO10_Props", 1330, 100, 220, 182, PANEL, [title("PROPS"),
+    L("HO10_P_Info", 8, 30, 204, 44, "-", MUTED, 11, FC),
+    T("HO10_P_Name", 8, 78, 120, 26, "name", "", 11),
+    B("HO10_P_Rename", 132, 78, 80, 26, "SET", ACCENT, TEXT, 11, FB),
+    B("HO10_P_Vis", 8, 110, 100, 28, "SHOW/HIDE", BTN, TEXT, 11, FB),
+    B("HO10_P_Dup", 112, 110, 100, 28, "DUPLI", BTN, TEXT, 11, FB),
+    B("HO10_P_Del", 8, 142, 204, 28, "DELETE", BTN, RED, 11, FB)], HID)
+ho10_help = F("HO10_Help", 1330, 290, 220, 180, PANEL, [title("HELP"),
+    L("HO10_H_Text", 8, 30, 204, 142, "F5 play · F8 ui · Del delete · Ctrl+S save · Ctrl+Z undo", MUTED, 11)], HID)
+ho10_status = F("HO10_Status", 88, 820, 700, 30, PANEL,
+               [L("HO10_StatL", 8, 4, 684, 22, "home", TEXT, 12, FC)], HID)
+mho_kids = [B("M_HO_Save", 8, 8, 200, 64, "SAVE", ACCENT, TEXT, 16, FB),
+            B("M_HO_Refresh", 216, 8, 200, 64, "TREES", BTN, TEXT, 16, FB),
+            B("M_HO_Del", 424, 8, 200, 64, "DEL", BTN, TEXT, 16, FB),
+            L("M_HO_Hint", 632, 8, 700, 64, "save + refresh tree + delete", MUTED, 13)]
+mho = F("M_HO", 0, 690, 1568, 80, MENU_BG, mho_kids, HID)
+
+# ---------------- 12j. script studio R16 (SC11) ----------------
+sc11_rail = F("SC11_Rail", 8, 100, 72, 200, PANEL, [title("SCRIPT"),
+    B("SC11_M_Lua", 8, 30, 56, 36, "LUA", ACCENT, TEXT, 11, FB),
+    B("SC11_M_Py", 8, 70, 56, 36, "PY", BTN, TEXT, 11, FB),
+    B("SC11_M_Blk", 8, 110, 56, 36, "BLK", BTN, TEXT, 11, FB),
+    B("SC11_Close", 8, 150, 56, 32, "X", BTN, RED, 14, FB)], HID)
+sc11_list = F("SC11_List", 88, 100, 220, 200, PANEL, [title("SCRIPTS"),
+    L("SC11_L_Info", 8, 30, 204, 60, "no scripts", MUTED, 11, FC),
+    B("SC11_L_Prev", 8, 94, 64, 28, "<", BTN, TEXT, 14),
+    B("SC11_L_Next", 76, 94, 64, 28, ">", BTN, TEXT, 14),
+    B("SC11_L_Load", 144, 94, 68, 28, "LOAD", ACCENT, TEXT, 11, FB),
+    B("SC11_L_NewS", 8, 126, 64, 28, "+SCR", BTN, TEXT, 11, FB),
+    B("SC11_L_NewL", 76, 126, 64, 28, "+LOC", BTN, TEXT, 11, FB),
+    B("SC11_L_NewM", 144, 126, 68, 28, "+MOD", BTN, TEXT, 11, FB),
+    B("SC11_L_Del", 8, 158, 204, 28, "DELETE", BTN, RED, 11, FB)], HID)
+sc11_edit = F("SC11_Edit", 316, 100, 500, 340, PANEL, [title("LUA EDITOR"),
+    T("SC11_E_Code", 8, 30, 484, 262, "-- lua", "", 12, {"MultiLine": True, "Font": FC, "TextYAlignment": {"en": "TextYAlignment.Top"}}),
+    B("SC11_E_Save", 8, 298, 120, 30, "SAVE", ACCENT, TEXT, 11, FB),
+    B("SC11_E_Run", 132, 298, 120, 30, "RUN", BTN, TEXT, 11, FB),
+    B("SC11_E_Stop", 256, 298, 120, 30, "STOP", BTN, TEXT, 11, FB),
+    L("SC11_E_Info", 380, 298, 112, 30, "-", MUTED, 10)], HID)
+sc11_py = F("SC11_Py", 316, 448, 500, 200, PANEL, [title("PYTHON->LUA"),
+    T("SC11_P_Code", 8, 30, 484, 100, "print('hi')", "", 12, {"MultiLine": True, "Font": FC, "TextYAlignment": {"en": "TextYAlignment.Top"}}),
+    B("SC11_P_Comp", 8, 136, 120, 30, "COMPILE", ACCENT, TEXT, 11, FB),
+    B("SC11_P_Save", 132, 136, 120, 30, "SAVE LUA", BTN, TEXT, 11, FB),
+    L("SC11_P_Info", 256, 136, 236, 30, "subset: print/if/while/for/def", MUTED, 10)], HID)
+sc11_blk = F("SC11_Blk", 824, 100, 500, 300, PANEL, [title("BLOCKS"),
+    L("SC11_B_Chain", 8, 30, 484, 130, "chain: (empty)", TEXT, 11, FC),
+    B("SC11_B_Ev", 8, 164, 120, 30, "+EVENT", ACCENT, TEXT, 11, FB),
+    B("SC11_B_Act", 132, 164, 120, 30, "+ACTION", BTN, TEXT, 11, FB),
+    B("SC11_B_If", 256, 164, 120, 30, "+IF", BTN, TEXT, 11, FB),
+    B("SC11_B_Undo", 380, 164, 104, 30, "UNDO", BTN, TEXT, 11, FB),
+    T("SC11_B_Param", 8, 200, 300, 26, "param", "", 11),
+    B("SC11_B_Comp", 312, 200, 88, 26, "COMP", ACCENT, TEXT, 11, FB),
+    B("SC11_B_Save", 404, 200, 88, 26, "SAVE", BTN, TEXT, 11, FB),
+    L("SC11_B_Info", 8, 232, 484, 30, "-", MUTED, 10)], HID)
+sc11_out = F("SC11_Out", 824, 408, 500, 150, PANEL, [title("OUTPUT"),
+    L("SC11_O_Log", 8, 30, 484, 80, "(log)", TEXT, 10, FC),
+    B("SC11_O_Clear", 8, 114, 120, 28, "CLEAR", BTN, TEXT, 11, FB),
+    B("SC11_O_Err", 132, 114, 120, 28, "ERRORS", BTN, TEXT, 11, FB)], HID)
+sc11_status = F("SC11_Status", 88, 820, 700, 30, PANEL,
+               [L("SC11_StatL", 8, 4, 684, 22, "script", TEXT, 12, FC)], HID)
+msc_kids = [B("M_SC_Save", 8, 8, 200, 64, "SAVE", ACCENT, TEXT, 16, FB),
+            B("M_SC_Run", 216, 8, 200, 64, "RUN", BTN, TEXT, 16, FB),
+            B("M_SC_Stop", 424, 8, 200, 64, "STOP", BTN, TEXT, 16, FB),
+            L("M_SC_Hint", 632, 8, 700, 64, "save + run + stop script", MUTED, 13)]
+msc = F("M_SC", 0, 690, 1568, 80, MENU_BG, msc_kids, HID)
+
+# ---------------- 12k. places R16 (PL12) ----------------
+pl12_rail = F("PL12_Rail", 8, 100, 72, 140, PANEL, [title("PLACES"),
+    B("PL12_Close", 8, 30, 56, 32, "X", BTN, RED, 14, FB)], HID)
+pl12_list = F("PL12_List", 88, 100, 220, 210, PANEL, [title("PLACES"),
+    L("PL12_L_Info", 8, 30, 204, 60, "no places", MUTED, 11, FC),
+    B("PL12_L_Prev", 8, 94, 64, 28, "<", BTN, TEXT, 14),
+    B("PL12_L_Next", 76, 94, 64, 28, ">", BTN, TEXT, 14),
+    B("PL12_L_Go", 144, 94, 68, 28, "GO", ACCENT, TEXT, 11, FB),
+    T("PL12_L_Id", 8, 126, 120, 26, "placeId", "", 11),
+    B("PL12_L_GoId", 132, 126, 80, 26, "GO ID", BTN, TEXT, 11, FB),
+    B("PL12_L_Refresh", 8, 158, 204, 28, "REFRESH", BTN, TEXT, 11, FB)], HID)
+pl12_new = F("PL12_New", 88, 318, 220, 162, PANEL, [title("NEW PLACE"),
+    T("PL12_N_Name", 8, 30, 204, 26, "name", "", 11),
+    T("PL12_N_Tpl", 8, 62, 120, 26, "template?", "", 11),
+    B("PL12_N_Create", 132, 62, 80, 26, "CREATE", ACCENT, TEXT, 11, FB),
+    L("PL12_N_Info", 8, 94, 204, 60, "published game + online", MUTED, 10)], HID)
+pl12_cut = F("PL12_Cut", 1330, 100, 220, 184, PANEL, [title("CUTSCENE"),
+    B("PL12_C_A", 8, 30, 100, 30, "SET A", BTN, TEXT, 11, FB),
+    B("PL12_C_B", 112, 30, 100, 30, "SET B", BTN, TEXT, 11, FB),
+    T("PL12_C_T", 8, 66, 120, 26, "3", "3", 11),
+    B("PL12_C_Play", 132, 66, 80, 26, "PLAY", ACCENT, TEXT, 11, FB),
+    B("PL12_C_Stop", 8, 98, 204, 28, "STOP", BTN, TEXT, 11, FB),
+    L("PL12_C_Info", 8, 130, 204, 46, "A/B = camera points", MUTED, 10)], HID)
+pl12_auto = F("PL12_Auto", 1330, 292, 220, 150, PANEL, [title("AUTOMATION"),
+    L("PL12_A_Text", 8, 30, 204, 112, "tools/place_automation.py (Open Cloud, needs API key)", MUTED, 11)], HID)
+pl12_status = F("PL12_Status", 88, 820, 700, 30, PANEL,
+               [L("PL12_StatL", 8, 4, 684, 22, "places", TEXT, 12, FC)], HID)
+mpl_kids = [B("M_PL_Go", 8, 8, 200, 64, "GO", ACCENT, TEXT, 16, FB),
+            B("M_PL_A", 216, 8, 200, 64, "SET A", BTN, TEXT, 16, FB),
+            B("M_PL_Play", 424, 8, 200, 64, "PLAY", BTN, TEXT, 16, FB),
+            L("M_PL_Hint", 632, 8, 700, 64, "teleport + cutscene A + play", MUTED, 13)]
+mpl = F("M_PL", 0, 690, 1568, 80, MENU_BG, mpl_kids, HID)
+
 for _p in [te3_rail, te3_brush, te3_mat, te3_layers, te3_history, te3_gen, te3_water, te3_status]:
     desktop_kids.append(_p)
 for _p in [vp3_rail, vp3_cam, vp3_tm, vp3_meas, vp3_snap, vp3_status]:
@@ -911,6 +1027,12 @@ for _p in [rw7_rail, rw7_prof, rw7_fx, rw7_sky, rw7_world, rw7_lod, rw7_status]:
 for _p in [do8_rail, do8_stats, do8_audit, do8_opt, do8_rel, do8_mem, do8_status]:
     desktop_kids.append(_p)
 for _p in [wo9_rail, wo9_info, wo9_grav, wo9_spawn, wo9_save, wo9_clean, wo9_status]:
+    desktop_kids.append(_p)
+for _p in [ho10_rail, ho10_file, ho10_tree, ho10_props, ho10_help, ho10_status]:
+    desktop_kids.append(_p)
+for _p in [sc11_rail, sc11_list, sc11_edit, sc11_py, sc11_blk, sc11_out, sc11_status]:
+    desktop_kids.append(_p)
+for _p in [pl12_rail, pl12_list, pl12_new, pl12_cut, pl12_auto, pl12_status]:
     desktop_kids.append(_p)
 desktop = N("Frame", "DesktopRoot",
             {"Position": P(0, 0), "Size": S(1568, 882),
@@ -980,7 +1102,7 @@ mobile = N("Frame", "MobileRoot",
            {"Position": P(0, 0), "Size": S(1568, 882),
             "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
             "ClipsDescendants": False, "Visible": False},
-           [mtop, mtools, mdrawer, mprops, mnum, msel, mhelp, mbot, mmarquee, mte, mvp, mmd, man, mui, mrw, mdo, mwo])
+           [mtop, mtools, mdrawer, mprops, mnum, msel, mhelp, mbot, mmarquee, mte, mvp, mmd, man, mui, mrw, mdo, mwo, mho, msc, mpl])
 
 # ---------------- 14. console layout (gamepad-first, baked) ----------------
 ctop = F("C_Top", 0, 0, 1568, 56, MENU_BG,

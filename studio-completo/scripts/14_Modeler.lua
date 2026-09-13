@@ -102,7 +102,10 @@ local OTHER_EDS = { "TE3_Rail", "TE3_Brush", "TE3_Mat", "TE3_Layers", "TE3_Histo
   "UI6_Status", "RW7_Rail", "RW7_Prof", "RW7_FX", "RW7_Sky", "RW7_World",
   "RW7_LOD", "RW7_Status",
   "DO8_Rail", "DO8_Stats", "DO8_Audit", "DO8_Opt", "DO8_Rel", "DO8_Mem", "DO8_Status",
-  "WO9_Rail", "WO9_Info", "WO9_Grav", "WO9_Spawn", "WO9_Save", "WO9_Clean", "WO9_Status" }
+  "WO9_Rail", "WO9_Info", "WO9_Grav", "WO9_Spawn", "WO9_Save", "WO9_Clean", "WO9_Status",
+  "HO10_Rail", "HO10_File", "HO10_Tree", "HO10_Props", "HO10_Help", "HO10_Status",
+  "SC11_Rail", "SC11_List", "SC11_Edit", "SC11_Py", "SC11_Blk", "SC11_Out", "SC11_Status",
+  "PL12_Rail", "PL12_List", "PL12_New", "PL12_Cut", "PL12_Auto", "PL12_Status" }
 local DESK_HIDE = { "T2_Panel", "C2_Panel", "S2_Panel", "O2_Panel", "O2_WPanel",
   "TL2_Panel", "CV2_Panel", "SM2_Panel", "TM2_Panel", "FR2_Panel" }
 
@@ -126,8 +129,11 @@ local function setOpen(v)
   setVisible("M_RW", false)
   setVisible("M_DO", false)
   setVisible("M_WO", false)
+  setVisible("M_HO", false)
+  setVisible("M_SC", false)
+  setVisible("M_PL", false)
   if v then
-    for _, ed in ipairs({ "ArkherTerrain", "ArkherViewport", "ArkherAnimator", "ArkherUI", "ArkherRRW", "ArkherDo15", "ArkherWorld" }) do
+    for _, ed in ipairs({ "ArkherTerrain", "ArkherViewport", "ArkherAnimator", "ArkherUI", "ArkherRRW", "ArkherDo15", "ArkherWorld", "ArkherHome", "ArkherScript", "ArkherPlaces" }) do
       pcall(function()
         local e = _G[ed]
         if e and e.isOpen and e.isOpen() then e.close() end
