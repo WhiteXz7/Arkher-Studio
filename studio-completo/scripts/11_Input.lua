@@ -112,6 +112,14 @@ local function selectInstance(inst)
   say("Selected: " .. inst.Name .. ".")
   return r
 end
+local function terrainOpen()
+  local t = _G.ArkherTerrain
+  if t and t.isOpen then
+    local ok, v = pcall(t.isOpen)
+    if ok then return v == true end
+  end
+  return false
+end
 local function selObj()
   if selInst and selInst.Value then return selInst.Value end
   return nil
@@ -328,9 +336,15 @@ function Cam.orbit(dx, dy)
   local c = cam()
   if not c then return end
   local cf = c.CFrame
+  local t = nil
+  pcall(function() t = c.Focus.Position end)
+  if not t then t = cf.Position + cf.LookVector * 20 end
+  local off = cf.Position - t
   local yaw = CFrame.Angles(0, -dx * Bindings.lookSpeed * Bindings.invertX, 0)
   local pitch = CFrame.Angles(-dy * Bindings.lookSpeed * Bindings.invertY, 0, 0)
-  c.CFrame = CFrame.new(cf.Position) * yaw * (CFrame.new(cf.Position):Inverse() * cf) * pitch
+  local np = t + (yaw * pitch * off)
+  local ok = pcall(function() c.CFrame = CFrame.lookAt(np, t) end)
+  if not ok then c.CFrame = CFrame.new(np.X, np.Y, np.Z) end
 end
 function Cam.fly(dt)
   local c = cam()
@@ -504,8 +518,10 @@ local function detectPlatform()
   return "PC"
 end
 local Controllers = {}
+local resetTransient -- forward: zera estados de gesto ao trocar de plataforma
 local function setPlatform(p)
   if not Roots[p] then say("Unknown platform: " .. tostring(p), true) return Platform end
+  pcall(function() if resetTransient then resetTransient() end end)
   Platform = p
   for k, root in pairs(Roots) do
     pcall(function() root.Visible = (k == p) end)
@@ -847,6 +863,16 @@ function Console.moveCursor(dx, dy)
   if Console.aPress and Console.aPress.box then
     marqueeShow("C_", Console.aPress.x, Console.aPress.y, Console.cursor.X, Console.cursor.Y)
   end
+  if Console.xDown then
+    Console.xMoves = (Console.xMoves or 0) + 1
+    if Console.xMoves < 3 then return end
+    if not Console.xLasso then Console.xLasso = { { X = Console.cursor.X, Y = Console.cursor.Y } } end
+    if #Console.xLasso < 128 then
+      Console.xLasso[#Console.xLasso + 1] = { X = Console.cursor.X, Y = Console.cursor.Y }
+    end
+    local f = Console.xLasso[1]
+    marqueeShow("C_", f.X, f.Y, Console.cursor.X, Console.cursor.Y)
+  end
   local cur = find("C_Cursor")
   if cur then pcall(function()
     cur.Position = UDim2.fromOffset(math.floor(Console.cursor.X), math.floor(Console.cursor.Y))
@@ -987,6 +1013,7 @@ end
 function VR.grabEnd()
   VR.grabbing = false
   VR.grabOffset = nil
+  VR.trigHeld = false
 end
 function VR.grabStep()
   if not VR.grabbing then return end
@@ -1012,7 +1039,10 @@ Controllers.VR = VR
 Console.aPress = nil Console.lastX = -10 Console.radialMode = "tool"
 VR.lastTrig = -10 VR.xPress = nil
 local TouchDrag = nil
+local TouchLasso = nil -- {pts={}, moved=false} armada pelo long-press
 function Mobile.touchBegin(input)
+  TouchLasso = nil
+  if terrainOpen() then return end
   if Mobile.mode ~= "Select" then return end
   if input.UserInputType ~= Enum.UserInputType.Touch then return end
   local p = input.Position
@@ -1021,6 +1051,18 @@ function Mobile.touchBegin(input)
   TouchDrag = { x0 = p.X, y0 = p.Y, box = false }
 end
 function Mobile.touchMove(input)
+  if TouchLasso then
+    if input.UserInputType ~= Enum.UserInputType.Touch then return end
+    local pl = input.Position
+    if not pl then return end
+    local first = TouchLasso.pts[1]
+    if math.abs(pl.X - first.X) + math.abs(pl.Y - first.Y) > 24 then TouchLasso.moved = true end
+    if TouchLasso.moved then
+      if #TouchLasso.pts < 128 then TouchLasso.pts[#TouchLasso.pts + 1] = { X = pl.X, Y = pl.Y } end
+      marqueeShow("M_", TouchLasso.x0, TouchLasso.y0, pl.X, pl.Y)
+    end
+    return
+  end
   if not TouchDrag then return end
   if input.UserInputType ~= Enum.UserInputType.Touch
     and input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
@@ -1032,6 +1074,17 @@ function Mobile.touchMove(input)
   if TouchDrag.box then marqueeShow("M_", TouchDrag.x0, TouchDrag.y0, p.X, p.Y) end
 end
 function Mobile.touchEnd(input)
+  if TouchLasso then
+    local tl = TouchLasso
+    TouchLasso = nil
+    marqueeHide("M_")
+    if tl.moved and #tl.pts >= 3 then
+      multiCommit(pickLasso(tl.pts))
+    else
+      Actions.propsMenu(find("M_T_Props"))
+    end
+    return
+  end
   if not TouchDrag then return end
   local td = TouchDrag
   TouchDrag = nil
@@ -1048,6 +1101,7 @@ function Console.releaseA()
   local ap = Console.aPress
   Console.aPress = nil
   marqueeHide("C_")
+  if terrainOpen() then return end
   if ap and ap.box then
     multiCommit(pickBox(ap.x, ap.y, Console.cursor.X, Console.cursor.Y))
   else
@@ -1055,8 +1109,22 @@ function Console.releaseA()
   end
 end
 function Console.pressX()
+  Console.xDown = os.clock()
+  Console.xMoves = 0
+  Console.xLasso = nil
+end
+function Console.releaseX()
+  local t0 = Console.xDown
+  Console.xDown = nil
+  local pts = Console.xLasso
+  Console.xLasso = nil
+  marqueeHide("C_")
+  if pts and #pts >= 3 then
+    multiCommit(pickLasso(pts))
+    return
+  end
   local now = os.clock()
-  if now - Console.lastX < 0.4 then
+  if now - (Console.lastX or 0) < 0.4 then
     Console.lastX = 0
     Actions.kids()
   else
@@ -1080,9 +1148,12 @@ function VR.pressTrigger()
     VR.lastTrig = 0
     VR.grabEnd()
     Actions.kids()
+    VR.trigHeld = true
     return
   end
   VR.lastTrig = now
+  VR.trigHeld = true
+  if terrainOpen() then return end
   VR.raySelect() VR.grabBegin()
 end
 function VR.pressXBegin() VR.xPress = os.clock() end
@@ -1144,35 +1215,35 @@ local function snapDefaults()
     Box = Bindings.box, Lasso = Bindings.lasso, Snap = Bindings.snap }
 end
 local REMAP_SLOTS = {
-  { btn = "D_S_B1", label = "Select tool",
+  { btn = "D_S_B1", label = "Select tool", slot = "Select",
     get = function() return Bindings.tool.Select end,
     set = function(k) Bindings.tool.Select = k end,
     def = function() return DEFAULT_BINDINGS.Select end },
-  { btn = "D_S_B2", label = "Move tool",
+  { btn = "D_S_B2", label = "Move tool", slot = "Move",
     get = function() return Bindings.tool.Move end,
     set = function(k) Bindings.tool.Move = k end,
     def = function() return DEFAULT_BINDINGS.Move end },
-  { btn = "D_S_B3", label = "Rotate tool",
+  { btn = "D_S_B3", label = "Rotate tool", slot = "Rotate",
     get = function() return Bindings.tool.Rotate end,
     set = function(k) Bindings.tool.Rotate = k end,
     def = function() return DEFAULT_BINDINGS.Rotate end },
-  { btn = "D_S_B4", label = "Scale tool",
+  { btn = "D_S_B4", label = "Scale tool", slot = "Scale",
     get = function() return Bindings.tool.Scale end,
     set = function(k) Bindings.tool.Scale = k end,
     def = function() return DEFAULT_BINDINGS.Scale end },
-  { btn = "D_S_B5", label = "Frame camera",
+  { btn = "D_S_B5", label = "Frame camera", slot = "Frame",
     get = function() return Bindings.frame end,
     set = function(k) Bindings.frame = k end,
     def = function() return DEFAULT_BINDINGS.Frame end },
-  { btn = "D_S_B6", label = "Box select",
+  { btn = "D_S_B6", label = "Box select", slot = "Box",
     get = function() return Bindings.box end,
     set = function(k) Bindings.box = k end,
     def = function() return DEFAULT_BINDINGS.Box end },
-  { btn = "D_S_B7", label = "Lasso select",
+  { btn = "D_S_B7", label = "Lasso select", slot = "Lasso",
     get = function() return Bindings.lasso end,
     set = function(k) Bindings.lasso = k end,
     def = function() return DEFAULT_BINDINGS.Lasso end },
-  { btn = "D_S_B8", label = "Snap to grid",
+  { btn = "D_S_B8", label = "Snap to grid", slot = "Snap",
     get = function() return Bindings.snap end,
     set = function(k) Bindings.snap = k end,
     def = function() return DEFAULT_BINDINGS.Snap end },
@@ -1194,13 +1265,40 @@ function Remap.capture(kc)
   if kc == Enum.KeyCode.Escape then showBindings() say("Remap cancelled.") return end
   slot.set(kc)
   showBindings()
+  Remap.save()
   say(slot.label .. " = " .. kcName(kc) .. ".")
 end
 function Remap.reset()
   snapDefaults()
   for _, s in ipairs(REMAP_SLOTS) do s.set(s.def()) end
   showBindings()
+  Remap.save()
   say("Bindings reset to defaults.")
+end
+function Remap.save()
+  local b = {}
+  for _, s in ipairs(REMAP_SLOTS) do
+    local k = s.get()
+    local ok, n = pcall(function() return k.Name end)
+    if ok and n then b[s.slot] = n end
+  end
+  local _, err = api("RemapSet", { bindings = b })
+  if err then say("Remap save: " .. tostring(err), true) end
+end
+function Remap.load()
+  local r, err = api("RemapGet", {})
+  if err or not (r and r.bindings) then return false end
+  local n = 0
+  for _, s in ipairs(REMAP_SLOTS) do
+    local name = r.bindings[s.slot]
+    if type(name) == "string" then
+      local ok, kc = pcall(function() return Enum.KeyCode[name] end)
+      if ok and kc then s.set(kc) n = n + 1 end
+    end
+  end
+  showBindings()
+  if n > 0 then say("Bindings restored (" .. tostring(r.source or "?") .. ").") end
+  return n > 0
 end
 function UI.refreshScale()
   local sc = find("Shell2Scale")
@@ -1342,6 +1440,10 @@ local function setLang(L)
     setText("C_Mode", (L == "PT" and "MODO: " or "MODE: ") .. "EDITOR")
   end
   if Platform == "VR" then VR.enter() end
+  pcall(function()
+    local sx = _G.ArkherStudioX
+    if sx and sx.refreshTitles then sx.refreshTitles() end
+  end)
   say(L == "PT" and "Idioma: Português." or "Language: English.")
 end
 function UI.toggleLang() setLang(UI.lang == "PT" and "EN" or "PT") end
@@ -1531,6 +1633,8 @@ UIS.InputEnded:Connect(function(input)
       Console.orbit = false
     elseif input.KeyCode == Enum.KeyCode.ButtonA then
       Console.releaseA()
+    elseif input.KeyCode == Enum.KeyCode.ButtonX then
+      Console.releaseX()
     end
     return
   end
@@ -1538,6 +1642,7 @@ UIS.InputEnded:Connect(function(input)
     local kc = input.KeyCode
     if kc == Enum.KeyCode.ButtonR1 or kc == Enum.KeyCode.ButtonR2
       or kc == Enum.KeyCode.ButtonL1 or kc == Enum.KeyCode.ButtonL2 then
+      VR.trigHeld = false
       VR.grabEnd()
     elseif kc == Enum.KeyCode.ButtonX then
       VR.releaseX()
@@ -1583,7 +1688,9 @@ end)
 pcall(function()
   UIS.TouchLongPress:Connect(function(pos, state, processed)
     if Platform == "Mobile" and not processed and state == Enum.UserInputState.Begin then
-      Actions.propsMenu(find("M_T_Props"))
+      if terrainOpen() then return end
+      TouchDrag = nil
+      TouchLasso = { pts = { { X = pos.X, Y = pos.Y } }, moved = false, x0 = pos.X, y0 = pos.Y }
     end
   end)
 end)
@@ -1641,6 +1748,21 @@ RunService.Heartbeat:Connect(function(dt)
   end
 end)
 
+-- R11: trocar de plataforma nunca carrega gesto pela metade (gatilho/A/
+-- drag/marquee presos). Estados transientes zerados a cada setPlatform.
+resetTransient = function()
+  pcall(function() VR.grabEnd() VR.xPress = nil end)
+  pcall(function()
+    Console.aPress = nil Console.xDown = nil Console.xLasso = nil
+    Console.xMoves = 0 Console.orbit = false
+  end)
+  pcall(function() TouchDrag = nil TouchLasso = nil end)
+  pcall(function() PC.rmb = false PC.mmb = false PC.disarm() end)
+  pcall(function()
+    marqueeHide("D_") marqueeHide("M_") marqueeHide("C_")
+  end)
+end
+
 -- ============ Boot ============
 Roots = {
   PC = shell:WaitForChild("DesktopRoot", 30),
@@ -1659,6 +1781,18 @@ rawset(_G, "ArkherInput", {
   openSettings = function() return UI.openSettings() end,
   toggleLang = function() return UI.toggleLang() end,
   setLang = function(L) return UI.setLang(L) end,
+  lang = function() return UI.lang end,
   multi = Multi,
+  reloadBindings = function() return Remap.load() end,
+  consoleCursor = function() return { X = Console.cursor.X, Y = Console.cursor.Y } end,
+  padPaintHeld = function() return Console.aPress ~= nil end,
+  vrPaintHeld = function() return VR.trigHeld == true end,
+  vrHandRay = function()
+    local hcf = VR.handCF("RightHand")
+    if not hcf then return nil end
+    local o, d = hcf.Position, hcf.LookVector
+    return { ox = o.X, oy = o.Y, oz = o.Z, dx = d.X, dy = d.Y, dz = d.Z }
+  end,
 })
+pcall(function() Remap.load() end)
 setPlatform(detectPlatform())

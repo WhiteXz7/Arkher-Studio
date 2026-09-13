@@ -135,21 +135,113 @@ local V3MT = { __index=function(self, k)
   end }
 function Vector3.new(x,y,z) return setmetatable({X=x or 0,Y=y or 0,Z=z or 0,__t="Vector3"},V3MT) end
 CFrame = {}
-local CFMT = { __index=CFrame, __mul=function(a,b) return CFrame.new(0,0,0) end }
-function CFrame.new(x,y,z)
-  if type(x)=="table" and x.X then return setmetatable({Position=x,__t="CFrame"},CFMT) end
-  return setmetatable({Position=Vector3.new(x or 0,y or 0,z or 0),__t="CFrame"},CFMT)
+local function cfBuild(px,py,pz,r00,r01,r02,r10,r11,r12,r20,r21,r22)
+  return setmetatable({ Position=Vector3.new(px,py,pz),
+    r00=r00,r01=r01,r02=r02,r10=r10,r11=r11,r12=r12,r20=r20,r21=r21,r22=r22,__t="CFrame"},CFMT)
 end
-function CFrame.fromEulerAnglesYXZ(x,y,z) return CFrame.new(0,0,0) end
-function CFrame.lookAt(a,b) return CFrame.new(0,0,0) end
-function CFrame:ToEulerAnglesYXZ() return 0,0,0 end
-function CFrame:ToOrientation() return 0,0,0 end
-function CFrame:GetComponents() return 0,0,0,0,0,0,0,0,0,0,0,0 end
-CFrame.LookVector = Vector3.new(0,0,-1)
-CFrame.RightVector = Vector3.new(1,0,0)
-CFrame.UpVector = Vector3.new(0,1,0)
-function CFrame.Angles(x,y,z) return CFrame.new(0,0,0) end
-function CFrame:Inverse() return CFrame.new(0,0,0) end
+CFMT = { __index=function(self,k)
+    if k=="LookVector" then return Vector3.new(-rawget(self,"r02"),-rawget(self,"r12"),-rawget(self,"r22")) end
+    if k=="RightVector" then return Vector3.new(rawget(self,"r00"),rawget(self,"r10"),rawget(self,"r20")) end
+    if k=="UpVector" then return Vector3.new(rawget(self,"r01"),rawget(self,"r11"),rawget(self,"r21")) end
+    return CFrame[k]
+  end,
+  __sub=function(a,b)
+    if type(b)=="table" and b.Position and b.r00 then
+      local p=a.Position-b.Position return CFrame.new(p.X,p.Y,p.Z) end
+    return CFrame.new(a.Position-b.X,a.Position.Y-b.Y,a.Position.Z-b.Z)
+  end,
+  __mul=function(a,b)
+    if type(b)=="table" and b.r00 then
+      local A, B = a, b
+      local r00=A.r00*B.r00+A.r01*B.r10+A.r02*B.r20
+      local r01=A.r00*B.r01+A.r01*B.r11+A.r02*B.r21
+      local r02=A.r00*B.r02+A.r01*B.r12+A.r02*B.r22
+      local r10=A.r10*B.r00+A.r11*B.r10+A.r12*B.r20
+      local r11=A.r10*B.r01+A.r11*B.r11+A.r12*B.r21
+      local r12=A.r10*B.r02+A.r11*B.r12+A.r12*B.r22
+      local r20=A.r20*B.r00+A.r21*B.r10+A.r22*B.r20
+      local r21=A.r20*B.r01+A.r21*B.r11+A.r22*B.r21
+      local r22=A.r20*B.r02+A.r21*B.r12+A.r22*B.r22
+      local p=B.Position
+      local px=A.r00*p.X+A.r01*p.Y+A.r02*p.Z+A.Position.X
+      local py=A.r10*p.X+A.r11*p.Y+A.r12*p.Z+A.Position.Y
+      local pz=A.r20*p.X+A.r21*p.Y+A.r22*p.Z+A.Position.Z
+      return cfBuild(px,py,pz,r00,r01,r02,r10,r11,r12,r20,r21,r22)
+    end
+    local p = (type(b)=="table" and b.X and b) or Vector3.new(0,0,0)
+    local px=a.r00*p.X+a.r01*p.Y+a.r02*p.Z+a.Position.X
+    local py=a.r10*p.X+a.r11*p.Y+a.r12*p.Z+a.Position.Y
+    local pz=a.r20*p.X+a.r21*p.Y+a.r22*p.Z+a.Position.Z
+    return Vector3.new(px,py,pz)
+  end }
+function CFrame.new(x,y,z,r00,r01,r02,r10,r11,r12,r20,r21,r22)
+  if type(x)=="table" and x.X and type(y)=="table" and y.X and r00==nil then
+    return CFrame.lookAt(x, y)
+  end
+  if type(x)=="table" and x.X and r00==nil then return cfBuild(x.X,x.Y,x.Z,1,0,0,0,1,0,0,0,1) end
+  if type(x)=="table" and x.Position and r00==nil then
+    return cfBuild(x.Position.X,x.Position.Y,x.Position.Z,1,0,0,0,1,0,0,0,1) end
+  return cfBuild(x or 0,y or 0,z or 0,r00 or 1,r01 or 0,r02 or 0,r10 or 0,r11 or 1,r12 or 0,r20 or 0,r21 or 0,r22 or 1)
+end
+function CFrame.fromEulerAnglesYXZ(x,y,z)
+  x,y,z = x or 0, y or 0, z or 0
+  local cx,sx,cy,sy,cz,sz = math.cos(x),math.sin(x),math.cos(y),math.sin(y),math.cos(z),math.sin(z)
+  local r00=cy*cz+sy*sx*sz r01=-cy*sz+sy*sx*cz r02=sy*cx
+  local r10=cx*sz r11=cx*cz r12=-sx
+  local r20=-sy*cz+cy*sx*sz r21=sy*sz+cy*sx*cz r22=cy*cx
+  return cfBuild(0,0,0,r00,r01,r02,r10,r11,r12,r20,r21,r22)
+end
+function CFrame.Angles(x,y,z)
+  x,y,z = x or 0, y or 0, z or 0
+  local cx,sx,cy,sy,cz,sz = math.cos(x),math.sin(x),math.cos(y),math.sin(y),math.cos(z),math.sin(z)
+  local r00=cy*cz r01=-cy*sz r02=sy
+  local r10=cz*sx*sy+cx*sz r11=cx*cz-sx*sy*sz r12=-cy*sx
+  local r20=sx*sz-cx*cz*sy r21=cz*sx+cx*sy*sz r22=cx*cy
+  return cfBuild(0,0,0,r00,r01,r02,r10,r11,r12,r20,r21,r22)
+end
+function CFrame.fromOrientation(x,y,z) return CFrame.fromEulerAnglesYXZ(x,y,z) end
+function CFrame.lookAt(a,b)
+  a = (type(a)=="table" and a.Position) or a
+  b = (type(b)=="table" and b.Position) or b
+  local fwd = (Vector3.new(a.X-b.X,a.Y-b.Y,a.Z-b.Z))
+  local m = fwd.Magnitude
+  if m < 1e-6 then return CFrame.new(a.X,a.Y,a.Z) end
+  fwd = fwd / m
+  local up = Vector3.new(0,1,0)
+  local r = Vector3.new(up.Y*fwd.Z-up.Z*fwd.Y, up.Z*fwd.X-up.X*fwd.Z, up.X*fwd.Y-up.Y*fwd.X)
+  local rm = r.Magnitude
+  if rm < 1e-6 then r = Vector3.new(1,0,0) else r = r / rm end
+  local u = Vector3.new(fwd.Y*r.Z-fwd.Z*r.Y, fwd.Z*r.X-fwd.X*r.Z, fwd.X*r.Y-fwd.Y*r.X)
+  return cfBuild(a.X,a.Y,a.Z, r.X,u.X,fwd.X, r.Y,u.Y,fwd.Y, r.Z,u.Z,fwd.Z)
+end
+function CFrame:ToEulerAnglesYXZ()
+  local r02,r12,r22 = rawget(self,"r02"),rawget(self,"r12"),rawget(self,"r22")
+  local x = math.asin(math.max(-1, math.min(1, -r12)))
+  local y = math.atan2(r02, r22)
+  local z = math.atan2(rawget(self,"r10"), rawget(self,"r11"))
+  return x, y, z
+end
+function CFrame:ToOrientation()
+  local y = math.atan2(rawget(self,"r02"), rawget(self,"r22"))
+  local x = math.atan2(-rawget(self,"r12"), math.sqrt(rawget(self,"r02")^2 + rawget(self,"r22")^2))
+  local z = math.atan2(rawget(self,"r10"), rawget(self,"r11"))
+  return x, y, z
+end
+function CFrame:GetComponents()
+  local p = rawget(self,"Position")
+  return p.X,p.Y,p.Z,rawget(self,"r00"),rawget(self,"r01"),rawget(self,"r02"),
+    rawget(self,"r10"),rawget(self,"r11"),rawget(self,"r12"),rawget(self,"r20"),rawget(self,"r21"),rawget(self,"r22")
+end
+function CFrame:Inverse()
+  local p = rawget(self,"Position")
+  local t00,t01,t02 = rawget(self,"r00"),rawget(self,"r10"),rawget(self,"r20")
+  local t10,t11,t12 = rawget(self,"r01"),rawget(self,"r11"),rawget(self,"r21")
+  local t20,t21,t22 = rawget(self,"r02"),rawget(self,"r12"),rawget(self,"r22")
+  local px = -(t00*p.X+t01*p.Y+t02*p.Z)
+  local py = -(t10*p.X+t11*p.Y+t12*p.Z)
+  local pz = -(t20*p.X+t21*p.Y+t22*p.Z)
+  return cfBuild(px,py,pz,t00,t01,t02,t10,t11,t12,t20,t21,t22)
+end
 UDim2 = {} function UDim2.new(a,b,c,d) return {X={Scale=a or 0,Offset=b or 0},Y={Scale=c or 0,Offset=d or 0},__t="UDim2"} end
 UDim2.fromOffset = function(x,y) return UDim2.new(0,x,0,y) end
 UDim2.fromScale = function(a,b) return UDim2.new(a,0,b,0) end
@@ -668,7 +760,41 @@ function METHODS:GetPivot()
 end
 function METHODS:PivotTo(cf) rawget(self,"__props").CFrame=cf end
 function METHODS:GetScale() return rawget(self,"__props").Scale or 1 end
+function METHODS:ApplyMesh(other)
+  local oc = other and rawget(other, "__props") and rawget(other, "__props").MeshContent
+  assert(oc, "ApplyMesh: MeshPart sem MeshContent.")
+  rawset(rawget(self, "__props"), "MeshContent", oc)
+end
 function METHODS:ScaleTo(s) rawget(self,"__props").Scale = s end
+function METHODS:GetScale() return rawget(self,"__props").Scale or 1 end
+function METHODS:GetBoundingBox()
+  local parts = {}
+  local function grab(o)
+    if o.ClassName == "Terrain" then return end
+    if o:IsA("BasePart") then parts[#parts + 1] = o
+    else for _, c in ipairs(o:GetChildren()) do grab(c) end end
+  end
+  grab(self)
+  if #parts == 0 then
+    local cf = rawget(self, "__props").CFrame or CFrame.new(0, 0, 0)
+    return cf, Vector3.new(0, 0, 0)
+  end
+  local mn, mx = nil, nil
+  for _, p in ipairs(parts) do
+    local cf = rawget(p, "__props").CFrame or CFrame.new(0, 0, 0)
+    local sz = rawget(p, "__props").Size or Vector3.new(4, 1, 2)
+    for _, sx in ipairs({ -0.5, 0.5 }) do for _, sy in ipairs({ -0.5, 0.5 }) do for _, sz2 in ipairs({ -0.5, 0.5 }) do
+      local w = cf * Vector3.new(sz.X * sx, sz.Y * sy, sz.Z * sz2)
+      if not mn then mn, mx = Vector3.new(w.X, w.Y, w.Z), Vector3.new(w.X, w.Y, w.Z)
+      else
+        mn = Vector3.new(math.min(mn.X, w.X), math.min(mn.Y, w.Y), math.min(mn.Z, w.Z))
+        mx = Vector3.new(math.max(mx.X, w.X), math.max(mx.Y, w.Y), math.max(mx.Z, w.Z))
+      end
+    end end end
+  end
+  local c = (mn + mx) / 2
+  return CFrame.new(c.X, c.Y, c.Z), (mx - mn)
+end
 -- RemoteFunction / RemoteEvent
 function METHODS:InvokeServer(action,payload)
   local fn = rawget(self,"__props").OnServerInvoke
@@ -708,6 +834,96 @@ typeof = function(v)
   return "table"
 end
 
+-- ============ R12: EditableMesh/Content/AssetService (memoria real) ============
+EditableMesh = {}
+local EMMT = { __index = EditableMesh }
+function EditableMesh.new()
+  return setmetatable({ __t = "EditableMesh", _v = {}, _f = {}, _nv = 0, _nf = 0 }, EMMT)
+end
+function EditableMesh:AddVertex(pos)
+  assert(pos and pos.X and pos.Y and pos.Z, "AddVertex: Vector3 invalido.")
+  assert(not self._fixed, "AddVertex: malha fixed-size.")
+  self._nv = self._nv + 1
+  self._v[self._nv] = { x = pos.X, y = pos.Y, z = pos.Z }
+  return self._nv
+end
+function EditableMesh:AddTriangle(a, b, c)
+  assert(self._v[a] and self._v[b] and self._v[c], "AddTriangle: vertice inexistente.")
+  assert(not self._fixed, "AddTriangle: malha fixed-size.")
+  self._nf = self._nf + 1
+  self._f[self._nf] = { a, b, c }
+  return self._nf
+end
+local function emKeys(t)
+  local out = {}
+  for k in pairs(t) do out[#out + 1] = k end
+  table.sort(out)
+  return out
+end
+function EditableMesh:GetVertices() return emKeys(self._v) end
+function EditableMesh:GetFaces() return emKeys(self._f) end
+function EditableMesh:GetVertexPosition(vid)
+  local v = self._v[vid]
+  assert(v, "vertice inexistente: " .. tostring(vid))
+  return Vector3.new(v.x, v.y, v.z)
+end
+function EditableMesh:SetVertexPosition(vid, pos)
+  local v = self._v[vid]
+  assert(v, "vertice inexistente: " .. tostring(vid))
+  assert(pos and pos.X, "posicao invalida.")
+  v.x, v.y, v.z = pos.X, pos.Y, pos.Z
+end
+function EditableMesh:GetFaceVertices(fid)
+  local f = self._f[fid]
+  assert(f, "face inexistente: " .. tostring(fid))
+  return { f[1], f[2], f[3] }
+end
+function EditableMesh:RemoveTriangle(fid)
+  assert(self._f[fid], "face inexistente: " .. tostring(fid))
+  assert(not self._fixed, "RemoveTriangle: malha fixed-size.")
+  self._f[fid] = nil
+end
+function EditableMesh:RemoveVertex(vid)
+  assert(self._v[vid], "vertice inexistente: " .. tostring(vid))
+  assert(not self._fixed, "RemoveVertex: malha fixed-size.")
+  for _, f in pairs(self._f) do
+    assert(not (f[1] == vid or f[2] == vid or f[3] == vid),
+      "RemoveVertex: remova as faces dependentes antes (server faz isso).")
+  end
+  self._v[vid] = nil
+end
+function EditableMesh:Clone()
+  local c = EditableMesh.new()
+  for k, v in pairs(self._v) do c._v[k] = { x = v.x, y = v.y, z = v.z } end
+  for k, f in pairs(self._f) do c._f[k] = { f[1], f[2], f[3] } end
+  c._nv, c._nf = self._nv, self._nf
+  return c
+end
+Content = {}
+function Content.fromObject(o) return { __t = "Content", _obj = o } end
+function Content.fromAssetId(id) return { __t = "Content", _id = id } end
+local function assetMethods(s)
+  local pr = rawget(s, "__props")
+  rawset(pr, "CreateEditableMesh", function(self) return EditableMesh.new() end)
+  rawset(pr, "CreateEditableMeshAsync", function(self, content, params)
+    assert(content and content.__t == "Content", "Content invalido.")
+    if content._obj and content._obj.__t == "EditableMesh" then
+      local c = content._obj:Clone()
+      if not (params and params.FixedSize == false) then c._fixed = false end
+      return c
+    end
+    error("CreateEditableMeshAsync: asset externo indisponivel no mock (id=" .. tostring(content._id) .. ").")
+  end)
+  rawset(pr, "CreateMeshPartAsync", function(self, content)
+    assert(content and content.__t == "Content", "Content invalido.")
+    local mp = mkInstance("MeshPart")
+    rawget(mp, "__props").ClassName = "MeshPart"
+    rawset(rawget(mp, "__props"), "MeshContent", content)
+    rawset(rawget(mp, "__props"), "Size", Vector3.new(2, 2, 2))
+    return mp
+  end)
+end
+
 -- ============ services ============
 local services = {}
 local gameObj = mkInstance("DataModel")
@@ -716,6 +932,7 @@ function gameObj:GetService(name)
   if name == "Workspace" and workspace then return workspace end
   if services[name] then return services[name] end
   local s = mkInstance(name); rawget(s,"__props").ClassName=name; rawget(s,"__props").Name=name
+  if name == "AssetService" then assetMethods(s) end
   services[name]=s; s.Parent = gameObj
   return s
 end

@@ -74,13 +74,15 @@ def L(name, x, y, w, h, text, fg=TEXT, size=13, font=FG, align=LEFT, bg=None):
         p["BackgroundTransparency"] = 0.0
     return N("TextLabel", name, p)
 
-def T(name, x, y, w, h, placeholder="", text="", size=13):
-    return N("TextBox", name,
-             {"Position": P(x, y), "Size": S(w, h), "Text": text,
-              "PlaceholderText": placeholder, "PlaceholderColor3": MUTED,
-              "BackgroundColor3": INSET, "BorderSizePixel": 0,
-              "TextColor3": TEXT, "TextSize": float(size), "Font": FG,
-              "TextXAlignment": LEFT, "ClearTextOnFocus": False}, [corner(4)])
+def T(name, x, y, w, h, placeholder="", text="", size=13, extra=None):
+    p = {"Position": P(x, y), "Size": S(w, h), "Text": text,
+         "PlaceholderText": placeholder, "PlaceholderColor3": MUTED,
+         "BackgroundColor3": INSET, "BorderSizePixel": 0,
+         "TextColor3": TEXT, "TextSize": float(size), "Font": FG,
+         "TextXAlignment": LEFT, "ClearTextOnFocus": False}
+    if extra:
+        p.update(extra)
+    return N("TextBox", name, p, [corner(4)])
 
 def SC(name, x, y, w, h, bg=INSET, kids=None):
     return N("ScrollingFrame", name,
@@ -447,6 +449,142 @@ mte_kids = [B("M_TE_Prev", 8, 8, 64, 64, "<", BTN, TEXT, 24),
             L("M_TE_Hint", 750, 8, 500, 64, "drag on terrain to paint", MUTED, 13)]
 mte = F("M_TE", 0, 690, 1568, 80, MENU_BG, mte_kids, HID)
 
+
+# ---------------- 12b. viewport editor R11 (VP3) ----------------
+vp3_rail_kids = [title("VIEW")]
+for i, key in enumerate(["Select", "Move", "Rotate", "Scale", "Measure"]):
+    vp3_rail_kids.append(B("VP3_T_" + key, 8, 30 + i * 44, 56, 40,
+                           key[:3].upper(), BTN, TEXT, 12, FB))
+vp3_rail_kids.append(B("VP3_Close", 8, 30 + 5 * 44, 56, 32, "X", BTN, RED, 14, FB))
+vp3_rail = F("VP3_Rail", 8, 100, 72, 300, PANEL, vp3_rail_kids, HID)
+
+vp3_cam_kids = [title("CAMERA"),
+    B("VP3_CamFront", 8, 30, 62, 26, "FRONT", BTN, TEXT, 10, FB),
+    B("VP3_CamTop", 74, 30, 62, 26, "TOP", BTN, TEXT, 10, FB),
+    B("VP3_CamSide", 140, 30, 62, 26, "SIDE", BTN, TEXT, 10, FB),
+    B("VP3_CamIso", 8, 60, 62, 26, "ISO", BTN, TEXT, 10, FB),
+    B("VP3_CamOrbit", 74, 60, 128, 26, "ORBIT: OFF", BTN, TEXT, 10, FB),
+    L("VP3_FovL", 8, 92, 60, 26, "FOV", MUTED, 11, FB),
+    B("VP3_FovM", 70, 92, 40, 26, "-", BTN, TEXT, 14),
+    L("VP3_FovV", 114, 92, 50, 26, "70", TEXT, 12, FC, CENTER, INSET),
+    B("VP3_FovP", 168, 92, 40, 26, "+", BTN, TEXT, 14),
+    B("VP3_Frame", 8, 124, 200, 30, "FRAME SELECTION", ACCENT, TEXT, 12, FB),
+    B("VP3_RigSave", 8, 158, 98, 28, "SAVE RIG", BTN, TEXT, 11, FB),
+    B("VP3_RigLoad", 110, 158, 98, 28, "LOAD RIG", BTN, TEXT, 11, FB),
+    L("VP3_CamV", 8, 190, 200, 44, "cam -", MUTED, 11, FC)]
+vp3_cam = F("VP3_Cam", 88, 100, 216, 244, PANEL, vp3_cam_kids, HID)
+
+vp3_tm_kids = [title("MULTI"),
+    B("VP3_TM_Move", 8, 30, 64, 26, "MOVE", ACCENT, TEXT, 10, FB),
+    B("VP3_TM_Rot", 76, 30, 64, 26, "ROT", BTN, TEXT, 10, FB),
+    B("VP3_TM_Scale", 144, 30, 64, 26, "SCALE", BTN, TEXT, 10, FB),
+    L("VP3_TM_XL", 8, 62, 20, 26, "X", MUTED, 11, FB),
+    B("VP3_TM_XM", 28, 62, 40, 26, "-", BTN, TEXT, 14),
+    L("VP3_TM_XV", 72, 62, 72, 26, "0", TEXT, 12, FC, CENTER, INSET),
+    B("VP3_TM_XP", 148, 62, 40, 26, "+", BTN, TEXT, 14),
+    L("VP3_TM_YL", 8, 92, 20, 26, "Y", MUTED, 11, FB),
+    B("VP3_TM_YM", 28, 92, 40, 26, "-", BTN, TEXT, 14),
+    L("VP3_TM_YV", 72, 92, 72, 26, "0", TEXT, 12, FC, CENTER, INSET),
+    B("VP3_TM_YP", 148, 92, 40, 26, "+", BTN, TEXT, 14),
+    L("VP3_TM_ZL", 8, 122, 20, 26, "Z", MUTED, 11, FB),
+    B("VP3_TM_ZM", 28, 122, 40, 26, "-", BTN, TEXT, 14),
+    L("VP3_TM_ZV", 72, 122, 72, 26, "0", TEXT, 12, FC, CENTER, INSET),
+    B("VP3_TM_ZP", 148, 122, 40, 26, "+", BTN, TEXT, 14),
+    B("VP3_TM_Apply", 8, 154, 98, 30, "APPLY", ACCENT, TEXT, 12, FB),
+    B("VP3_TM_Reset", 110, 154, 98, 30, "RESET", BTN, TEXT, 12, FB),
+    L("VP3_TM_Count", 8, 190, 200, 22, "0 selected", MUTED, 11)]
+vp3_tm = F("VP3_Trans", 88, 352, 216, 220, PANEL, vp3_tm_kids, HID)
+
+vp3_meas_kids = [title("MEASURE"),
+    B("VP3_M_D1", 8, 30, 104, 30, "SET A", BTN, TEXT, 12, FB),
+    B("VP3_M_D2", 116, 30, 104, 30, "SET B", BTN, TEXT, 12, FB),
+    L("VP3_M_Val", 8, 66, 214, 30, "dist -", GOLD, 14, FC, CENTER, INSET),
+    B("VP3_M_Clear", 8, 102, 214, 28, "CLEAR", BTN, TEXT, 12, FB)]
+vp3_meas = F("VP3_Meas", 1330, 100, 230, 140, PANEL, vp3_meas_kids, HID)
+
+vp3_snap_kids = [title("SNAP"),
+    B("VP3_G_Snap", 8, 30, 214, 30, "SNAP: ON", BTN, TEXT, 12, FB),
+    L("VP3_G_StepL", 8, 66, 60, 26, "STEP", MUTED, 11, FB),
+    B("VP3_G_StepM", 70, 66, 40, 26, "-", BTN, TEXT, 14),
+    L("VP3_G_StepV", 114, 66, 64, 26, "1", TEXT, 12, FC, CENTER, INSET),
+    B("VP3_G_StepP", 182, 66, 40, 26, "+", BTN, TEXT, 14)]
+vp3_snap = F("VP3_Snap", 1330, 248, 230, 102, PANEL, vp3_snap_kids, HID)
+
+vp3_status = F("VP3_Status", 88, 820, 700, 30, PANEL,
+               [L("VP3_StatL", 8, 4, 684, 22, "viewport", TEXT, 12, FC)], HID)
+
+mvp_kids = [B("M_VP_Frame", 8, 8, 200, 64, "FRAME", ACCENT, TEXT, 16, FB),
+            B("M_VP_Meas", 216, 8, 200, 64, "MEASURE", BTN, TEXT, 16, FB),
+            L("M_VP_Hint", 424, 8, 700, 64, "frame selection / tap 2 points", MUTED, 13)]
+mvp = F("M_VP", 0, 690, 1568, 80, MENU_BG, mvp_kids, HID)
+
+
+# ---------------- 12c. modeler R12 (MD4) ----------------
+md4_rail_kids = [title("MESH")]
+for i, key in enumerate(["Select", "Move", "Near"]):
+    md4_rail_kids.append(B("MD4_T_" + key, 8, 30 + i * 44, 56, 40,
+                           key[:3].upper(), BTN, TEXT, 12, FB))
+md4_rail_kids.append(B("MD4_Close", 8, 30 + 3 * 44, 56, 32, "X", BTN, RED, 14, FB))
+md4_rail = F("MD4_Rail", 8, 100, 72, 220, PANEL, md4_rail_kids, HID)
+
+md4_mesh_kids = [title("MESH"),
+    B("MD4_P_Box", 8, 30, 100, 26, "BOX", ACCENT, TEXT, 11, FB),
+    B("MD4_P_Plane", 112, 30, 100, 26, "PLANE", BTN, TEXT, 11, FB),
+    B("MD4_P_Wedge", 8, 60, 100, 26, "WEDGE", BTN, TEXT, 11, FB),
+    B("MD4_P_Cyl8", 112, 60, 100, 26, "CYL8", BTN, TEXT, 11, FB),
+    B("MD4_New", 8, 92, 100, 30, "CREATE", ACCENT, TEXT, 12, FB),
+    B("MD4_Adopt", 112, 92, 100, 30, "ADOPT SEL", BTN, TEXT, 11, FB),
+    L("MD4_Info", 8, 128, 204, 44, "no mesh", MUTED, 11, FC)]
+md4_mesh = F("MD4_Mesh", 88, 100, 220, 180, PANEL, md4_mesh_kids, HID)
+
+md4_vert_kids = [title("VERTEX"),
+    B("MD4_V_Prev", 8, 30, 50, 26, "<", BTN, TEXT, 14),
+    L("MD4_V_Id", 62, 30, 100, 26, "vid -", GOLD, 12, FC, CENTER, INSET),
+    B("MD4_V_Next", 166, 30, 50, 26, ">", BTN, TEXT, 14),
+    L("MD4_V_XL", 8, 62, 20, 26, "X", MUTED, 11, FB),
+    B("MD4_V_XM", 28, 62, 40, 26, "-", BTN, TEXT, 14),
+    L("MD4_V_XV", 72, 62, 76, 26, "0", TEXT, 12, FC, CENTER, INSET),
+    B("MD4_V_XP", 152, 62, 40, 26, "+", BTN, TEXT, 14),
+    L("MD4_V_YL", 8, 92, 20, 26, "Y", MUTED, 11, FB),
+    B("MD4_V_YM", 28, 92, 40, 26, "-", BTN, TEXT, 14),
+    L("MD4_V_YV", 72, 92, 76, 26, "0", TEXT, 12, FC, CENTER, INSET),
+    B("MD4_V_YP", 152, 92, 40, 26, "+", BTN, TEXT, 14),
+    L("MD4_V_ZL", 8, 122, 20, 26, "Z", MUTED, 11, FB),
+    B("MD4_V_ZM", 28, 122, 40, 26, "-", BTN, TEXT, 14),
+    L("MD4_V_ZV", 72, 122, 76, 26, "0", TEXT, 12, FC, CENTER, INSET),
+    B("MD4_V_ZP", 152, 122, 40, 26, "+", BTN, TEXT, 14),
+    B("MD4_V_Apply", 8, 154, 100, 30, "MOVE", ACCENT, TEXT, 12, FB),
+    B("MD4_V_Del", 112, 154, 100, 30, "DELETE", BTN, RED, 12, FB),
+    L("MD4_V_Hint", 8, 190, 204, 22, "Near: click mesh = nearest vert", MUTED, 10)]
+md4_vert = F("MD4_Vert", 88, 288, 220, 220, PANEL, md4_vert_kids, HID)
+
+md4_top_kids = [title("TOPOLOGY"),
+    L("MD4_S_IL", 8, 30, 70, 26, "SMOOTH", MUTED, 11, FB),
+    B("MD4_S_IM", 80, 30, 40, 26, "-", BTN, TEXT, 14),
+    L("MD4_S_IV", 124, 30, 44, 26, "1", TEXT, 12, FC, CENTER, INSET),
+    B("MD4_S_IP", 172, 30, 40, 26, "+", BTN, TEXT, 14),
+    B("MD4_Smooth", 8, 62, 204, 30, "APPLY SMOOTH", ACCENT, TEXT, 12, FB),
+    B("MD4_M_X", 8, 98, 64, 28, "MIR X", BTN, TEXT, 11, FB),
+    B("MD4_M_Y", 76, 98, 64, 28, "MIR Y", BTN, TEXT, 11, FB),
+    B("MD4_M_Z", 144, 98, 64, 28, "MIR Z", BTN, TEXT, 11, FB)]
+md4_top = F("MD4_Top", 1330, 100, 220, 134, PANEL, md4_top_kids, HID)
+
+md4_io_kids = [title("OBJ"),
+    T("MD4_IO_Text", 8, 30, 204, 90, "paste OBJ here (v/f, tri+quad)", "", 11,
+      {"MultiLine": True, "TextWrapped": True, "TextYAlignment": {"en": "TextYAlignment.Top"}}),
+    B("MD4_IO_Import", 8, 126, 100, 30, "IMPORT", ACCENT, TEXT, 12, FB),
+    B("MD4_IO_Export", 112, 126, 100, 30, "EXPORT", BTN, TEXT, 12, FB),
+    L("MD4_IO_Stat", 8, 162, 204, 22, "obj -", MUTED, 11)]
+md4_io = F("MD4_IO", 1330, 242, 220, 192, PANEL, md4_io_kids, HID)
+
+md4_status = F("MD4_Status", 88, 820, 700, 30, PANEL,
+               [L("MD4_StatL", 8, 4, 684, 22, "modeler", TEXT, 12, FC)], HID)
+
+mmd_kids = [B("M_MD_New", 8, 8, 200, 64, "NEW BOX", ACCENT, TEXT, 16, FB),
+            B("M_MD_Smooth", 216, 8, 200, 64, "SMOOTH", BTN, TEXT, 16, FB),
+            L("M_MD_Hint", 424, 8, 700, 64, "create + smooth current mesh", MUTED, 13)]
+mmd = F("M_MD", 0, 690, 1568, 80, MENU_BG, mmd_kids, HID)
+
 desktop_kids = ([menu, ribbon, terrain, console, selection, crumb, compass, coords,
           play, layers, region, mapp, gizmo, timeline, curves, sim, team,
           farright, farhelp] + footer)
@@ -471,6 +609,10 @@ dset_kids += [B("D_S_Reset", 8, 366, 444, 34, "RESET DEFAULTS", BTN, TEXT, 14, F
 dsettings = F("D_Settings", 554, 140, 460, 600, PANEL, dset_kids, {"Visible": False})
 desktop_kids.append(dsettings)
 for _p in [te3_rail, te3_brush, te3_mat, te3_layers, te3_history, te3_gen, te3_water, te3_status]:
+    desktop_kids.append(_p)
+for _p in [vp3_rail, vp3_cam, vp3_tm, vp3_meas, vp3_snap, vp3_status]:
+    desktop_kids.append(_p)
+for _p in [md4_rail, md4_mesh, md4_vert, md4_top, md4_io, md4_status]:
     desktop_kids.append(_p)
 desktop = N("Frame", "DesktopRoot",
             {"Position": P(0, 0), "Size": S(1568, 882),
@@ -540,7 +682,7 @@ mobile = N("Frame", "MobileRoot",
            {"Position": P(0, 0), "Size": S(1568, 882),
             "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
             "ClipsDescendants": False, "Visible": False},
-           [mtop, mtools, mdrawer, mprops, mnum, msel, mhelp, mbot, mmarquee, mte])
+           [mtop, mtools, mdrawer, mprops, mnum, msel, mhelp, mbot, mmarquee, mte, mvp, mmd])
 
 # ---------------- 14. console layout (gamepad-first, baked) ----------------
 ctop = F("C_Top", 0, 0, 1568, 56, MENU_BG,

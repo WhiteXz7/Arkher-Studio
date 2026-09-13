@@ -1,16 +1,21 @@
 ================================================================
 ARKHER STUDIO — INVENTÁRIO COMPLETO (texto)
-Gerado no ciclo Fase 4 + Fase 5. Placa: ArkherStudio_Completo_GUIX.rbxl
-9422 instâncias, 35 tipos, 384 checks de teste verdes (7/7 suítes).)
+Atualizado na R12. Placa: ArkherStudio_Completo_GUIX.rbxl
+10054 instâncias, 35 tipos, 381848 bytes, 638 checks verdes (11/11 suítes).
+FALTANTE p/ superar a indústria: ~42% (R11: ~46%).
 ================================================================
 
 1) SCRIPTS (tudo assado dentro do rbxl, zero criação em runtime na shell)
 ------------------------------------------------------------
-LocalScripts (11): Arkher_01_Nucleo, 02_Icones, 03_Menus, 04_Gizmos,
+LocalScripts (14): Arkher_01_Nucleo, 02_Icones, 03_Menus, 04_Gizmos,
   05_StudioX (shell: abas+ribbon+janelas), 06_RigX, 07_MeshX,
   08_RealityX (decks), 09_Topbar, 10_Studio (properties/insert/
-  toolbox/scripteditor), 11_Input (Input System: PC/Mobile/Console/VR).
-Scripts servidor (2): ArkherEditorServer (113 handlers), ArkherEngineServer.
+  toolbox/scripteditor), 11_Input (Input System: PC/Mobile/Console/VR),
+  12_Terrain (Terrain Editor PRO: pincel real),
+  13_Viewport (Viewport Editor: camera/transform/medicao),
+  14_Modeler (Modeler PRO: EditableMesh + OBJ).
+Scripts servidor (2): ArkherEditorServer (120+ handlers, incl. Terrain* R10,
+  Viewport* R11, Mesh* R12), ArkherEngineServer.
 PyBridge externo: pybridge.py + rbxlx.py + test_rbxlx.py + README.
 
 2) RIBBON (topbar ANTIGA em abas; 7 abas, 7 páginas, 23 botões)
@@ -181,3 +186,19 @@ R9 (30% multi/input): set SelectedSet + SelectMany/DeleteMany/DuplicateMany/
 SelAdd/SelClear + Group ids[]; B/L/K/Ctrl+Delete; remap+escala+i18n PT-BR;
 A-drag/X2/radial-editores/DPad-deck (console); trigger-duplo/X-hold/spatial
 (VR); 03 +terrain ops +XPublishBridge; pybridge forward corrigido. 384/384.
+
+R10 (ENGINE REAL: Terrain Editor voxel): FillBall/FillBlock/FillCylinder/
+FillWedge/FillRegion/Clear/CopyRegion/PasteRegion/ReadVoxels/WriteVoxels/
+ReplaceMaterial + undo/layers/gen/hidro no server; 12_Terrain (pincel mouse/
+toque/gamepad/VR, gizmos, simetria, 21 swatches reais); bake TE3 (8 paineis
++ M_TE). 472/472. Faltante ~50% (interp. da trajetoria 55->46).
+R11 (Viewport Editor): server RemapSet/TransformMany/ViewportFrame+rig;
+13_Viewport (camera fly/orbit, transform numérico, medicao, rig humanoid);
+bote XViewport no ribbon Models; bake VP3 (6 paineis + M_VP). 543/543.
+Faltante ~46%.
+R12 (Modeler PRO): mock EditableMesh/Content/AssetService reais em memória;
+server 10 Mesh* (New box/plane/wedge/cyl8, Select, Info, Verts, MoveVert,
+DeleteVert, Smooth laplaciano, Mirror, ExportOBJ, ImportOBJ tri/quad/neg);
+14_Modeler (select/move/near, prev/next vert, steppers XYZ, IO multiline,
+M_MD); winding OUTWARD provado geometricamente por face; undo/redo mesh
+com vid rastreado; bake MD4 (6 paineis + M_MD). 638/638. Faltante ~42%.

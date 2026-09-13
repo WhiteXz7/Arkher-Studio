@@ -112,6 +112,8 @@ local TE3_ALL = { "TE3_Rail", "TE3_Brush", "TE3_Mat", "TE3_Layers", "TE3_History
   "TE3_Gen", "TE3_Water", "TE3_Status" }
 local DESK_HIDE = { "T2_Panel", "C2_Panel", "S2_Panel", "O2_Panel", "O2_WPanel",
   "TL2_Panel", "CV2_Panel", "SM2_Panel", "TM2_Panel", "FR2_Panel" }
+local VP3_ALL = { "VP3_Rail", "VP3_Cam", "VP3_Trans", "VP3_Meas", "VP3_Snap", "VP3_Status" }
+local MD4_ALL = { "MD4_Rail", "MD4_Mesh", "MD4_Vert", "MD4_Top", "MD4_IO", "MD4_Status" }
 local HLOG = {}
 local lastHit = nil
 local lastStats = { cells = 0, undo = 0, redo = 0, layers = 0 }
@@ -150,6 +152,16 @@ local function setOpen(v)
   if platform() == "Mobile" then setVisible("M_TE", v) end
   if Gizmo.setVisible then Gizmo.setVisible(v) end
   if v then
+    for _, n in ipairs(VP3_ALL) do setVisible(n, false) end
+    for _, n in ipairs(MD4_ALL) do setVisible(n, false) end
+    setVisible("M_VP", false)
+    setVisible("M_MD", false)
+    for _, ed in ipairs({ "ArkherViewport", "ArkherModeler" }) do
+      pcall(function()
+        local e = _G[ed]
+        if e and e.isOpen and e.isOpen() then e.close() end
+      end)
+    end
     refreshStats()
     refreshLayers()
     say("Terrain Editor PRO open (" .. platform() .. ").")
@@ -487,6 +499,27 @@ local function paintAt(pos, phase)
   if phase == "end" then refreshStats() end
   return true
 end
+local function beginAt(pos)
+  lastHit = pos
+  S.planeY = math.floor(pos.Y)
+  setText("TE3_PlaneVal", "Y: " .. tostring(S.planeY))
+  Stroke.active = true
+  Stroke.lastPos = pos
+  Stroke.lastTime = os.clock()
+  paintAt(pos, "begin")
+end
+local function dabAt(pos)
+  lastHit = pos
+  Gizmo.update(pos)
+  local now = os.clock()
+  local moved = 0
+  pcall(function() moved = (pos - Stroke.lastPos).Magnitude end)
+  if moved > math.max(S.size * 0.3, 2) or (now - Stroke.lastTime) > 0.4 then
+    Stroke.lastPos = pos
+    Stroke.lastTime = now
+    paintAt(pos, "dab")
+  end
+end
 local function beginStroke(x, y)
   if not S.open or typing() then return end
   if overUI(x, y) then return end
@@ -495,28 +528,59 @@ local function beginStroke(x, y)
     say("Aim at the terrain to paint.", true)
     return
   end
-  lastHit = hit.Position
-  S.planeY = math.floor(hit.Position.Y)
-  setText("TE3_PlaneVal", "Y: " .. tostring(S.planeY))
-  Stroke.active = true
-  Stroke.lastPos = hit.Position
-  Stroke.lastTime = os.clock()
-  paintAt(hit.Position, "begin")
+  beginAt(hit.Position)
 end
 local function moveStroke(x, y)
   if not (S.open and Stroke.active) then return end
   local hit = rayTerrain(x, y)
   if not hit then return end
-  lastHit = hit.Position
-  Gizmo.update(hit.Position)
-  local now = os.clock()
-  local moved = 0
-  pcall(function() moved = (hit.Position - Stroke.lastPos).Magnitude end)
-  if moved > math.max(S.size * 0.3, 2) or (now - Stroke.lastTime) > 0.4 then
-    Stroke.lastPos = hit.Position
-    Stroke.lastTime = now
-    paintAt(hit.Position, "dab")
+  dabAt(hit.Position)
+end
+-- R11: Console (cursor virtual + A) e VR (raio da mao + gatilho) pintam
+-- pelo mesmo stroke engine; 11 expoe estado, 12 traduz p/ paintAt.
+local function padTick()
+  local inp = _G.ArkherInput
+  if not inp or not S.open or typing() then
+    if Stroke.active and S.open then endStroke(false) end
+    return
   end
+  local held = false
+  pcall(function() held = inp.padPaintHeld and inp.padPaintHeld() end)
+  if not held then
+    if Stroke.active then endStroke(false) end
+    return
+  end
+  local cur = nil
+  pcall(function() cur = inp.consoleCursor and inp.consoleCursor() end)
+  if not (cur and cur.X and cur.Y) then return end
+  if not Stroke.active then beginStroke(cur.X, cur.Y)
+  else moveStroke(cur.X, cur.Y) end
+end
+local function vrTick()
+  local inp = _G.ArkherInput
+  if not inp or not S.open or typing() then
+    if Stroke.active and S.open then endStroke(false) end
+    return
+  end
+  local held = false
+  pcall(function() held = inp.vrPaintHeld and inp.vrPaintHeld() end)
+  if not held then
+    if Stroke.active then endStroke(false) end
+    return
+  end
+  local ray = nil
+  pcall(function() ray = inp.vrHandRay and inp.vrHandRay() end)
+  if not (ray and ray.ox) then return end
+  local ok, hit = pcall(function()
+    return workspace:Raycast(Vector3.new(ray.ox, ray.oy, ray.oz),
+      Vector3.new(ray.dx, ray.dy, ray.dz) * 2000)
+  end)
+  if not ok or not hit or not hit.Instance then return end
+  local isT = false
+  pcall(function() isT = hit.Instance:IsA("Terrain") end)
+  if not isT then return end
+  if not Stroke.active then beginAt(hit.Position)
+  else dabAt(hit.Position) end
 end
 endStroke = function(silent)
   if not Stroke.active then return end
@@ -775,6 +839,9 @@ RunService.Heartbeat:Connect(function(dt)
   tickAcc = tickAcc + (dt or 0.016)
   if tickAcc > 0.05 then
     tickAcc = 0
+    local pf = platform()
+    if pf == "Console" then padTick()
+    elseif pf == "VR" then vrTick() end
     local ok, mp = pcall(function() return UIS:GetMouseLocation() end)
     if ok and mp and platform() == "PC" and not Stroke.active then
       local hit = rayTerrain(mp.X, mp.Y - 36)

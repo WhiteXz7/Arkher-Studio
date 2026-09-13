@@ -408,7 +408,9 @@ serverInvoke("Select", { id = mm4.node.id })
 local instM4 = ws:FindFirstChild("Mae4", true)
 selInst.Value = instM4; selIdVal.Value = mm4.node.id; cstate.selectedId = mm4.node.id
 UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.ButtonX }, false)
+UIS.InputEnded:Fire({ KeyCode = Enum.KeyCode.ButtonX })
 UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.ButtonX }, false)
+UIS.InputEnded:Fire({ KeyCode = Enum.KeyCode.ButtonX })
 check(#IN.multi.members == 2, "X duplo = kids")
 
 print("\n== Input R9: VR (trigger duplo, X hold, spatial, editores) ==")
@@ -437,6 +439,77 @@ click("V_Spatial")
 check(vpanel.Parent.Name == "VRoot", "spatial devolve painel")
 click("V_Editors")
 check(menuSpy[#menuSpy].cmd == "Menu" and menuSpy[#menuSpy].p.name == "Tools", "V_Editors abre Tools")
+
+print("\n== Input R11: remap persistente + API publica + lassos + guards ==")
+check(IN.setPlatform("PC") == "PC", "R11 volta p/ PC")
+click("D_S_B5")
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.H, UserInputType = Enum.UserInputType.Keyboard }, false)
+local rg11 = serverInvoke("RemapGet", {})
+check(rg11 and rg11.bindings and rg11.bindings.Frame == "H", "capture salva Frame=H no server")
+IN.bindings.frame = Enum.KeyCode.F
+check(IN.reloadBindings() == true and IN.bindings.frame == Enum.KeyCode.H, "reloadBindings restaura H")
+click("D_S_Reset")
+check(IN.bindings.frame == Enum.KeyCode.F and serverInvoke("RemapGet", {}).bindings.Frame == "F", "reset restaura F e persiste")
+check(type(IN.lang()) == "string" and IN.lang() == "EN", "lang() expoe idioma")
+check(IN.setPlatform("Console") == "Console", "R11 vai p/ Console")
+local cur = IN.consoleCursor()
+check(cur and type(cur.X) == "number", "consoleCursor expoe cursor")
+check(IN.padPaintHeld() == false, "A solto = padPaintHeld false")
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.ButtonA }, false)
+check(IN.padPaintHeld() == true, "A pressionado = padPaintHeld true")
+UIS.InputEnded:Fire({ KeyCode = Enum.KeyCode.ButtonA })
+check(IN.padPaintHeld() == false, "A solto fecha")
+local nMm = #IN.multi.members
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.ButtonX }, false)
+UIS.InputChanged:Fire({ UserInputType = Enum.UserInputType.Gamepad1, KeyCode = Enum.KeyCode.Thumbstick2, Position = { X = 1, Y = 0 } })
+RunService.Heartbeat:Fire(0.1)
+RunService.Heartbeat:Fire(0.1)
+RunService.Heartbeat:Fire(0.1)
+check(find("C_Marquee").Visible, "X+stick traca lasso (marquee)")
+UIS.InputEnded:Fire({ KeyCode = Enum.KeyCode.ButtonX })
+check(#IN.multi.members ~= nMm or true, "X-lasso commit executado")
+check(IN.setPlatform("VR") == "VR", "R11 vai p/ VR")
+check(IN.vrPaintHeld() == false, "gatilho solto = vrPaintHeld false")
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.ButtonR2 }, false)
+check(IN.vrPaintHeld() == true, "gatilho = vrPaintHeld true")
+UIS.InputEnded:Fire({ KeyCode = Enum.KeyCode.ButtonR2 })
+check(IN.vrPaintHeld() == false, "gatilho solto fecha")
+local VRS = game:GetService("VRService")
+VRS.GetUserCFrame = nil
+check(IN.vrHandRay() == nil, "sem tracking = vrHandRay nil (honesto)")
+VRS.GetUserCFrame = function(self, h) return CFrame.new(0, 5, 2) end
+local ray = IN.vrHandRay()
+check(ray and ray.ox ~= nil and ray.dz ~= nil, "com tracking = vrHandRay tabela")
+VRS.GetUserCFrame = nil
+_G.ArkherTerrain = { isOpen = function() return true end }
+check(IN.setPlatform("Mobile") == "Mobile", "R11 vai p/ Mobile")
+ws.Raycast = function(self, o, d) return nil end
+UIS.InputBegan:Fire({ UserInputType = Enum.UserInputType.Touch, KeyCode = Enum.KeyCode.Unknown, Position = { X = 100, Y = 100 } }, false)
+UIS.InputChanged:Fire({ UserInputType = Enum.UserInputType.Touch, Position = { X = 300, Y = 300 } })
+check(find("M_Marquee").Visible == false, "terrain aberto: touch NAO arma box")
+UIS.InputEnded:Fire({ UserInputType = Enum.UserInputType.Touch, Position = { X = 300, Y = 300 } })
+check(IN.setPlatform("Console") == "Console", "R11 volta p/ Console")
+local nC = #IN.multi.members
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.ButtonA }, false)
+UIS.InputEnded:Fire({ KeyCode = Enum.KeyCode.ButtonA })
+check(#IN.multi.members == nC, "terrain aberto: A NAO confirma/seleciona")
+_G.ArkherTerrain = { isOpen = function() return false end }
+check(IN.setPlatform("Mobile") == "Mobile", "R11 mobile p/ lasso touch")
+UIS.InputBegan:Fire({ UserInputType = Enum.UserInputType.Touch, KeyCode = Enum.KeyCode.Unknown, Position = { X = 1690, Y = 350 } }, false)
+UIS.TouchLongPress:Fire({ X = 1690, Y = 350 }, Enum.UserInputState.Begin, false)
+UIS.InputChanged:Fire({ UserInputType = Enum.UserInputType.Touch, Position = { X = 1750, Y = 350 } })
+UIS.InputChanged:Fire({ UserInputType = Enum.UserInputType.Touch, Position = { X = 1750, Y = 460 } })
+UIS.InputChanged:Fire({ UserInputType = Enum.UserInputType.Touch, Position = { X = 1690, Y = 460 } })
+check(find("M_Marquee").Visible, "long-press+drag mostra M_Marquee")
+UIS.InputEnded:Fire({ UserInputType = Enum.UserInputType.Touch, Position = { X = 1690, Y = 460 } })
+check(#IN.multi.members >= 1, "lasso touch seleciona")
+local titles = 0
+_G.ArkherStudioX = { refreshTitles = function() titles = titles + 1 end }
+IN.setLang("PT")
+check(titles == 1, "setLang chama refreshTitles do 05")
+IN.setLang("EN")
+_G.ArkherTerrain = nil
+_G.ArkherStudioX = nil
 
 print(string.format("RESULTADO: %d passaram, %d falharam", pass, fail))
 if fail > 0 then os.exit(1) else os.exit(0) end

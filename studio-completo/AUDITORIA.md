@@ -27,7 +27,7 @@ Método: **grep honesto** nas fontes reais + marcadores dentro da placa X descom
 | Água da VIDA REAL (física Arquimedes + óptica + química) | ✅ | 180 | `studio-completo/LEIA-ME.md:118` |
 | Atmosfera/tempo/estrelas (AEX — estados com transição) | ✅ | 134 | `studio-completo/LEIA-ME.md:118` |
 | Frentes meteorológicas H/L que viajam (WEAX) | ✅ | 41 | `studio-completo/AUDITORIA.md:29` |
-| Espaço/órbitas celestes (Képler real) | ✅ | 122 | `studio-completo/LEIA-ME.md:350` |
+| Espaço/órbitas celestes (Képler real) | ✅ | 137 | `studio-completo/LEIA-ME.md:350` |
 | Cordas/tecidos Verlet íntegros (RPX) | ✅ | 162 | `studio-completo/AUDITORIA.md:31` |
 | Partículas físicas 13 presets (APX) com gravidade/vórtice reais | ✅ | 103 | `studio-completo/AUDITORIA.md:32` |
 | Áudio real com buses (AUX mixer 7 buses) | ✅ | 241 | `studio-completo/AUDITORIA.md:33` |
@@ -36,7 +36,7 @@ Método: **grep honesto** nas fontes reais + marcadores dentro da placa X descom
 | Ecossistema/ecologia (ECOX com presas/predadores) | ✅ | 43 | `studio-completo/AUDITORIA.md:36` |
 | Cidadelas/urbanismo (CIVIX) gravando na terra | ✅ | 36 | `studio-completo/AUDITORIA.md:37` |
 | Fabricação de peças pros sistemas (FABX catálogo) | ✅ | 44 | `studio-completo/LEIA-ME.md:431` |
-| Modelagem: primitives/CSG-style/mesh (MESHX-like; no engine: modeler cmds) | ✅ | 39 | `studio-completo/LEIA-ME.md:452` |
+| Modelagem: primitives/CSG-style/mesh (MESHX-like; no engine: modeler cmds) | ✅ | 41 | `studio-completo/LEIA-ME.md:452` |
 
 ## IDE
 
@@ -49,7 +49,7 @@ Método: **grep honesto** nas fontes reais + marcadores dentro da placa X descom
 | PROPS EXAUSTIVAS (todas as curadas por IsA-chain) + aplicação funcional | ✅ | 57 | `studio-completo/AUDITORIA.md:81` |
 | Color picker REAL aplicando no selecionado | ✅ | 5 | `studio-completo/scripts/08_RealityX.lua:2790` |
 | Gizmos Move/Rotate/Scale no 3D (Handles reais + drag server-autorizado) | ✅ | 31 | `studio-completo/AUDITORIA.md:51` |
-| Undo/Redo com histórico (50, server-side) | ✅ | 25 | `studio-completo/scripts/server.lua:11` |
+| Undo/Redo com histórico (50, server-side) | ✅ | 30 | `studio-completo/scripts/server.lua:11` |
 | Seleção real server-side (Select + SelectedGet) | ✅ | 17 | `studio-completo/AUDITORIA.md:53` |
 | Spawn de part com FORMAS reais (Shape/classe) | ✅ | 21 | `studio-completo/AUDITORIA.md:86` |
 | Toolbox REAL do Roblox (Creator Store: GetFreeModelsAsync + LoadAsset) | ✅ | 16 | `studio-completo/AUDITORIA.md:55` |
@@ -72,7 +72,7 @@ Método: **grep honesto** nas fontes reais + marcadores dentro da placa X descom
 | Color picker INLINE nas propriedades (só aparece no clique do quadrado) | ✅ | 5 | `studio-completo/scripts/10_Studio.lua:141` |
 | Python bridge SEM erro (HttpService via servidor; PyStatus/PyRun) | ✅ | 30 | `studio-completo/LEIA-ME.md:276` |
 | Part com submenu de formas NA TOPBAR (estilo Studio) | ✅ | 6 | `studio-completo/tools/auditoria.py:197` |
-| CSG real (Union/Negate = PartOperation + histórico) | ✅ | 12 | `studio-completo/scripts/03_Menus.lua:2136` |
+| CSG real (Union/Negate = PartOperation + histórico) | ✅ | 12 | `studio-completo/scripts/03_Menus.lua:2146` |
 | Sculpt de terreno com falloff real (gaussiano, Laplaciano) | ✅ | 13 | `studio-completo/docs/PESQUISA_TERRAIN.md:12` |
 | Collision Groups editor (PhysicsService real) | ✅ | 5 | `studio-completo/scripts/08_RealityX.lua:3941` |
 | Presença no collab (quem está editando o quê) | ✅ | 5 | `studio-completo/scripts/03_Menus.lua:1094` |
@@ -82,7 +82,7 @@ Método: **grep honesto** nas fontes reais + marcadores dentro da placa X descom
 | COLOR PICKER real dentro das Properties (HSV gradientes + RGB/hex) | ✅ | 24 | `studio-completo/scripts/08_RealityX.lua:2466` |
 | Menu '+' com catálogo gigante (+1k objects) via CreateAny (Instance.new pcall) | ✅ | 53 | `studio-completo/AUDITORIA.md:83` |
 | Toolbox estilo Studio com thumbnails reais (rbxthumb) + insert na frente da câmera | ✅ | 13 | `studio-completo/LEIA-ME.md:188` |
-| Menus da faixa (ESTÚDIO/MODELAGEM/...) clicáveis (overlay morto + duplo sinal) | ✅ | 222 | `studio-completo/LEIA-ME.md:169` |
+| Menus da faixa (ESTÚDIO/MODELAGEM/...) clicáveis (overlay morto + duplo sinal) | ✅ | 224 | `studio-completo/LEIA-ME.md:169` |
 | Spawn de pecas na frente da camera via servidor (QuickPart) | ✅ | 21 | `studio-completo/AUDITORIA.md:86` |
 | Toolbox insert com fallback REAL (InsertService:LoadAsset server-side) | ✅ | 16 | `studio-completo/AUDITORIA.md:55` |
 | Baseplate garantida (boot automatico + botao BASEPLATE) | ✅ | 7 | `studio-completo/scripts/server.lua:2242` |

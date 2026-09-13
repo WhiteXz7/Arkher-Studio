@@ -1346,6 +1346,7 @@ MENUS.Assets = {
   { icon = "nodeLink", label = "Export… (JSON)", act = "Export" },
 }
 MENUS.Models = {
+  { icon = "Open", label = "Modeler PRO (mesh)", act = "XModeler" },
   { icon = "plus", label = "Block", act = "XSpawnBlock" },
   { icon = "plus", label = "Wedge", act = "XSpawnWedge" },
   { icon = "plus", label = "Cylinder", act = "XSpawnCyl" },
@@ -1474,6 +1475,7 @@ MENUS.Physics = {
   { icon = "nodeLink", label = "Collision", act = "XCollision" },
 }
 MENUS.Tools = {
+  { icon = "Open", label = "Viewport Editor", act = "XViewport" },
   { icon = "Open", label = "Fabricate", act = "XOpenFabricar" },
   { icon = "nodeLink", label = "Fabrication List", act = "XFabricarList" },
   { sep = true },
@@ -2038,6 +2040,14 @@ actions.XOpenTerrainVoxel = function() openTerrainVoxelPanel() end
 actions.XTerrainEditor = function()
   local te = _G.ArkherTerrain
   if te and te.open then te.open() else say("Terrain Editor PRO nao carregado (12_Terrain).", true) end
+end
+actions.XViewport = function()
+  local vp = _G.ArkherViewport
+  if vp and vp.open then vp.open() else say("Viewport Editor nao carregado (13_Viewport).", true) end
+end
+actions.XModeler = function()
+  local md = _G.ArkherModeler
+  if md and md.open then md.open() else say("Modeler nao carregado (14_Modeler).", true) end
 end
 actions.XOpenTerrain      = function() deckOpen("terrain", "ferramentas") end
 actions.XOpenTerrainGen   = function() deckOpen("terrain", "gerar") end

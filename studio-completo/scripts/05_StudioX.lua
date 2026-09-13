@@ -510,6 +510,7 @@ on("SM2_Water", function()
   local v = svcToggle("Water FX", "Terrain", "WaterTransparency", "n", 0, 1, "SM2_Water")
   if v ~= nil then setText("SM2_Water", v == 0 and "Water FX: ON" or "Water FX: OFF") end
 end)
+local curLang -- forward (definida no bloco SIM)
 on("SM2_Ambient", function()
   local ok, L = pcall(function() return game:GetService("Lighting") end)
   if not ok then return end
@@ -518,14 +519,42 @@ on("SM2_Ambient", function()
   local r, err = api("SvcSet", { service = "Lighting", name = "Ambient", kind = "c", value = want })
   if not r then say("Ambient: " .. tostring(err), true) return end
   markEdit()
-  setText("SM2_Ambient", day and "Ambient: NIGHT" or "Ambient: DAY")
-  say("Ambient → " .. (day and "NIGHT" or "DAY"))
+  local pt = curLang() == "PT"
+  setText("SM2_Ambient", (pt and "Ambiente: " or "Ambient: ") .. (day and (pt and "NOITE" or "NIGHT") or (pt and "DIA" or "DAY")))
+  say((pt and "Ambiente: " or "Ambient: ") .. (day and (pt and "NOITE" or "NIGHT") or (pt and "DIA" or "DAY")))
 end)
+curLang = function()
+  local inp = _G.ArkherInput
+  if inp and inp.lang then
+    local ok, L = pcall(inp.lang)
+    if ok and L == "PT" then return "PT" end
+  end
+  return "EN"
+end
+local function simTexts()
+  if simRunning then
+    if curLang() == "PT" then return "PARAR", "em execucao" end
+    return "STOP", "running"
+  end
+  if curLang() == "PT" then return "INICIAR", "parado" end
+  return "START", "idle"
+end
+local function refreshSim()
+  local b, s = simTexts()
+  local o = shell:FindFirstChild("SM2_Start", true)
+  if o then pcall(function() o.Text = b end) end
+  setText("SM2_Status", s)
+end
 on("SM2_Start", function(o)
   simRunning = not simRunning
-  o.Text = simRunning and "⏹ Stop" or "▶ Start"
-  setText("SM2_Status", simRunning and "running" or "idle")
-  say(simRunning and "Simulation running (day advances)." or "Simulation stopped.")
+  local b, s = simTexts()
+  o.Text = b
+  setText("SM2_Status", s)
+  if curLang() == "PT" then
+    say(simRunning and "Simulacao rodando (dia avanca)." or "Simulacao parada.")
+  else
+    say(simRunning and "Simulation running (day advances)." or "Simulation stopped.")
+  end
 end)
 
 -- ================= TEAM =================
@@ -533,7 +562,9 @@ local teamList = shell:FindFirstChild("TM2_List", true)
 local function refreshTeam()
   local ps = Players:GetPlayers()
   local t = shell:FindFirstChild("TM2_Title", true)
-  if t and t:IsA("TextLabel") then t.Text = "TEAM (" .. tostring(#ps) .. ")" end
+  if t and t:IsA("TextLabel") then
+    t.Text = (curLang() == "PT" and "EQUIPE (" or "TEAM (") .. tostring(#ps) .. ")"
+  end
   if not teamList then return end
   for _, k in ipairs(teamList:GetChildren()) do if k.Name == "Mate" then k:Destroy() end end
   for i, p in ipairs(ps) do
@@ -547,7 +578,7 @@ local function refreshTeam()
     row.TextTruncate = Enum.TextTruncate.AtEnd
     row.Position = UDim2.fromOffset(6, 4 + (i - 1) * 24)
     row.Size = UDim2.new(1, -12, 0, 22)
-    row.Text = "● @" .. p.Name .. (p == player and " · you (Pro)" or " · guest")
+    row.Text = "@" .. p.Name .. (p == player and " (you)" or " (guest)")
     row.Parent = teamList
   end
 end
@@ -772,9 +803,16 @@ task.spawn(function()
     local first = r.projects[1]
     local nm = (type(first) == "table" and (first.name or first.Name)) or tostring(first)
     local pb = shell:FindFirstChild("F2_Project", true)
-    if pb and pb:IsA("GuiButton") then pb.Text = "▼ " .. tostring(nm):sub(1, 18) end
+    if pb and pb:IsA("GuiButton") then pb.Text = tostring(nm):sub(1, 18) end
     setText("FR2_StorageLabel", "Cloud: " .. tostring(#r.projects) .. " project(s)")
   end
   logAdd("Info", "Arkher Studio shell ready (EN).")
   say("Shell ready: panels + timeline + sim online.")
 end)
+rawset(_G, "ArkherStudioX", {
+  refreshTitles = function()
+    pcall(refreshTeam)
+    pcall(refreshSim)
+  end,
+  lang = curLang,
+})

@@ -3335,7 +3335,7 @@ function handlers.TerrainStats(player)
   return { cells = cells, undo = #TER_UNDO, redo = #TER_REDO, layers = #TER_LAYERS }
 end
 
-local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, TerrainGenFlat=true, TerrainReplace=true, TerrainWater=true, TerrainSmooth=true, TerrainNoise=true, TerrainStroke=true, TerrainUndo=true, TerrainRedo=true, TerrainLayer=true, TerrainGen=true, TerrainWaterProps=true, TerrainRain=true, TerrainFlood=true, TerrainHydro=true, ScriptSet=true, Undo=true, Group=true, Ungroup=true, AlignKids=true, DistributeKids=true, MirrorKids=true, PivotReset=true, SelAdd=true, SelClear=true, SelectMany=true, DeleteMany=true, DuplicateMany=true }
+local MUTATING = { Begin=true, Create=true, CreateAny=true, CsgDo=true, Cut=true, DataDelete=true, DataSet=true, Delete=true, Duplicate=true, End=true, EnsureBase=true, Import=true, New=true, Open=true, Paste=true, PlaceCreate=true, PropsSet=true, Publish=true, QuickPart=true, Redo=true, Rename=true, SculptApply=true, Set=true, SetAny=true, SetLocString=true, SetLocale=true, SetProjectInfo=true, ToolboxAssetInsert=true, ToolboxInsert=true, TerrainClear=true, TerrainFill=true, TerrainGenFlat=true, TerrainReplace=true, TerrainWater=true, TerrainSmooth=true, TerrainNoise=true, TerrainStroke=true, TerrainUndo=true, TerrainRedo=true, TerrainLayer=true, TerrainGen=true, TerrainWaterProps=true, TerrainRain=true, TerrainFlood=true, TerrainHydro=true, ScriptSet=true, Undo=true, Group=true, Ungroup=true, AlignKids=true, DistributeKids=true, MirrorKids=true, PivotReset=true, SelAdd=true, SelClear=true, SelectMany=true, DeleteMany=true, DuplicateMany=true, RemapSet=true, TransformMany=true, ViewportRig=true, MeshNew=true, MeshMoveVert=true, MeshDeleteVert=true, MeshSmooth=true, MeshMirror=true, MeshImportOBJ=true }
 local function runRestore()
 	for part, was in pairs(RUN.parts) do
 		if part and part.Parent then
@@ -3598,6 +3598,544 @@ function handlers.DuplicateMany(player, payload)
         else failed = failed + 1 end
     end
     return { duplicated = #ids, failed = failed, ids = ids }
+end
+
+-- ============ R11: REMAP PERSISTENTE + TRANSFORM MANY + VIEWPORT RIG ============
+local remapMem = {}
+local function remapStore()
+  local st = nil
+  pcall(function()
+    st = game:GetService("DataStoreService"):GetDataStore("arkher_remap_v1")
+  end)
+  return st
+end
+local REMAP_SLOTS11 = { Select = true, Move = true, Rotate = true, Scale = true,
+  Frame = true, Box = true, Lasso = true, Snap = true }
+local function remapKey(player)
+  local id = 0
+  pcall(function() id = player.UserId or 0 end)
+  return "u_" .. tostring(id)
+end
+function handlers.RemapGet(player, payload)
+  local k = remapKey(player)
+  if remapMem[k] then return { bindings = remapMem[k], source = "memory" } end
+  local st = remapStore()
+  if st then
+    local ok, rec = pcall(function() return st:GetAsync(k) end)
+    if ok and type(rec) == "table" then
+      remapMem[k] = rec
+      return { bindings = rec, source = "datastore" }
+    end
+  end
+  return { bindings = nil, source = "none" }
+end
+function handlers.RemapSet(player, payload)
+  local b = payload.bindings
+  assert(type(b) == "table", "bindings deve ser tabela slot->KeyCode.")
+  local clean = {}
+  local n = 0
+  for slot, name in pairs(b) do
+    assert(REMAP_SLOTS11[slot], "slot invalido: " .. tostring(slot))
+    assert(type(name) == "string" and #name >= 1 and #name <= 32
+      and name:match("^[A-Za-z0-9_]+$"), "KeyCode invalido p/ " .. tostring(slot))
+    local ok = pcall(function() return Enum.KeyCode[name] end)
+    assert(ok, "KeyCode desconhecido: " .. tostring(name))
+    clean[slot] = name
+    n = n + 1
+    assert(n <= 8, "slots demais.")
+  end
+  local k = remapKey(player)
+  remapMem[k] = clean
+  local stored = false
+  local st = remapStore()
+  if st then
+    local ok = pcall(function() st:SetAsync(k, clean) end)
+    stored = ok == true
+  end
+  return { saved = true, slots = n, store = stored }
+end
+local rigMem = {}
+function handlers.ViewportRig(player, payload)
+  local k = remapKey(player)
+  if payload.op == "set" then
+    local r = rigMem[k] or {}
+    if payload.pos then r.pos = { x = tonumber(payload.pos.x) or 0, y = tonumber(payload.pos.y) or 0, z = tonumber(payload.pos.z) or 0 } end
+    if payload.target then r.target = { x = tonumber(payload.target.x) or 0, y = tonumber(payload.target.y) or 0, z = tonumber(payload.target.z) or 0 } end
+    if payload.fov then r.fov = math.clamp(tonumber(payload.fov) or 70, 1, 120) end
+    if payload.mode then r.mode = tostring(payload.mode):sub(1, 16) end
+    rigMem[k] = r
+    return { saved = true, rig = r }
+  end
+  return { rig = rigMem[k] }
+end
+function handlers.ViewportFrame(player, payload)
+  local objs = {}
+  if type(payload.ids) == "table" and #payload.ids > 0 then
+    for _, id2 in ipairs(payload.ids) do
+      if type(id2) == "string" then
+        local ok, o = pcall(getObject, id2)
+        if ok and o and inspectable(o) then objs[#objs + 1] = o end
+      end
+    end
+  else
+    objs = setPrune(player)
+  end
+  assert(#objs > 0, "Nada selecionado para enquadrar.")
+  assert(#objs <= 500, "Selecao grande demais p/ frame (500).")
+  local mn, mx = nil, nil
+  for _, o in ipairs(objs) do
+    local ok, cf, sz = pcall(function() return o:GetBoundingBox() end)
+    if ok and cf and sz then
+      local p, s = cf.Position, sz
+      local lo = Vector3.new(p.X - s.X / 2, p.Y - s.Y / 2, p.Z - s.Z / 2)
+      local hi = Vector3.new(p.X + s.X / 2, p.Y + s.Y / 2, p.Z + s.Z / 2)
+      if not mn then mn, mx = lo, hi
+      else
+        mn = Vector3.new(math.min(mn.X, lo.X), math.min(mn.Y, lo.Y), math.min(mn.Z, lo.Z))
+        mx = Vector3.new(math.max(mx.X, hi.X), math.max(mx.Y, hi.Y), math.max(mx.Z, hi.Z))
+      end
+    end
+  end
+  assert(mn, "Sem bounds legiveis na selecao.")
+  local c = (mn + mx) / 2
+  local ext = (mx - mn)
+  local radius = math.max(ext.X, ext.Y, ext.Z, 2) / 2
+  local dir = payload.dir or { x = 1, y = 0.6, z = 1 }
+  local dv = Vector3.new(tonumber(dir.x) or 1, tonumber(dir.y) or 0.6, tonumber(dir.z) or 1)
+  if dv.Magnitude < 1e-6 then dv = Vector3.new(1, 0.6, 1) end
+  dv = dv.Unit
+  local dist = math.clamp(radius * 3.2 + 4, 6, 2000)
+  local pos = c + dv * dist
+  return {
+    center = { x = c.X, y = c.Y, z = c.Z },
+    size = { x = ext.X, y = ext.Y, z = ext.Z },
+    pos = { x = pos.X, y = pos.Y, z = pos.Z },
+    dist = dist, count = #objs,
+    msg = ("Frame: %d objeto(s), centro (%.0f, %.0f, %.0f), dist %.0f."):format(#objs, c.X, c.Y, c.Z, dist),
+  }
+end
+function handlers.TransformMany(player, payload)
+  local mode = tostring(payload.mode or "move")
+  assert(mode == "move" or mode == "rot" or mode == "scale", "mode: move/rot/scale.")
+  local d = payload.delta or {}
+  local dx, dy, dz = tonumber(d.x) or 0, tonumber(d.y) or 0, tonumber(d.z) or 0
+  assert(math.abs(dx) < 100000 and math.abs(dy) < 100000 and math.abs(dz) < 100000, "delta fora do limite.")
+  local objs = {}
+  if type(payload.ids) == "table" and #payload.ids > 0 then
+    for _, id2 in ipairs(payload.ids) do
+      if type(id2) == "string" then
+        local ok, o = pcall(getObject, id2)
+        if ok and o and editable(o) and not containsProtected(o) then objs[#objs + 1] = o end
+      end
+    end
+  else
+    for _, o in ipairs(setPrune(player)) do
+      if editable(o) and not containsProtected(o) then objs[#objs + 1] = o end
+    end
+  end
+  assert(#objs > 0, "Nada transformavel selecionado.")
+  assert(#objs <= 500, "Selecao grande demais (500).")
+  local items = {}
+  for _, o in ipairs(objs) do
+    local ok, cf = pcall(function() return getPivot(o) end)
+    if ok and cf then
+      local it = { o = o, fromCf = cf, fromSize = nil, fromScale = nil }
+      if o:IsA("BasePart") then it.fromSize = o.Size end
+      if o.ClassName == "Model" then pcall(function() it.fromScale = o:GetScale() end) end
+      items[#items + 1] = it
+    end
+  end
+  assert(#items > 0, "Sem pivo legivel na selecao.")
+  local function applyOne(it, isRedo)
+    local o = it.o
+    if not o.Parent then return end
+    if isRedo then
+      pcall(function()
+        setPivot(o, it.toCf)
+        if it.toSize and o:IsA("BasePart") then o.Size = it.toSize end
+        if it.toScale and o.ClassName == "Model" then o:ScaleTo(it.toScale) end
+      end)
+    else
+      pcall(function()
+        setPivot(o, it.fromCf)
+        if it.fromSize and o:IsA("BasePart") then o.Size = it.fromSize end
+        if it.fromScale and o.ClassName == "Model" then o:ScaleTo(it.fromScale) end
+      end)
+    end
+    queueObject(o)
+  end
+  for _, it in ipairs(items) do
+    if mode == "move" then
+      it.toCf = it.fromCf * CFrame.new(dx, dy, dz)
+    elseif mode == "rot" then
+      it.toCf = it.fromCf * CFrame.fromOrientation(math.rad(dx), math.rad(dy), math.rad(dz))
+    else
+      it.toCf = it.fromCf
+      local mx, my, mz = dx == 0 and 1 or dx, dy == 0 and 1 or dy, dz == 0 and 1 or dz
+      if it.fromSize then
+        it.toSize = Vector3.new(
+          math.clamp(it.fromSize.X * mx, 0.05, CONFIG.MAX_SIZE),
+          math.clamp(it.fromSize.Y * my, 0.05, CONFIG.MAX_SIZE),
+          math.clamp(it.fromSize.Z * mz, 0.05, CONFIG.MAX_SIZE))
+      end
+      if it.fromScale then it.toScale = math.clamp(it.fromScale * mx, 0.01, 100) end
+    end
+    applyOne(it, true)
+  end
+  pushHist(player, {
+    label = ("TransformMany %s x%d"):format(mode, #items),
+    undo = function() for _, it in ipairs(items) do applyOne(it, false) end end,
+    redo = function() for _, it in ipairs(items) do applyOne(it, true) end end,
+  })
+  return { transformed = #items, mode = mode,
+    msg = ("%s aplicado em %d objeto(s) (1 undo)."):format(mode, #items) }
+end
+
+-- ============ R12: MODELER (EditableMesh real + OBJ) ============
+local meshReg = {}
+local function meshGet(id)
+  local ok, o = pcall(getObject, id)
+  assert(ok and o, "mesh id invalido.")
+  local em = meshReg[id]
+  assert(em, "MeshPart sem malha Arkher (use MeshSelect p/ adotar).")
+  return o, em
+end
+local function meshRefresh(o, em)
+  local ok = pcall(function()
+    local AS = game:GetService("AssetService")
+    local tmp = AS:CreateMeshPartAsync(Content.fromObject(em))
+    o:ApplyMesh(tmp)
+    pcall(function() tmp:Destroy() end)
+  end)
+  return ok == true
+end
+local function meshPrim(em, kind, s)
+  s = math.clamp(tonumber(s) or 4, 0.5, 512)
+  local h = s / 2
+  local V = function(x, y, z) return em:AddVertex(Vector3.new(x, y, z)) end
+  local TR = function(a, b, c) return em:AddTriangle(a, b, c) end
+  if kind == "box" then
+    local v = { V(-h, -h, -h), V(h, -h, -h), V(h, h, -h), V(-h, h, -h),
+      V(-h, -h, h), V(h, -h, h), V(h, h, h), V(-h, h, h) }
+    -- back/front/left/right/bottom/top, todas CCW p/ fora (normais verificadas)
+    local F = { { 1, 4, 3 }, { 1, 3, 2 }, { 5, 6, 7 }, { 5, 7, 8 },
+      { 1, 5, 8 }, { 1, 8, 4 }, { 2, 3, 7 }, { 2, 7, 6 },
+      { 1, 6, 5 }, { 1, 2, 6 }, { 4, 7, 3 }, { 4, 8, 7 } }
+    for _, f in ipairs(F) do TR(v[f[1]], v[f[2]], v[f[3]]) end
+  elseif kind == "plane" then
+    local v = { V(-h, 0, -h), V(h, 0, -h), V(h, 0, h), V(-h, 0, h) }
+    TR(v[1], v[4], v[3]) TR(v[1], v[3], v[2])
+  elseif kind == "wedge" then
+    local v = { V(-h, -h, -h), V(h, -h, -h), V(h, -h, h), V(-h, -h, h),
+      V(-h, h, -h), V(h, h, -h) }
+    local F = { { 1, 2, 3 }, { 1, 3, 4 }, { 4, 3, 6 }, { 4, 6, 5 },
+      { 1, 6, 2 }, { 1, 5, 6 }, { 1, 4, 5 }, { 2, 6, 3 } }
+    for _, f in ipairs(F) do TR(v[f[1]], v[f[2]], v[f[3]]) end
+  elseif kind == "cyl8" then
+    local b, t = {}, {}
+    for k = 0, 7 do
+      local a = math.rad(k * 45)
+      b[k + 1] = V(math.cos(a) * h, -h, math.sin(a) * h)
+      t[k + 1] = V(math.cos(a) * h, h, math.sin(a) * h)
+    end
+    for k = 1, 8 do
+      local n = (k % 8) + 1
+      TR(b[k], t[n], b[n]) TR(b[k], t[k], t[n])
+    end
+    for k = 2, 7 do TR(b[1], b[k], b[k + 1]) end
+    for k = 2, 7 do TR(t[1], t[k + 1], t[k]) end
+  else
+    error("primitiva: box/plane/wedge/cyl8.")
+  end
+end
+function handlers.MeshNew(player, payload)
+  local kind = tostring(payload.primitive or "box")
+  local em = nil
+  local okA, errA = pcall(function()
+    em = game:GetService("AssetService"):CreateEditableMesh()
+  end)
+  assert(okA and em, "EditableMesh indisponivel: " .. tostring(errA) .. " (ative Mesh/Image APIs no dashboard).")
+  local okB, errB = pcall(meshPrim, em, kind, payload.size)
+  if not okB then error(errB) end
+  local parent = workspace
+  if payload.parentId then
+    local ok, p = pcall(getObject, payload.parentId)
+    if ok and p then parent = p end
+  end
+  local mp = nil
+  local okC, errC = pcall(function()
+    mp = game:GetService("AssetService"):CreateMeshPartAsync(Content.fromObject(em))
+  end)
+  assert(okC and mp, "CreateMeshPartAsync falhou: " .. tostring(errC))
+  mp.Name = tostring(payload.name or ("Mesh_" .. kind)):sub(1, 40)
+  mp.Anchored = true
+  pcall(function() mp.Size = Vector3.new(2, 2, 2) end)
+  local entry = byClass["MeshPart"]
+  if entry then
+    local allowed, reason = canCreate(parent, entry)
+    assert(allowed, reason)
+  end
+  mp.Parent = parent
+  created[player] = (created[player] or 0) + 1
+  register(mp)
+  meshReg[idOf[mp]] = em
+  queueObject(parent)
+  hCreate(player, mp)
+  local nv = #em:GetVertices()
+  return { node = record(mp), verts = nv, faces = #em:GetFaces(),
+    msg = ("Mesh %s criada (%d verts)."):format(kind, nv) }
+end
+function handlers.MeshSelect(player, payload)
+  local o = getObject(payload.id)
+  assert(o:IsA("MeshPart"), "Selecione uma MeshPart.")
+  local content = nil
+  pcall(function() content = o.MeshContent end)
+  assert(content, "MeshPart sem MeshContent.")
+  local em = nil
+  local ok, err = pcall(function()
+    em = game:GetService("AssetService"):CreateEditableMeshAsync(content, { FixedSize = false })
+  end)
+  assert(ok and em, "Adocao falhou: " .. tostring(err))
+  meshReg[payload.id] = em
+  return { verts = #em:GetVertices(), faces = #em:GetFaces(), msg = "Mesh adotada." }
+end
+function handlers.MeshInfo(player, payload)
+  local o, em = meshGet(payload.id)
+  local mn, mx = nil, nil
+  for _, vid in ipairs(em:GetVertices()) do
+    local p = em:GetVertexPosition(vid)
+    if not mn then mn, mx = p, p
+    else
+      mn = Vector3.new(math.min(mn.X, p.X), math.min(mn.Y, p.Y), math.min(mn.Z, p.Z))
+      mx = Vector3.new(math.max(mx.X, p.X), math.max(mx.Y, p.Y), math.max(mx.Z, p.Z))
+    end
+  end
+  return { verts = #em:GetVertices(), faces = #em:GetFaces(),
+    min = mn and { x = mn.X, y = mn.Y, z = mn.Z } or nil,
+    max = mx and { x = mx.X, y = mx.Y, z = mx.Z } or nil }
+end
+function handlers.MeshVerts(player, payload)
+  local o, em = meshGet(payload.id)
+  local ids = em:GetVertices()
+  assert(#ids <= 500, "Malha grande demais p/ listar (500 verts).")
+  local out = {}
+  for _, vid in ipairs(ids) do
+    local p = em:GetVertexPosition(vid)
+    out[#out + 1] = { vid = vid, x = p.X, y = p.Y, z = p.Z }
+  end
+  return { verts = out }
+end
+function handlers.MeshMoveVert(player, payload)
+  local o, em = meshGet(payload.id)
+  local vid = tonumber(payload.vid)
+  assert(vid, "vid invalido.")
+  local np = Vector3.new(tonumber(payload.x) or 0, tonumber(payload.y) or 0, tonumber(payload.z) or 0)
+  assert(math.abs(np.X) < 100000 and math.abs(np.Y) < 100000 and math.abs(np.Z) < 100000, "posicao fora do limite.")
+  local old = em:GetVertexPosition(vid)
+  em:SetVertexPosition(vid, np)
+  queueObject(o)
+  pushHist(player, {
+    label = "Mover vertice " .. tostring(vid),
+    undo = function() pcall(function() em:SetVertexPosition(vid, old) end) queueObject(o) end,
+    redo = function() pcall(function() em:SetVertexPosition(vid, np) end) queueObject(o) end,
+  })
+  local ref = meshRefresh(o, em)
+  return { moved = true, refreshed = ref }
+end
+function handlers.MeshDeleteVert(player, payload)
+  local o, em = meshGet(payload.id)
+  local vid = tonumber(payload.vid)
+  assert(vid, "vid invalido.")
+  local oldPos = em:GetVertexPosition(vid)
+  local deadFaces = {}
+  for _, fid in ipairs(em:GetFaces()) do
+    local fv = em:GetFaceVertices(fid)
+    if fv[1] == vid or fv[2] == vid or fv[3] == vid then
+      deadFaces[#deadFaces + 1] = { fid = fid, v = fv }
+    end
+  end
+  for _, d in ipairs(deadFaces) do em:RemoveTriangle(d.fid) end
+  em:RemoveVertex(vid)
+  queueObject(o)
+  local curVid = vid
+  pushHist(player, {
+    label = "Deletar vertice " .. tostring(vid),
+    undo = function()
+      pcall(function()
+        local nv = em:AddVertex(oldPos)
+        for _, d in ipairs(deadFaces) do
+          local a, b, c = d.v[1], d.v[2], d.v[3]
+          if a == vid then a = nv end
+          if b == vid then b = nv end
+          if c == vid then c = nv end
+          em:AddTriangle(a, b, c)
+        end
+        curVid = nv
+      end)
+      queueObject(o)
+    end,
+    redo = function()
+      pcall(function()
+        for _, fid in ipairs(em:GetFaces()) do
+          local fv = em:GetFaceVertices(fid)
+          if fv[1] == curVid or fv[2] == curVid or fv[3] == curVid then em:RemoveTriangle(fid) end
+        end
+        em:RemoveVertex(curVid)
+      end)
+      queueObject(o)
+    end,
+  })
+  local ref = meshRefresh(o, em)
+  return { deleted = true, faces = #deadFaces, refreshed = ref,
+    msg = "Vertice deletado (undo restaura geometria; vid pode mudar)." }
+end
+function handlers.MeshSmooth(player, payload)
+  local o, em = meshGet(payload.id)
+  local iters = math.clamp(math.floor(tonumber(payload.iters) or 1), 1, 10)
+  local lambda = math.clamp(tonumber(payload.lambda) or 0.5, 0.01, 1)
+  local vids = em:GetVertices()
+  assert(#vids > 0 and #vids <= 5000, "Malha vazia ou grande demais (5000).")
+  local adj = {}
+  for _, v in ipairs(vids) do adj[v] = {} end
+  for _, fid in ipairs(em:GetFaces()) do
+    local fv = em:GetFaceVertices(fid)
+    for i = 1, 3 do
+      local a, b = fv[i], fv[(i % 3) + 1]
+      adj[a][b] = true adj[b][a] = true
+    end
+  end
+  local old = {}
+  for _, v in ipairs(vids) do old[v] = em:GetVertexPosition(v) end
+  for _ = 1, iters do
+    local newP = {}
+    for _, v in ipairs(vids) do
+      local sx, sy, sz, n = 0, 0, 0, 0
+      for nb in pairs(adj[v]) do
+        local p = em:GetVertexPosition(nb)
+        sx, sy, sz, n = sx + p.X, sy + p.Y, sz + p.Z, n + 1
+      end
+      if n > 0 then
+        local p = em:GetVertexPosition(v)
+        newP[v] = Vector3.new(
+          p.X + (sx / n - p.X) * lambda,
+          p.Y + (sy / n - p.Y) * lambda,
+          p.Z + (sz / n - p.Z) * lambda)
+      end
+    end
+    for v, p in pairs(newP) do em:SetVertexPosition(v, p) end
+  end
+  local newF = {}
+  for _, v in ipairs(vids) do newF[v] = em:GetVertexPosition(v) end
+  queueObject(o)
+  pushHist(player, {
+    label = "Smooth x" .. tostring(iters),
+    undo = function() for v, p in pairs(old) do pcall(function() em:SetVertexPosition(v, p) end) end queueObject(o) end,
+    redo = function() for v, p in pairs(newF) do pcall(function() em:SetVertexPosition(v, p) end) end queueObject(o) end,
+  })
+  local ref = meshRefresh(o, em)
+  return { smoothed = true, iters = iters, refreshed = ref }
+end
+function handlers.MeshMirror(player, payload)
+  local o, em = meshGet(payload.id)
+  local ax = tostring(payload.axis or "X"):upper()
+  assert(ax == "X" or ax == "Y" or ax == "Z", "axis: X/Y/Z.")
+  local vids = em:GetVertices()
+  assert(#vids > 0 and #vids <= 5000, "Malha vazia ou grande demais (5000).")
+  local old = {}
+  for _, v in ipairs(vids) do old[v] = em:GetVertexPosition(v) end
+  for _, v in ipairs(vids) do
+    local p = old[v]
+    if ax == "X" then em:SetVertexPosition(v, Vector3.new(-p.X, p.Y, p.Z))
+    elseif ax == "Y" then em:SetVertexPosition(v, Vector3.new(p.X, -p.Y, p.Z))
+    else em:SetVertexPosition(v, Vector3.new(p.X, p.Y, -p.Z)) end
+  end
+  queueObject(o)
+  pushHist(player, {
+    label = "Mirror " .. ax,
+    undo = function() for v, p in pairs(old) do pcall(function() em:SetVertexPosition(v, p) end) end queueObject(o) end,
+    redo = function()
+      for v, p in pairs(old) do
+        pcall(function()
+          if ax == "X" then em:SetVertexPosition(v, Vector3.new(-p.X, p.Y, p.Z))
+          elseif ax == "Y" then em:SetVertexPosition(v, Vector3.new(p.X, -p.Y, p.Z))
+          else em:SetVertexPosition(v, Vector3.new(p.X, p.Y, -p.Z)) end
+        end)
+      end
+      queueObject(o)
+    end,
+  })
+  local ref = meshRefresh(o, em)
+  return { mirrored = true, axis = ax, refreshed = ref }
+end
+function handlers.MeshExportOBJ(player, payload)
+  local o, em = meshGet(payload.id)
+  local vids = em:GetVertices()
+  assert(#vids > 0 and #vids <= 20000, "Malha vazia ou grande demais p/ OBJ (20k).")
+  local map = {}
+  for i, v in ipairs(vids) do map[v] = i end
+  local lines = { "# Arkher Modeler OBJ export", "o " .. tostring(o.Name):gsub("%s+", "_") }
+  for _, v in ipairs(vids) do
+    local p = em:GetVertexPosition(v)
+    lines[#lines + 1] = string.format("v %.4f %.4f %.4f", p.X, p.Y, p.Z)
+  end
+  for _, fid in ipairs(em:GetFaces()) do
+    local fv = em:GetFaceVertices(fid)
+    lines[#lines + 1] = string.format("f %d %d %d", map[fv[1]], map[fv[2]], map[fv[3]])
+  end
+  return { obj = table.concat(lines, "\n"), verts = #vids, faces = #em:GetFaces() }
+end
+function handlers.MeshImportOBJ(player, payload)
+  local text = tostring(payload.obj or "")
+  assert(#text > 0 and #text <= 2000000, "OBJ vazio ou grande demais (2MB).")
+  local verts, faces = {}, {}
+  for line in (text .. "\n"):gmatch("([^\n]*)\n") do
+    local tag, rest = line:match("^%s*(%S+)%s*(.-)%s*$")
+    if tag == "v" then
+      local x, y, z = rest:match("^(%S+)%s+(%S+)%s+(%S+)")
+      assert(x and y and z, "linha v invalida: " .. line:sub(1, 40))
+      verts[#verts + 1] = { tonumber(x), tonumber(y), tonumber(z) }
+      assert(#verts <= 5000, "OBJ com verts demais (5000).")
+    elseif tag == "f" then
+      local idx = {}
+      for tok in rest:gmatch("%S+") do
+        local n = tonumber(tok:match("^(-?%d+)"))
+        assert(n, "face invalida: " .. line:sub(1, 40))
+        if n < 0 then n = #verts + n + 1 end
+        assert(n >= 1 and n <= #verts, "indice de face fora do range.")
+        idx[#idx + 1] = n
+      end
+      assert(#idx == 3 or #idx == 4, "so triangulos e quads (triangule o resto).")
+      faces[#faces + 1] = { idx[1], idx[2], idx[3] }
+      if #idx == 4 then faces[#faces + 1] = { idx[1], idx[3], idx[4] } end
+      assert(#faces <= 10000, "OBJ com faces demais (10k).")
+    end
+  end
+  assert(#verts >= 3 and #faces >= 1, "OBJ sem geometria (v/f).")
+  local em = nil
+  local okA, errA = pcall(function()
+    em = game:GetService("AssetService"):CreateEditableMesh()
+  end)
+  assert(okA and em, "EditableMesh indisponivel: " .. tostring(errA))
+  local vids = {}
+  for _, v in ipairs(verts) do
+    vids[#vids + 1] = em:AddVertex(Vector3.new(v[1], v[2], v[3]))
+  end
+  for _, f in ipairs(faces) do em:AddTriangle(vids[f[1]], vids[f[2]], vids[f[3]]) end
+  local mp = nil
+  local okC, errC = pcall(function()
+    mp = game:GetService("AssetService"):CreateMeshPartAsync(Content.fromObject(em))
+  end)
+  assert(okC and mp, "CreateMeshPartAsync falhou: " .. tostring(errC))
+  mp.Name = tostring(payload.name or "Mesh_OBJ"):sub(1, 40)
+  mp.Anchored = true
+  mp.Parent = workspace
+  created[player] = (created[player] or 0) + 1
+  register(mp)
+  meshReg[idOf[mp]] = em
+  queueObject(workspace)
+  hCreate(player, mp)
+  return { node = record(mp), verts = #verts, faces = #faces,
+    msg = ("OBJ importado (%d verts, %d tris)."):format(#verts, #faces) }
 end
 
 function handlers.PivotReset(player, payload)

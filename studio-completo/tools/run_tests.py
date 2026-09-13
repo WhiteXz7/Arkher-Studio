@@ -14,6 +14,8 @@ TESTS = {
     "Input System (11 detect/layouts/4 controllers)": "studio-completo/tools/test_input.lua",
     "Terrain R10 (pinceis voxel/undo/layers/gen/hidro)": "studio-completo/tools/test_terrain.lua",
     "Terrain R10 client (12_Terrain wiring/strokes/paineis)": "studio-completo/tools/test_terrain12.lua",
+    "Viewport R11 (server remap/many/rig + 13_Viewport)": "studio-completo/tools/test_viewport13.lua",
+    "Modeler R12 (server Mesh*/OBJ + 14_Modeler)": "studio-completo/tools/test_modeler14.lua",
 }
 ok = True
 for label, path in TESTS.items():

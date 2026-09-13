@@ -110,7 +110,15 @@ local hitPos = Vector3.new(0, 20, 0)
 ws.Raycast = function(self, o, d) return { Instance = ter, Position = hitPos } end
 
 local plat = "PC"
-_G.ArkherInput = { platform = function() return plat end }
+local padHeld, vrHeld = false, false
+local vrRay = nil
+_G.ArkherInput = {
+  platform = function() return plat end,
+  padPaintHeld = function() return padHeld end,
+  consoleCursor = function() return { X = 400, Y = 300 } end,
+  vrPaintHeld = function() return vrHeld end,
+  vrHandRay = function() return vrRay end,
+}
 local src12 = io.open("studio-completo/scripts/12_Terrain.lua"):read("*a")
 assert(pcall(assert(loadstring(src12, "[12]"))), "12 nao carregou")
 local TE = _G.ArkherTerrain
@@ -228,6 +236,38 @@ hitPos = Vector3.new(300, 20, 0)
 UIS.InputBegan:Fire({ UserInputType = Enum.UserInputType.Touch, KeyCode = Enum.KeyCode.Unknown, Position = { X = 400, Y = 300 } }, false)
 UIS.InputEnded:Fire({ UserInputType = Enum.UserInputType.Touch })
 check(ter:CountCells() > cTouch0, "toque pinta no mobile")
+
+print("\n== TE12 R11: paint console + VR ==")
+TE.setTool("draw")
+TE.close()
+plat = "Console"
+TE.open()
+local cPad0 = ter:CountCells()
+hitPos = Vector3.new(500, 20, 0)
+padHeld = true
+RunService.Heartbeat:Fire(0.1)
+RunService.Heartbeat:Fire(0.1)
+check(ter:CountCells() > cPad0, "A segurado pinta no console (cursor virtual)")
+padHeld = false
+RunService.Heartbeat:Fire(0.1)
+check(find("TE3_Depth").Text ~= "0/0", "A solto fecha o stroke (undo+)")
+TE.close()
+plat = "VR"
+TE.open()
+local cVr0 = ter:CountCells()
+hitPos = Vector3.new(600, 20, 0)
+vrHeld = true
+vrRay = { ox = 0, oy = 40, oz = 60, dx = 0, dy = -1, dz = 0 }
+RunService.Heartbeat:Fire(0.1)
+RunService.Heartbeat:Fire(0.1)
+check(ter:CountCells() > cVr0, "gatilho VR pinta (raio da mao)")
+vrHeld = false
+vrRay = nil
+RunService.Heartbeat:Fire(0.1)
+RunService.Heartbeat:Fire(0.1)
+local d1 = find("TE3_Depth").Text
+RunService.Heartbeat:Fire(0.1)
+check(find("TE3_Depth").Text == d1, "gatilho solto: sem dab fantasma")
 
 print("TERRAIN12: " .. pass .. " passaram, " .. fail .. " falharam")
 if fail > 0 then os.exit(1) end
