@@ -89,67 +89,90 @@ check(loadClient("studio-completo/scripts/05_StudioX.lua", "Arkher_05_StudioX"),
 check(loadClient("studio-completo/scripts/09_Topbar.lua", "Arkher_09_Topbar"), "09 ok")
 check(loadClient("studio-completo/scripts/10_Studio.lua", "Arkher_10_Studio"), "10 ok")
 
-print("\n== Menus X no MenuBar (clonados do View) ==")
-local modelagemBtn
-for _, d in ipairs(menuBar:GetDescendants()) do
-  if d:IsA("GuiButton") and d.Name == "MODELAGEM" then modelagemBtn = d end
-end
-check(modelagemBtn ~= nil, "botão MODELAGEM existe no MenuBar")
-if modelagemBtn then
-  modelagemBtn.Activated:Fire()
-  local mf = popups:FindFirstChild("MODELAGEMMenu")
-  check(mf ~= nil, "clicar MODELAGEM abre o dropdown MODELAGEMMenu")
+print("\n== Menu Animation (M2, chaves A+B) ==")
+local top12 = host:FindFirstChild("ArkherTop")
+check(top12 ~= nil, "ArkherTop no host (topbar unica)")
+local animBtn = top12 and top12:FindFirstChild("M2_Animation", true)
+check(animBtn ~= nil, "botão M2_Animation na topbar única")
+if animBtn then
+  animBtn.Activated:Fire()
+  local mf = popups:FindFirstChild("AnimationMenu")
+  check(mf ~= nil, "clicar M2_Animation abre o dropdown AnimationMenu")
   if mf then
-    local rows = 0
-    for _, d in ipairs(mf:GetDescendants()) do if d:IsA("GuiButton") then rows = rows + 1 end end
-    check(rows >= 2, "dropdown tem itens (" .. rows .. ")")
+    local rows, hasB = 0, false
+    for _, d in ipairs(mf:GetDescendants()) do
+      if d:IsA("GuiButton") then
+        rows = rows + 1
+        if d.Name == "Item_AnimKeyB" or d.Name == "Item_AnimGoB" then hasB = true end
+      end
+    end
+    check(rows >= 6, "dropdown tem itens (" .. rows .. ")")
+    check(hasB, "chaves B (re-homed R18) presentes")
   end
 end
 
-print("\n== Menu LUGARES (salvar/criar places) ==")
-local lugBtn
-for _, d in ipairs(menuBar:GetDescendants()) do
-  if d:IsA("GuiButton") and d.Name == "LUGARES" then lugBtn = d end
-end
-check(lugBtn ~= nil, "botão LUGARES existe no MenuBar")
-if lugBtn then
-  lugBtn.Activated:Fire()
-  local lm = popups:FindFirstChild("LUGARESMenu")
-  check(lm ~= nil, "clicar LUGARES abre o dropdown")
+print("\n== Menu Game (M2, places do perfil) ==")
+local gameBtn = top12 and top12:FindFirstChild("M2_Game", true)
+check(gameBtn ~= nil, "botão M2_Game na topbar única")
+if gameBtn then
+  gameBtn.Activated:Fire()
+  local lm = popups:FindFirstChild("GameMenu")
+  check(lm ~= nil, "clicar M2_Game abre o dropdown")
   if lm then
-    local saveItem, novaItem, rows2 = nil, nil, 0
+    local profItem, rows2 = nil, 0
     for _, d in ipairs(lm:GetDescendants()) do
       if d:IsA("GuiButton") then
         rows2 = rows2 + 1
-        if tostring(d.Name) == "Item_SavePlaceAccount" then saveItem = d end
-        if tostring(d.Name) == "Item_PlacesProfile" then novaItem = d end
+        if tostring(d.Name) == "Item_PlacesProfile" then profItem = d end
       end
     end
-    check(rows2 >= 4, "LUGARES tem opções salvar/criar/perfil (" .. rows2 .. ")")
-    check(saveItem ~= nil and novaItem ~= nil, "itens SALVAR ESTA PLACE + CRIAR PLACE NOVA presentes")
-    if saveItem then
-      local m0 = #messages
-      saveItem.Activated:Fire()
-      local got
-      for idx = m0 + 1, #messages do got = messages[idx] end
-      check(got ~= nil, "clicar SALVAR PLACE devolve feedback (msg/erro honesto)")
-      if got then print("   feedback: " .. got) end
-    end
+    check(rows2 >= 4, "Game tem opções (" .. rows2 .. ")")
+    check(profItem ~= nil, "item Places do meu perfil presente")
   end
 end
 
-print("\n== Shell2 real (menus + ribbon + paineis) ==")
+print("\n== Aba FILE (ribbon assado -> bus real) ==")
+local bSave = top12 and top12:FindFirstChild("RibbonBtn_FILE_Save", true)
+check(bSave ~= nil, "RibbonBtn_FILE_Save assado")
+if bSave then
+  bSave.Activated:Fire()
+  check(popups:FindFirstChild("ArkherPanel", true) ~= nil, "clicar Save abre o dialogo Publicar")
+end
+
+print("\n== Aba EDIT (Anchor full-stack, server real) ==")
+local bAnchor = top12 and top12:FindFirstChild("RibbonBtn_EDIT_Anchor", true)
+check(bAnchor ~= nil, "RibbonBtn_EDIT_Anchor assado")
+if bAnchor then
+  local wsId = findId(snap(), "Workspace")
+  local c = invoke("Create", { parentId = wsId, class = "Part", name = "PecaAnchor" })
+  local id = c.node.id
+  selId.Value = id
+  bAnchor.Activated:Fire()
+  local pa = invoke("Select", { id = id })
+  local av = nil
+  for _, f in ipairs(pa.properties.fields) do if f.key == "Anchored" then av = f.value end end
+  check(av == false, "EDIT_Anchor alterna Anchored true->false (toggle full-stack)")
+end
+
+print("\n== Topbar unica (18 menus + 9 abas + 42 botoes) + 8 paineis ==")
 local shell12 = canvas:FindFirstChild("ArkherShell2")
 check(shell12 ~= nil, "ArkherShell2 no canvas")
-local nM2, nR2 = 0, 0
-if shell12 then for _, d in ipairs(shell12:GetDescendants()) do
+local nM2, nTabs, nPages, nBtns, nVis = 0, 0, 0, 0, 0
+if top12 then for _, d in ipairs(top12:GetDescendants()) do
   if d:IsA("GuiButton") then
     if d.Name:match("^M2_") and d.Name ~= "M2_Bell" and d.Name ~= "M2_User" then nM2 = nM2 + 1 end
-    if d.Name:match("^R2_") then nR2 = nR2 + 1 end
+    if d.Name:match("^Tab_") then nTabs = nTabs + 1 end
+    if d.Name:match("^RibbonBtn_") then nBtns = nBtns + 1 end
+  end
+  if d.Name:match("^Page_") then
+    nPages = nPages + 1
+    if d.Visible then nVis = nVis + 1 end
   end
 end end
-check(nM2 == 12, "12 menus M2_* (" .. nM2 .. ")")
-check(nR2 == 21, "21 botoes R2_* (18+R8 Anchor/Snap/Group: " .. nR2 .. ")")
+check(nM2 == 18, "18 menus M2_* (" .. nM2 .. ")")
+check(nTabs == 9, "9 abas Tab_* (" .. nTabs .. ")")
+check(nPages == 9 and nVis == 1, "9 paginas, 1 visivel (" .. nPages .. "/" .. nVis .. ")")
+check(nBtns == 42, "42 botoes RibbonBtn_* (" .. nBtns .. ")")
 local panels = { "T2_Panel", "C2_Panel", "S2_Panel", "TL2_Panel", "CV2_Panel", "SM2_Panel", "TM2_Panel", "FR2_Panel" }
 local np = 0
 if shell12 then for _, pn in ipairs(panels) do if shell12:FindFirstChild(pn, true) then np = np + 1 end end end

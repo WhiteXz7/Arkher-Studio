@@ -46,6 +46,8 @@ print(f"nomes assados (specs): {len(names)}")
 # dispatch 03: chaves do OnInvoke (cmd == "..." / cmds["..."])
 inv = m03[m03.find("MenusBus OnInvoke"):]
 menucmds = set(re.findall(r'action == "(\w+)"', inv))
+# dispatch 03 tambem resolve via tabela actions.* (fallback do OnInvoke).
+menucmds |= set(re.findall(r'actions\.([A-Za-z0-9_]+)\s*=', m03))
 print(f"menus cmds: {len(menucmds)}")
 
 dead = []
@@ -67,22 +69,47 @@ for name, kind, arg in actions:
     else:
         dead.append((name, kind, arg, "kind desconhecido"))
 
-# ribbon x ACTIONS (chave = TAB_Nome)
+# topbar unica R18: botoes do TABS (build_shell.py) x BUTTONS (09_Topbar.lua)
 shell = load("tools/build_shell.py")
 shell = shell[shell.index("TABS = ["):shell.index("def C3(r, g, b):")]
-rib_keys = set()
+rib = {}  # "TAB_id" -> (kind, target)
 cur = None
-for m in re.finditer(r'(?m)^(\s*)\("([A-Za-z0-9_]+)",\s*(\[|")', shell):
-    ind, name, nxt = m.group(1), m.group(2), m.group(3)
-    if len(ind) == 4 and nxt == "[":
+for m in re.finditer(
+        r'(?m)^(\s*)\("([A-Za-z0-9_]+)",\s*(?:\[|"[^"]*",\s*"[^"]*",\s*\("(\w+)"(?:,\s*(?:"([^"]*)")?)?\))',
+        shell):
+    ind, name, kind, target = m.group(1), m.group(2), m.group(3), m.group(4)
+    if len(ind) == 4 and kind is None:
         cur = name
-    elif len(ind) == 8 and nxt == '"' and cur:
-        rib_keys.add(f"{cur}_{name}")
-act_names = {a[0] for a in actions}
-only_ribbon = sorted(k for k in rib_keys if k not in act_names)
-only_actions = sorted(a for a in act_names if a not in rib_keys)
-print(f"ribbon keys: {len(rib_keys)} | sem ACTIONS: {only_ribbon}")
-print(f"ACTIONS sem ribbon: {only_actions}")
+    elif len(ind) == 8 and kind and cur:
+        rib[f"{cur}_{name}"] = (kind, target or "")
+s09 = load("scripts/09_Topbar.lua")
+wired = set(re.findall(r'RibbonBtn_([A-Za-z0-9_]+_[A-Za-z0-9_]+)\s*=\s*\{', s09))
+menukeys = set(re.findall(r'MENUS\.([A-Za-z_]+)\s*=\s*\{', m03))
+menukeys |= set(re.findall(r'(?m)^  ([A-Za-z]+) = \{$', m03))
+corekeys = {"Select", "MoveScale", "Rotate", "Scale", "LocalGlobal"}
+rib_dead = []
+for key, (kind, target) in sorted(rib.items()):
+    if key not in wired:
+        rib_dead.append((key, "sem BUTTONS no 09"))
+    elif kind == "menus" and target not in menucmds:
+        rib_dead.append((key, f"menus: cmd {target} sem dispatch"))
+    elif kind == "menu" and target not in menukeys:
+        rib_dead.append((key, f"menu: MENUS.{target} nao existe"))
+    elif kind == "core" and target not in corekeys:
+        rib_dead.append((key, f"core: modo {target} invalido"))
+    elif kind == "api" and target not in handlers:
+        rib_dead.append((key, f"api: handler {target} nao existe"))
+    elif kind == "lock" and not ({"PropsAll", "SetAny"} <= handlers):
+        rib_dead.append((key, "lock: PropsAll/SetAny ausentes"))
+    elif kind not in ("menus", "menu", "core", "api", "lock"):
+        rib_dead.append((key, f"kind desconhecido: {kind}"))
+only_wired = sorted(w for w in wired if w not in rib)
+print(f"ribbon keys: {len(rib)} | sem fio no 09: "
+      f"{sorted(k for k, _ in rib_dead if _.startswith('sem BUTTONS'))}")
+print(f"BUTTONS sem TABS: {only_wired}")
+for key, why in rib_dead:
+    if not why.startswith("sem BUTTONS"):
+        dead.append((key, "ribbon", why, "alvo nao resolve"))
 
 print(f"\nMORTOS/SUSPEITOS: {len(dead)}")
 for d in dead:

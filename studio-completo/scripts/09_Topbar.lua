@@ -1,5 +1,5 @@
--- 09_Topbar (REBUILD EN) — wires MenuBar2 + Ribbon2 (ArkherShell2) to real buses.
--- No GUI is created here: every button below is baked (build_shell2.py).
+-- 09_Topbar (R18) — wires the SINGLE top bar (ArkherTop: menus + tabs + pages).
+-- No GUI is created here: every button below is baked (build_shell.py).
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local gui = script:FindFirstAncestorOfClass("ScreenGui")
@@ -9,11 +9,16 @@ local rt = gui:WaitForChild("ArkherServerClientRuntime", 30)
 assert(rt, "09_Topbar: runtime folder missing (01_Nucleo must boot first).")
 local clientBus = rt:WaitForChild("ClientBus", 30)
 local menusBus = rt:WaitForChild("MenusBus", 30)
-local coreReady = rt:WaitForChild("CoreReady", 30)
 local menusReady = rt:WaitForChild("MenusReady", 30)
+local selId = rt:WaitForChild("SelectedId", 30)
 local canvas = gui:WaitForChild("Canvas")
-local shell = canvas:WaitForChild("ArkherShell2", 30)
-assert(shell, "09_Topbar: ArkherShell2 missing from bake.")
+local deck = canvas:WaitForChild("ArkherXDeck", 30)
+assert(deck, "09_Topbar: ArkherXDeck missing from bake.")
+local top = deck:WaitForChild("ArkherTop", 30)
+assert(top, "09_Topbar: ArkherTop missing from bake.")
+
+local TABS = { "FILE", "EDIT", "INSERT", "CREATE", "RUN", "TRANSFORM",
+               "SETTINGS", "PLUGINS", "TEAM" }
 
 local function say(text, bad)
   pcall(function() clientBus:Invoke("Message", { text = tostring(text), bad = bad }) end)
@@ -33,7 +38,7 @@ local function bus(cmd, arg)
 end
 
 local function api(action, payload)
-  local res, err = nil, nil
+  local res = nil
   local ok = pcall(function()
     res = clientBus:Invoke("API", { action = action, payload = payload or {}, quiet = true })
   end)
@@ -43,7 +48,7 @@ local function api(action, payload)
 end
 
 local function on(name, fn)
-  local o = shell:FindFirstChild(name, true)
+  local o = top:FindFirstChild(name, true)
   if not o then say("09: baked button missing: " .. name, true) return end
   if not o:IsA("GuiButton") then return end
   local function fire() local ok, err = pcall(fn, o) if not ok then say(name .. ": " .. tostring(err), true) end end
@@ -51,48 +56,137 @@ local function on(name, fn)
   pcall(function() o.MouseButton1Click:Connect(fire) end)
 end
 
--- ---- menu bar: 12 dropdowns (entries live in 03_Menus MENUS.*) ----
-for _, m in ipairs({ "Assets", "Models", "Terrain", "Animation", "Audio", "Scripts",
+-- ---- menu row: 18 dropdowns (classic 6 + X 12; entries live in 03_Menus MENUS.*) ----
+for _, m in ipairs({ "File", "Edit", "View", "Insert", "Run", "Game",
+                     "Assets", "Models", "Terrain", "Animation", "Audio", "Scripts",
                      "UI", "FX", "Lighting", "Gameplay", "Physics", "Tools" }) do
   on("M2_" .. m, function(o) menu(m, o) end)
 end
 
--- ---- ribbon: transform modes (real, via 01_Nucleo) ----
-on("R2_Select", function() clientBus:Invoke("SetMode", { key = "Select" }) end)
-on("R2_Move", function() clientBus:Invoke("SetMode", { key = "Move" }) end)
-on("R2_Scale", function() clientBus:Invoke("SetMode", { key = "Scale" }) end)
-on("R2_Rotate", function() clientBus:Invoke("SetMode", { key = "Rotate" }) end)
+-- ---- tabs: show one page, restyle strip ----
+local TXT_ON = Color3.fromRGB(230, 235, 245)
+local TXT_OFF = Color3.fromRGB(199, 210, 232)
+local function showPage(t)
+  for _, u in ipairs(TABS) do
+    local pg = top:FindFirstChild("Page_" .. u, true)
+    if pg then pg.Visible = (u == t) end
+    local tb = top:FindFirstChild("Tab_" .. u, true)
+    if tb and tb:IsA("GuiButton") then
+      local active = (u == t)
+      tb.BackgroundTransparency = active and 0 or 1
+      tb.TextColor3 = active and TXT_ON or TXT_OFF
+      local pill = tb:FindFirstChild("ActivePill")
+      if pill then pill.Visible = active end
+    end
+  end
+end
+for _, t in ipairs(TABS) do
+  on("Tab_" .. t, function() showPage(t) end)
+end
 
--- ---- ribbon: play controls (real, via 03_Menus Run handlers) ----
-on("R2_Play", function() bus("RunToggle") end)
-on("R2_Pause", function() bus("RunPause") end)
-on("R2_Stop", function() bus("RunStop") end)
-
--- ---- ribbon: undo/redo (real server history) ----
-on("R2_Undo", function()
+-- ---- ribbon buttons: (kind, target) mirrors build_shell.py TABS ----
+local function doUndo()
   local r = api("Undo", {})
   if r then say("Undo" .. (r.msg and (": " .. tostring(r.msg)) or " done.")) end
-end)
-on("R2_Redo", function()
+end
+local function doRedo()
   local r = api("Redo", {})
   if r then say("Redo" .. (r.msg and (": " .. tostring(r.msg)) or " done.")) end
-end)
+end
+local function doLock()
+  local id = selId and selId.Value or ""
+  if id == "" then say("Lock: select an object first.", true) return end
+  local pr = api("PropsAll", { id = id })
+  if not (pr and pr.result and pr.result.fields) then say("Lock: no properties.", true) return end
+  local cur = nil
+  for _, f in ipairs(pr.result.fields) do
+    if f.key == "Locked" or f.name == "Locked" then cur = f.value end
+  end
+  local r = api("SetAny", { id = id, name = "Locked", kind = "b", value = not cur })
+  if r then say(cur and "Unlocked." or "Locked.") end
+end
 
--- ---- ribbon: menu shortcuts ----
-on("R2_Terrain", function(o) menu("Terrain", o) end)
-on("R2_Insert", function() bus("Insert") end)
-on("R2_Script", function(o) menu("Scripts", o) end)
-on("R2_UI", function(o) menu("UI", o) end)
-on("R2_Animate", function(o) menu("Animation", o) end)
-on("R2_FX", function(o) menu("FX", o) end)
+local BUTTONS = {
+  -- FILE
+  RibbonBtn_FILE_Save = { "menus", "Save" },
+  RibbonBtn_FILE_Open = { "menus", "Open" },
+  RibbonBtn_FILE_SaveToArkher = { "menus", "SavePlaceAccount" },
+  RibbonBtn_FILE_Publish = { "menus", "OpenPublish" },
+  RibbonBtn_FILE_Help = { "menus", "HelpStudio" },
+  -- EDIT
+  RibbonBtn_EDIT_Undo = { "api", "Undo" },
+  RibbonBtn_EDIT_Redo = { "api", "Redo" },
+  RibbonBtn_EDIT_Anchor = { "menus", "XAnchor" },
+  RibbonBtn_EDIT_Snap = { "menus", "XSnap" },
+  RibbonBtn_EDIT_Group = { "menus", "XGroup" },
+  RibbonBtn_EDIT_Ungroup = { "menus", "XUngroup" },
+  -- INSERT
+  RibbonBtn_INSERT_Model = { "menus", "InsertModel" },
+  RibbonBtn_INSERT_Folder = { "menus", "InsertFolder" },
+  RibbonBtn_INSERT_Script = { "menus", "InsertScript" },
+  RibbonBtn_INSERT_Text = { "menus", "InsertTextLabel" },
+  -- CREATE
+  RibbonBtn_CREATE_Terrain = { "menu", "Terrain" },
+  RibbonBtn_CREATE_Insert = { "menus", "Insert" },
+  RibbonBtn_CREATE_Script = { "menu", "Scripts" },
+  RibbonBtn_CREATE_UI = { "menu", "UI" },
+  RibbonBtn_CREATE_Animate = { "menu", "Animation" },
+  RibbonBtn_CREATE_FX = { "menu", "FX" },
+  -- RUN
+  RibbonBtn_RUN_Play = { "menus", "RunToggle" },
+  RibbonBtn_RUN_Pause = { "menus", "RunPause" },
+  RibbonBtn_RUN_Stop = { "menus", "RunStop" },
+  -- TRANSFORM
+  RibbonBtn_TRANSFORM_Select = { "core", "Select" },
+  RibbonBtn_TRANSFORM_MoveScale = { "core", "MoveScale" },
+  RibbonBtn_TRANSFORM_Rotate = { "core", "Rotate" },
+  RibbonBtn_TRANSFORM_Scale = { "core", "Scale" },
+  RibbonBtn_TRANSFORM_Transform = { "menus", "XTransform" },
+  RibbonBtn_TRANSFORM_Lock = { "lock" },
+  RibbonBtn_TRANSFORM_LocalGlobal = { "core", "LocalGlobal" },
+  -- SETTINGS
+  RibbonBtn_SETTINGS_Data = { "menus", "OpenData" },
+  RibbonBtn_SETTINGS_Localization = { "menus", "OpenLocalization" },
+  RibbonBtn_SETTINGS_Settings = { "menus", "XSettings" },
+  -- PLUGINS
+  RibbonBtn_PLUGINS_ArkherCloud = { "menus", "OpenCloud" },
+  RibbonBtn_PLUGINS_PluginToolbar = { "menus", "OpenPlugins" },
+  -- TEAM
+  RibbonBtn_TEAM_Toolbox = { "menus", "OpenToolbox" },
+  RibbonBtn_TEAM_CollaborationSettings = { "menus", "OpenCollaboration" },
+  RibbonBtn_TEAM_Collaborate = { "menus", "Collaborate" },
+  RibbonBtn_TEAM_Invites = { "menus", "Invites" },
+  RibbonBtn_TEAM_Changes = { "menus", "Changes" },
+  RibbonBtn_TEAM_Account = { "menus", "Account" },
+}
 
--- ---- ribbon: save / publish / help ----
-on("R2_Save", function() bus("Save") end)
-on("R2_Publish", function() bus("OpenPublish") end)
-on("R2_Help", function(o) menu("Tools", o) say("Help lives in Tools > Studio Help.") end)
+for name, spec in pairs(BUTTONS) do
+  local kind, target = spec[1], spec[2]
+  if kind == "menus" then
+    on(name, function() bus(target) end)
+  elseif kind == "menu" then
+    on(name, function(o) menu(target, o) end)
+  elseif kind == "core" then
+    if target == "LocalGlobal" then
+      on(name, function()
+        local ok = pcall(function() clientBus:Invoke("SetSpace", {}) end)
+        say(ok and "Space toggled (Local/Global)." or "SetSpace failed.", not ok)
+      end)
+    else
+      on(name, function()
+        local ok = pcall(function() clientBus:Invoke("SetMode", { key = target }) end)
+        if not ok then say("Mode " .. target .. " failed.", true) end
+      end)
+    end
+  elseif kind == "api" then
+    on(name, target == "Undo" and doUndo or doRedo)
+  elseif kind == "lock" then
+    on(name, doLock)
+  end
+end
 
--- ---- menu bar right: search / bell / user (all real) ----
-local search = shell:FindFirstChild("M2_Search", true)
+-- ---- menu row right: search / bell / user (all real) ----
+local search = top:FindFirstChild("M2_Search", true)
 if search and search:IsA("TextBox") then
   pcall(function()
     search.FocusLost:Connect(function(enter)
@@ -119,4 +213,4 @@ on("M2_User", function()
   say("Signed in as @" .. player.Name .. " (Pro).")
 end)
 
-say("Top bar ready: 12 menus + ribbon online.")
+say("Top bar ready: 18 menus + 9 tabs + 42 buttons online.")

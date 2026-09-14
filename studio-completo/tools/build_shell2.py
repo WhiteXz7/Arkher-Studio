@@ -99,55 +99,6 @@ def sep(x, y, h):
     return N("Frame", "Sep", {"Position": P(x, y), "Size": S(2, h),
                               "BackgroundColor3": BORDER, "BorderSizePixel": 0})
 
-# ---------------- 1. menu bar ----------------
-MENUS = [("M2_Assets", "Assets", 64), ("M2_Models", "Models", 64),
-         ("M2_Terrain", "Terrain", 64), ("M2_Animation", "Animation", 82),
-         ("M2_Audio", "Audio", 56), ("M2_Scripts", "Scripts", 64),
-         ("M2_UI", "UI", 40), ("M2_FX", "FX", 44),
-         ("M2_Lighting", "Lighting", 70), ("M2_Gameplay", "Gameplay", 80),
-         ("M2_Physics", "Physics", 66), ("M2_Tools", "Tools", 56)]
-menu_kids = [L("M2_Logo", 8, 5, 150, 24, "⬢  ARKHER STUDIO", GOLD, 13, FB)]
-mx = 170
-for name, text, w in MENUS:
-    menu_kids.append(B(name, mx, 4, w, 26, text, MENU_BG, TEXT, 13, FG))
-    mx += w + 4
-menu_kids += [T("M2_Search", 1238, 5, 200, 24, "Search tools, assets..."),
-              B("M2_Bell", 1444, 4, 28, 26, "🔔", MENU_BG, TEXT, 14),
-              B("M2_User", 1476, 4, 86, 26, "● dev", MENU_BG, GREEN, 12, FB)]
-menu = N("Frame", "MenuBar2",
-         {"Position": P(0, 0), "Size": S(1568, 34),
-          "BackgroundColor3": MENU_BG, "BorderSizePixel": 0,
-          "ClipsDescendants": True}, menu_kids)
-
-# ---------------- 2. ribbon ----------------
-RIBBON = [("R2_Select", "⌖\nSelect", 64), ("R2_Move", "✥\nMove", 64),
-          ("R2_Scale", "⛶\nScale", 64), ("R2_Rotate", "⟳\nRotate", 64), None,
-          ("R2_Play", "▶\nPlay", 64), ("R2_Pause", "⏸\nPause", 64),
-          ("R2_Stop", "⏹\nStop", 64), None,
-          ("R2_Undo", "↩\nUndo", 64), ("R2_Redo", "↪\nRedo", 64), None,
-          ("R2_Terrain", "⛰\nTerrain", 70), ("R2_Insert", "＋\nInsert", 70),
-          ("R2_Script", "📜\nScript", 70), ("R2_UI", "🖼\nUI", 60),
-          ("R2_Animate", "🎬\nAnimate", 70), ("R2_FX", "✨\nFX", 60), None,
-          ("R2_Save", "💾\nSave", 70), ("R2_Publish", "☁\nPublish", 80)]
-ribbon_kids = []
-rx = 8
-for item in RIBBON:
-    if item is None:
-        ribbon_kids.append(sep(rx, 43, 70))
-        rx += 8
-        continue
-    name, text, w = item
-    ribbon_kids.append(B(name, rx, 38, w, 78, text, PANEL, TEXT, 12, FG))
-    rx += w + 4
-ribbon_kids.append(B("R2_Anchor", 1242, 38, 70, 78, "⚓\nAnchor", PANEL, TEXT, 12, FG))
-ribbon_kids.append(B("R2_Snap", 1316, 38, 70, 78, "🧲\nSnap", PANEL, TEXT, 12, FG))
-ribbon_kids.append(B("R2_Group", 1390, 38, 70, 78, "🗂\nGroup", PANEL, TEXT, 12, FG))
-ribbon_kids.append(B("R2_Help", 1480, 38, 70, 78, "❓\nHelp", PANEL, TEXT, 12, FG))
-ribbon = N("Frame", "Ribbon2",
-           {"Position": P(0, 34), "Size": S(1568, 86),
-            "BackgroundColor3": PANEL, "BorderSizePixel": 0,
-            "ClipsDescendants": True}, ribbon_kids)
-
 # ---------------- 3. terrain panel ----------------
 # ---------------- 3. terrain panel ----------------
 terrain_btns = [("T2_Generate", "Generate"), ("T2_Erosion", "Erosion"),
@@ -785,7 +736,7 @@ mrw = F("M_RW", 0, 698, 1568, 80, MENU_BG, mrw_kids, HID)
 
 
 
-desktop_kids = ([menu, ribbon, terrain, console, selection, crumb, compass, coords,
+desktop_kids = ([terrain, console, selection, crumb, compass, coords,
           play, layers, region, mapp, gizmo, timeline, curves, sim, team,
           farright, farhelp] + footer)
 dmarquee = F("D_Marquee", 0, 0, 10, 10, INSET, [], {"Visible": False, "BackgroundTransparency": 0.45})

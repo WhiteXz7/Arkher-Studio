@@ -42,6 +42,7 @@ local menusBus = Instance.new("BindableFunction"); menusBus.Name = "MenusBus"; m
 menusBus.OnInvoke = function(action) menusCalls[#menusCalls + 1] = action return true end
 local ready = Instance.new("BoolValue"); ready.Name = "CoreReady"; ready.Value = true; ready.Parent = runtime
 local mready = Instance.new("BoolValue"); mready.Name = "MenusReady"; mready.Value = true; mready.Parent = runtime
+local selIdv = Instance.new("StringValue"); selIdv.Name = "SelectedId"; selIdv.Value = ""; selIdv.Parent = runtime
 local directBus = Instance.new("BindableFunction"); directBus.Name = "ClientBus"; directBus.Parent = gui
 directBus.OnInvoke = clientBus.OnInvoke
 local rs = game:GetService("ReplicatedStorage")
@@ -127,9 +128,15 @@ if ribbon then for _, pg in ipairs(ribbon:GetChildren()) do
     end
   end
 end end
-check(nTabs == 7, "7 abas antigas (" .. nTabs .. ")")
-check(nPages == 7, "7 paginas (" .. nPages .. ")")
-check(nBtns == 23, "23 botoes antigos (" .. nBtns .. ")")
+check(nTabs == 9, "9 abas Tab_* (" .. nTabs .. ")")
+check(nPages == 9, "9 paginas Page_* (" .. nPages .. ")")
+check(nBtns == 42, "42 botoes RibbonBtn_* (" .. nBtns .. ")")
+local nM2 = 0
+if top then for _, d in ipairs(top:GetDescendants()) do
+  if d:IsA("GuiButton") and d.Name:match("^M2_")
+     and d.Name ~= "M2_Bell" and d.Name ~= "M2_User" then nM2 = nM2 + 1 end
+end end
+check(nM2 == 18, "18 menus M2_* na topbar unica (" .. nM2 .. ")")
 local S1 = census()
 print("   census bake total=" .. total(S1))
 
@@ -212,28 +219,53 @@ check(loadClient("studio-completo/scripts/09_Topbar.lua", "Arkher_09_Topbar"), "
 local S5 = census()
 local ok5, diff5 = same(S4, S5)
 check(ok5, "09 cria ZERO instancias" .. (ok5 and "" or (" diff=" .. diff5)))
-local mnu = shell2:FindFirstChild("M2_Terrain", true)
+local mnu = top:FindFirstChild("M2_Terrain", true)
 if mnu then
   local m0 = #menusCalls
   mnu.MouseButton1Click:Fire()
   check(menusCalls[m0 + 1] == "Menu", "M2_Terrain abre dropdown (bus Menu)")
 end
-local rp = shell2:FindFirstChild("R2_Play", true)
+local mfile = top:FindFirstChild("M2_File", true)
+if mfile then
+  local m0 = #menusCalls
+  mfile.MouseButton1Click:Fire()
+  check(menusCalls[m0 + 1] == "Menu", "M2_File abre dropdown (bus Menu)")
+end
+local rp = top:FindFirstChild("RibbonBtn_RUN_Play", true)
 if rp then
   local m0 = #menusCalls
   rp.MouseButton1Click:Fire()
-  check(menusCalls[m0 + 1] == "RunToggle", "R2_Play chama menus RunToggle")
+  check(menusCalls[m0 + 1] == "RunToggle", "RUN_Play chama menus RunToggle")
 end
-local ru = shell2:FindFirstChild("R2_Undo", true)
+local ru = top:FindFirstChild("RibbonBtn_EDIT_Undo", true)
 if ru then
   local n0 = #apiCalls
   ru.MouseButton1Click:Fire()
-  check(apiCalls[n0 + 1] == "Undo", "R2_Undo chama bus Undo")
+  check(apiCalls[n0 + 1] == "Undo", "EDIT_Undo chama bus Undo")
 end
-local rs2 = shell2:FindFirstChild("R2_Select", true)
+local rs2 = top:FindFirstChild("RibbonBtn_TRANSFORM_Select", true)
 if rs2 then
   rs2.MouseButton1Click:Fire()
-  check(setModes[#setModes] == "Select", "R2_Select -> SetMode Select")
+  check(setModes[#setModes] == "Select", "TRANSFORM_Select -> SetMode Select")
+end
+local lg = top:FindFirstChild("RibbonBtn_TRANSFORM_LocalGlobal", true)
+if lg then
+  local m0 = #messages
+  lg.MouseButton1Click:Fire()
+  check(messages[m0 + 1] == "Space toggled (Local/Global).", "LocalGlobal alterna espaco")
+end
+local lk = top:FindFirstChild("RibbonBtn_TRANSFORM_Lock", true)
+if lk then
+  local m0 = #messages
+  lk.MouseButton1Click:Fire()
+  check(messages[m0 + 1] == "Lock: select an object first.", "Lock sem selecao: erro honesto")
+end
+local tabE = top:FindFirstChild("Tab_EDIT", true)
+if tabE then
+  tabE.MouseButton1Click:Fire()
+  local pF = top:FindFirstChild("Page_FILE", true)
+  local pE = top:FindFirstChild("Page_EDIT", true)
+  check(pF and not pF.Visible and pE and pE.Visible, "Tab_EDIT troca pagina (FILE some, EDIT aparece)")
 end
 
 print("\n================================")

@@ -21,8 +21,8 @@ local function W(parent, cls, name)
 	o.Parent = parent
 	return o
 end
--- desktop extras
-for _, n in ipairs({ "R2_Anchor", "R2_Snap", "R2_Group", "F2_LogLine" }) do W(desktop, "TextButton", n) end
+-- desktop extras (R18: sem R2_*; Snap/Group via atalhos N / Ctrl+G)
+for _, n in ipairs({ "F2_LogLine" }) do W(desktop, "TextButton", n) end
 -- mobile
 for _, n in ipairs({ "M_MenuBtn", "M_Undo", "M_Redo", "M_Save", "M_Play", "M_Stop",
 	"M_T_Select", "M_T_Move", "M_T_Rotate", "M_T_Scale", "M_T_Camera", "M_T_Insert", "M_T_Snap", "M_T_Props",
@@ -266,18 +266,17 @@ UIS.InputEnded:Fire({ KeyCode = Enum.KeyCode.ButtonR1 })
 click("V_Snap")
 check(lastSpy().cmd == "SetAny", "V_Snap roteia snap")
 
-print("\n== Input: override + desktop extras ==")
+print("\n== Input: override + desktop extras (atalhos) ==")
 check(IN.setPlatform("PC") == "PC" and desktop.Visible, "override manual p/ PC")
 VRService.VREnabled = false; UIS.GamepadEnabled = false
 check(IN.redetect() == "PC", "redetect volta p/ PC")
 local idA = mkSel("Ancora", 1)
-click("R2_Anchor")
-local pa = serverInvoke("Select", { id = idA })
-local av = nil
-for _, f in ipairs(pa.properties.fields) do if f.key == "Anchored" then av = f.value end end
-check(av == true, "R2_Anchor liga Anchored (full-stack)")
-click("R2_Group")
-check(lastSpy().cmd == "Group", "R2_Group roteia Group")
+UIS.IsKeyDown = function(self, k) return k == Enum.KeyCode.LeftControl end
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.G, UserInputType = Enum.UserInputType.Keyboard }, false)
+check(lastSpy().cmd == "Group", "Ctrl+G roteia Group")
+UIS.IsKeyDown = function(self, k) return false end
+UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.N, UserInputType = Enum.UserInputType.Keyboard }, false)
+check(lastSpy().cmd == "SetAny", "N roteia snap (SetAny)")
 
 
 print("\n== Input R9: multi-select PC (box/lasso/kids) ==")

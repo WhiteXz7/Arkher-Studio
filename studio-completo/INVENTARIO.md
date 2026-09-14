@@ -1,7 +1,7 @@
-# ARKHER STUDIO — INVENTÁRIO (R17, 2026-09-14)
+# ARKHER STUDIO — INVENTÁRIO (R18, 2026-09-14)
 
 Base: `ArkherStudio_Completo_X.rbxl` → `ArkherStudio_Completo_GUIX.rbxl`
-(419586 bytes, 10811 instâncias, VERIFY OK). Suite: **1141/1141**.
+(422123 bytes, 10975 instâncias, VERIFY OK). Suite: **1153/1153**.
 Audits: botões mortos 0, drops 0, layout 0 violações,
 P0 75 ok / 1 parcial / 0 ausente.
 
@@ -42,15 +42,28 @@ P0 75 ok / 1 parcial / 0 ausente.
   (CLI stdlib, dry-run honesto sem chave) — 29 testes.
 - **Infra**: server 174 handlers + undo/redo + rate limit;
   ARKHER Input System 4 plataformas (`11_Input` + layouts baked);
-  topbar/ribbon/menus reais (`03/09/10`); 4 plataformas sem conversão
-  automática de controles.
-- **Shell**: 22 LocalScripts assados (01–22), 2 servers; spec 2010 nós.
+  TOPBAR ÚNICA real (`09_Topbar` + `03_Menus`: 18 menus + 9 abas +
+  42 botões, tudo fiado); 4 plataformas sem conversão automática
+  de controles.
+- **Shell**: 22 LocalScripts assados (01–22), 2 servers; specs
+  shell 617 + shell2 1931 nós; 54 ícones vetoriais (0 emoji).
 - **Layout limpo R17** (`audit_layout.py`, 0 violações): 73 painéis dos
   editores saíram de baixo do ribbon (y100→128) e de cima do footer
   (status→y784); HUD O2 + FR2_Help agora escondem com os editores (DESK 19
   nomes nos 11 clients); HO10_File/Tree descolados; TE3_Water para o canto
   inferior (cobre só o quadrante, centro livre); mobile (strips/labels/
   drawer/props) sem sobreposição; modais com ZIndex 50 — 2 testes novos.
+- **Topbar única R18** (`build_shell.py` + `hide_base_chrome.py` +
+  `09_Topbar`): 3 topbars visíveis (TitleBar/MenuBar/Ribbon base +
+  MenuBar2/Ribbon2 + ArkherTop morto) viraram 1 (ArkherTop 1568x120:
+  18 menus File..Tools + search/bell/user, 9 abas, 42 botões com
+  ícones vetoriais); base antiga escondida no bake (3 bytes Visible),
+  MenuBar2/Ribbon2 removidos, clones X do 03 aposentados (ações
+  re-homed: AnimKeyB/GoB→menu Animation, PlacesProfile já no Game);
+  42/42 alvos resolvidos (audit 0 mortos). Bugs reais corrigidos:
+  MenusBus sem fallback (cmds externos viravam no-op silencioso) e
+  propOf `.key` vs PropsAll `.name` (Anchor/Snap travados) — 12 testes
+  novos (incl. Anchor toggle full-stack true→false no server real).
 - Correções R16: ScriptGet duplicado removido (1 definição), pyCompile
   (elif/else após dedent, range 1-arg com fold, indent 4sp validado,
   range-step recusado), exclusão mútua 12–22 completa.
@@ -79,8 +92,11 @@ P0 75 ok / 1 parcial / 0 ausente.
 - PlaceList/Teleport/CreatePlace exigem jogo PUBLICADO + online
   (CreatePlace não funciona em Play Solo; template precisa ser seu).
 - C++/C# nunca executarão no Roblox — sem promessa futura.
+- Controles de janela da base (Minimize/Maximize/Close) aposentados com
+  a TitleBar antiga: no Play, F8 mostra/esconde a UI (núcleo 01, real).
 
 ## % FALTANTE p/ superar a indústria: ~3%
 
-R17 entregou layout limpo (0 violações, +2 testes). Falta: polish/
-acessibilidade/docs (3%).
+R18 entregou a topbar única (18 menus + 9 abas + 42 botões, 0 mortos,
++12 testes, 2 bugs reais corrigidos). Falta: polish/acessibilidade/
+docs (3%).

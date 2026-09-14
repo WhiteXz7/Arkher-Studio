@@ -166,7 +166,8 @@ local function propOf(id, key)
   local pr, pe = api("PropsAll", { id = id })
   if pe or not (pr and pr.result and pr.result.fields) then return nil end
   for _, f in ipairs(pr.result.fields) do
-    if f.key == key then return f.value end
+    -- R18: PropsAll devolve {name=...}; Select.properties devolve {key=...}.
+    if f.key == key or f.name == key then return f.value end
   end
   return nil
 end
@@ -311,7 +312,7 @@ actions.ToggleHierarchy = function() toggleDock("HierarchyDock") end
 actions.ToggleProperties = function() toggleDock("PropertiesDock") end
 actions.Fullscreen = function()
   fullscreen = not fullscreen
-  for _, nm in ipairs({ "MenuBar2", "Ribbon2", "Footer" }) do
+  for _, nm in ipairs({ "ArkherTop", "Footer" }) do
     local o = g:FindFirstChild(nm, true)
     if o then o.Visible = not fullscreen end
   end
@@ -319,7 +320,7 @@ actions.Fullscreen = function()
 end
 actions.ResetLayout = function()
   fullscreen = false
-  for _, nm in ipairs({ "MenuBar2", "Ribbon2", "Footer", "HierarchyDock", "PropertiesDock" }) do
+  for _, nm in ipairs({ "ArkherTop", "Footer", "HierarchyDock", "PropertiesDock" }) do
     local o = g:FindFirstChild(nm, true)
     if o then o.Visible = true end
   end
@@ -1409,7 +1410,9 @@ MENUS.Animation = {
   { icon = "Open", label = "Physics Animator", act = "XOpenAnimatorPhys" },
   { sep = true },
   { icon = "plus", label = "Record Key (A)", act = "AnimKeyA" },
+  { icon = "plus", label = "Record Key (B)", act = "AnimKeyB" },
   { icon = "Play", label = "Play (A)", act = "AnimGoA" },
+  { icon = "Play", label = "Play (B)", act = "AnimGoB" },
   { icon = "nodeLink", label = "Stop", act = "AnimStop" },
 }
 MENUS.Audio = {
@@ -1613,6 +1616,14 @@ bj.OnInvoke = function(action, payload)
     closeMenu()
     n.alive = false
     if bk then bk.Value = false end
+    return true
+  end
+  -- R18: fallback pela tabela actions.* — sem isso, cmds fora da allowlist
+  -- acima (XAnchor, Open, SavePlaceAccount, Collaborate, ...) caiam no
+  -- `return true` silencioso e botoes externos (09_Topbar) nao faziam nada.
+  local fn = actions[action]
+  if fn then
+    fn(payload)
     return true
   end
   return true
@@ -1827,7 +1838,7 @@ local function openTerrainVoxelPanel()
     local pr, pe = api("PropsAll", { id = sg.result.id })
     if pe or not (pr and pr.result and pr.result.fields) then say("Props da selecao indisponiveis.", true) return end
     for _, f in ipairs(pr.result.fields) do
-      if f.key == "Position" and typeof(f.value) == "Vector3" then
+      if (f.key == "Position" or f.name == "Position") and typeof(f.value) == "Vector3" then
         cx.Text = tostring(math.floor(f.value.X))
         cy.Text = tostring(math.floor(f.value.Y))
         cz.Text = tostring(math.floor(f.value.Z))
@@ -2330,52 +2341,13 @@ actions.XOpenPy           = function() deckOpen("py", nil) end
 actions.XCordaDemo        = function() deckCmd("rope_demo", {}) deckOpen("cordas", "demos") end
 actions.XCordaPonte       = function() deckOpen("cordas", "ponte") end
 
--- ---- botoes na MenuRow da topbar ORIGINAL (clona estilo do irmao) ----
-do
-  local weekdayALvo = { "MUNDO", "AGUA", "MODELAGEM", "ANIMACAO", "ESPACO", "FABRICAR", "LUGARES" }
-  local function findBtn(nm)
-    for _, c in ipairs(g:GetDescendants()) do
-      if c:IsA("GuiButton") and c.Name == nm then return c end
-    end
-    return nil
-  end
-  local ref = findBtn("View") or findBtn("Game") or findBtn("Insert")
-  if ref and ref.Parent then
-    local row = ref.Parent
-    local byName = {}
-    for _, c in ipairs(row:GetChildren()) do
-      if c:IsA("GuiButton") then byName[c.Name] = true end
-    end
-    for i, nm in ipairs(weekdayALvo) do
-      if not byName[nm] then
-        local b0 = ref:Clone()
-        b0.Name = nm
-        b0.Text = (nm == "ANIMACAO") and "ANIMAÇÃO" or (nm == "FABRICAR" and "FABRICAR" or nm)
-        b0.Parent = row
-        pcall(function() b0.LayoutOrder = 100 + i end) -- DEPOIS do GAME
-        local function fireMenu()
-          -- ROUND 13: abre DIRETO (o MenusBus 'Menu' é quem mostra o dropdown;
-          -- mandar via ClientBus caía no 'return true' e nada abria — bug real)
-          closeMenu()
-          buildMenu(nm, b0)
-        end
-        local mLast = 0
-        b0.Activated:Connect(function()
-          mLast = os.clock()
-          fireMenu()
-        end)
-        b0.MouseButton1Click:Connect(function()
-          if os.clock() - mLast < 0.12 then return end
-          mLast = os.clock()
-          fireMenu()
-        end)
-      end
-    end
-    print("[ArkherX] Menus X na topbar original: MUNDO / ÁGUA / MODELAGEM / ANIMAÇÃO / ESPAÇO / FABRICAR / LUGARES")
-  else
-    warn("[ArkherX] MenuRow não achada — menus X vivem só via MenusBus")
-  end
-end
+-- ---- R18: menus X clonados na topbar ORIGINAL foram REMOVIDOS ----
+-- A topbar original (TitleBar/MenuBar/Ribbon) agora fica escondida no bake
+-- (hide_base_chrome.py): UMA topbar so (ArkherTop). Todas as acoes dos 7
+-- menus X (MUNDO/AGUA/MODELAGEM/ANIMACAO/ESPACO/FABRICAR/LUGARES) ja vivem
+-- nos 18 menus M2_* + abas do 09_Topbar; AnimKeyB/AnimGoB foram re-homed
+-- para MENUS.Animation e PlacesProfile ja estava em MENUS.Game. Nada e
+-- criado em runtime aqui (constraint: GUI so assada).
 
 
 -- =============================================================

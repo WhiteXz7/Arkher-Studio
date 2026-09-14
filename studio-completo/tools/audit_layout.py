@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Auditoria R17: layout sem sobreposicao e viewport legivel.
+"""Auditoria R18: layout sem sobreposicao e viewport legivel.
 
-Checa em tools/shell2spec.json (design space 1568x882):
+Checa em tools/shell2spec.json + tools/guix_spec.json (1568x882):
   1. Painel/chrome ids conhecidos: todo painel top-level pertence a um grupo.
   2. Dentro de cada grupo simultaneamente visivel, nenhum par de rects se
      sobrepoe (pares mutuamente exclusivos sao allowlist).
-  3. Nenhum painel cobre o chrome reservado (menu/ribbon/footer; top/bottom
-     no mobile; top/legend no console).
+  3. Nenhum painel cobre o chrome reservado (topbar unica ArkherTop +
+     footer; top/bottom no mobile; top/legend no console).
   4. Tudo dentro de 1568x882.
   5. (estatico) listas DESK/DESK_HIDE dos clients 12-22 contem os 19 nomes.
+  6. Topbar unica: ArkherTop 1568x120 em y0; MenuRow+TabStrip+Ribbon sem
+     sobrepor; 18 menus + 9 abas + 9 paginas (1 visivel) + 42 botoes.
 
 Uso: audit_layout.py  (exit 1 se houver violacao)
 """
@@ -19,6 +21,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SPEC = os.path.join(HERE, "shell2spec.json")
+GUIX = os.path.join(HERE, "guix_spec.json")
 SCRIPTS = os.path.join(HERE, "..", "scripts")
 W, H = 1568, 882
 
@@ -26,9 +29,11 @@ DESK19 = ["T2_Panel", "C2_Panel", "S2_Panel", "O2_Panel", "O2_WPanel",
           "TL2_Panel", "CV2_Panel", "SM2_Panel", "TM2_Panel", "FR2_Panel",
           "O2_Crumb", "O2_Compass", "O2_Coords", "O2_Play",
           "O2_Layers", "O2_Region", "O2_Map", "O2_Gizmo", "FR2_Help"]
-CHROME_DESK = ["MenuBar2", "Ribbon2", "F2_Out", "F2_Err", "F2_LogLine",
+CHROME_DESK = ["F2_Out", "F2_Err", "F2_LogLine",
                "F2_Project", "F2_SaveState", "F2_FPS", "F2_Ping", "F2_Mem",
                "F2_Publish"]
+# topbar unica (guix shell, fora do shell2spec): rect esperado absoluto.
+TOPBAR_RECT = (0, 0, 1568, 120)
 MODALS_DESK = ["D_Settings", "D_Marquee"]
 EDITORS = {
     "TE3": ["TE3_Rail", "TE3_Brush", "TE3_Mat", "TE3_Layers", "TE3_History",
@@ -121,9 +126,92 @@ def main():
             if r[0] < 0 or r[1] < 0 or r[2] > W or r[3] > H:
                 viol.append("%s: %s %s fora de 1568x882" % (label, n, r))
 
+    # ---- topbar unica (guix shell) ----
+    def rect_abs(n, pw, ph):
+        p = n.get("props", {})
+        pos = p.get("Position", {}).get("u2", [0, 0, 0, 0])
+        siz = p.get("Size", {}).get("u2", [0, 0, 0, 0])
+        x0 = pos[0] * pw + pos[1]
+        y0 = pos[2] * ph + pos[3]
+        return (x0, y0, x0 + siz[0] * pw + siz[1], y0 + siz[2] * ph + siz[3])
+
+    gx = json.load(open(GUIX, encoding="utf-8"))
+    tops = [t for t in gx.get("shell", []) if t.get("name") == "ArkherTop"]
+    if len(tops) != 1:
+        viol.append("topbar: ArkherTop ausente ou duplicado no guix shell")
+        tops = []
+    else:
+        top = tops[0]
+        tr = rect_abs(top, W, H)
+        if tr != TOPBAR_RECT:
+            viol.append("topbar: ArkherTop %s != %s" % (tr, TOPBAR_RECT))
+        tk = {k.get("name"): k for k in top.get("kids", [])}
+        rows = {n: rect_abs(tk[n], tr[2] - tr[0], tr[3] - tr[1])
+                for n in ("MenuRow", "TabStrip", "Ribbon") if n in tk}
+        for n in ("MenuRow", "TabStrip", "Ribbon"):
+            if n not in tk:
+                viol.append("topbar: %s ausente em ArkherTop" % n)
+        rn = sorted(rows)
+        for i in range(len(rn)):
+            for j in range(i + 1, len(rn)):
+                if overlap(rows[rn[i]], rows[rn[j]]):
+                    viol.append("topbar: SOBREPOE %s x %s"
+                                % (rn[i], rn[j]))
+        for n, r in rows.items():
+            if r[1] < 0 or r[3] > TOPBAR_RECT[3]:
+                viol.append("topbar: %s %s fora de ArkherTop" % (n, r))
+        # menu row: 18 menus + logo + search + bell + user, sem sobrepor.
+        mk = tk.get("MenuRow", {}).get("kids", []) if "MenuRow" in tk else []
+        menus = [k for k in mk if k.get("name", "").startswith("M2_")
+                 and k.get("cls") == "TextButton"
+                 and k.get("name") not in ("M2_Bell", "M2_User")]
+        if len(menus) != 18:
+            viol.append("topbar: %d menus M2_* (esperado 18)" % len(menus))
+        mr = [(k.get("name"), rect(k)) for k in mk
+              if k.get("cls") in ("TextButton", "TextBox", "TextLabel")]
+        for i in range(len(mr)):
+            for j in range(i + 1, len(mr)):
+                if overlap(mr[i][1], mr[j][1]):
+                    viol.append("topbar: menu SOBREPOE %s x %s"
+                                % (mr[i][0], mr[j][0]))
+        for nm, r in mr:
+            if r[2] > W or r[1] < 0 or r[3] > rows.get("MenuRow", (0, 0, 0, 30))[3]:
+                viol.append("topbar: menu %s %s fora da MenuRow" % (nm, r))
+        # abas + paginas + botoes.
+        strip = tk.get("TabStrip", {}).get("kids", []) if "TabStrip" in tk else []
+        tabs = [k for k in strip if k.get("name", "").startswith("Tab_")]
+        if len(tabs) != 9:
+            viol.append("topbar: %d abas Tab_* (esperado 9)" % len(tabs))
+        pages = [k for k in tk.get("Ribbon", {}).get("kids", [])
+                 if k.get("name", "").startswith("Page_")] if "Ribbon" in tk else []
+        if len(pages) != 9:
+            viol.append("topbar: %d paginas Page_* (esperado 9)" % len(pages))
+        vispages = [k.get("name") for k in pages
+                    if k.get("props", {}).get("Visible", True)]
+        if vispages != ["Page_FILE"]:
+            viol.append("topbar: paginas visiveis %s (esperado ['Page_FILE'])"
+                        % vispages)
+        nbtn = 0
+        for pg in pages:
+            for k in pg.get("kids", []):
+                if k.get("name", "").startswith("RibbonBtn_"):
+                    nbtn += 1
+                    s = k.get("props", {}).get("Size", {}).get("u2", [0, 0, 0, 0])
+                    if s[1] > 1568 or s[3] > 62:
+                        viol.append("topbar: botao %s %dx%d nao cabe no ribbon"
+                                    % (k.get("name"), s[1], s[3]))
+        if nbtn != 42:
+            viol.append("topbar: %d botoes RibbonBtn_* (esperado 42)" % nbtn)
+
     # ---- desktop ----
     D = kids("DesktopRoot")
     check_bounds("desk", D)
+    # paineis desktop nao invadem a topbar unica (guix shell).
+    if tops:
+        for p in ([n for ps in EDITORS.values() for n in ps] + DESK19):
+            if p in D and overlap(D[p], TOPBAR_RECT):
+                viol.append("desk: %s %s invade topbar %s"
+                            % (p, D[p], TOPBAR_RECT))
     check_group("desk/desk", D, DESK19)
     for ed, panels in EDITORS.items():
         check_group("desk/" + ed, D, panels, skip=EXCLUSIVE)

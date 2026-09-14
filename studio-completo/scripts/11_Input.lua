@@ -47,7 +47,11 @@ local Precise = { on = false } -- modo precisao (mobile/console/vr)
 
 -- ============ Helpers ============
 local function find(name)
-  return shell:FindFirstChild(name, true)
+  -- R18: topbar unica mora no ArkherXDeck (fora do shell): shell primeiro,
+  -- depois fallback canvas-wide (i18n dos menus M2_* + Lbl do ribbon).
+  local o = shell and shell:FindFirstChild(name, true)
+  if o then return o end
+  return canvas:FindFirstChild(name, true)
 end
 local function setText(name, text)
   local o = find(name)
@@ -1317,20 +1321,13 @@ function UI.openSettings()
 end
 local ORIG, ORIGP = {}, {}
 local LANG_PT = {
+  M2_File = "Arquivo", M2_Edit = "Editar", M2_View = "Ver",
+  M2_Insert = "Inserir", M2_Run = "Executar", M2_Game = "Jogo",
   M2_Assets = "Recursos", M2_Models = "Modelos", M2_Terrain = "Terreno",
-  M2_Animation = "Animação", M2_Audio = "Áudio",
+  M2_Animation = "Animação", M2_Audio = "Áudio", M2_Scripts = "Scripts",
+  M2_UI = "Interface", M2_FX = "Efeitos",
   M2_Lighting = "Iluminação", M2_Gameplay = "Jogabilidade",
   M2_Physics = "Física", M2_Tools = "Ferramentas",
-  R2_Select = "⌈\nSelecionar", R2_Move = "✋\nMover",
-  R2_Scale = "⛶\nEscala", R2_Rotate = "⟳\nGirar",
-  R2_Play = "▶\nJogar", R2_Pause = "⏸\nPausar",
-  R2_Stop = "⏹\nParar", R2_Undo = "↩\nDesfazer",
-  R2_Redo = "↪\nRefazer", R2_Terrain = "⛰\nTerreno",
-  R2_Insert = "＋\nInserir", R2_Script = "📜\nScript",
-  R2_Animate = "🎬\nAnimar", R2_Save = "💾\nSalvar",
-  R2_Publish = "☁\nPublicar", R2_Help = "❓\nAjuda",
-  R2_Anchor = "⚓\nAncorar", R2_Snap = "🧲\nEncaixe",
-  R2_Group = "🗂\nGrupo",
   T2_Gen = "Gerar", T2_Erode = "Erosão", T2_Craters = "Crateras",
   T2_Flat = "Aplainar", T2_Smooth = "Suavizar", T2_Noise = "Ruído",
   T2_SizeL = "Tamanho", T2_ForceL = "Força",
@@ -1403,6 +1400,49 @@ local LANG_PATH_PT = {
   { "M_PropsP", "Title", "PROPRIEDADES" },
   { "M_Numeric", "Title", "TRANSFORMAR" },
   { "C_Panel", "Title", "PAINEL" },
+  -- topbar unica R18: texto fica no Lbl de cada RibbonBtn_*.
+  { "RibbonBtn_FILE_Save", "Lbl", "Salvar" },
+  { "RibbonBtn_FILE_Open", "Lbl", "Abrir" },
+  { "RibbonBtn_FILE_SaveToArkher", "Lbl", "Salvar na\nArkher" },
+  { "RibbonBtn_FILE_Publish", "Lbl", "Publicar" },
+  { "RibbonBtn_FILE_Help", "Lbl", "Ajuda" },
+  { "RibbonBtn_EDIT_Undo", "Lbl", "Desfazer" },
+  { "RibbonBtn_EDIT_Redo", "Lbl", "Refazer" },
+  { "RibbonBtn_EDIT_Anchor", "Lbl", "Ancorar" },
+  { "RibbonBtn_EDIT_Snap", "Lbl", "Encaixe" },
+  { "RibbonBtn_EDIT_Group", "Lbl", "Grupo" },
+  { "RibbonBtn_EDIT_Ungroup", "Lbl", "Desagrupar" },
+  { "RibbonBtn_INSERT_Model", "Lbl", "Modelo" },
+  { "RibbonBtn_INSERT_Folder", "Lbl", "Pasta" },
+  { "RibbonBtn_INSERT_Script", "Lbl", "Script" },
+  { "RibbonBtn_INSERT_Text", "Lbl", "Texto" },
+  { "RibbonBtn_CREATE_Terrain", "Lbl", "Terreno" },
+  { "RibbonBtn_CREATE_Insert", "Lbl", "Inserir" },
+  { "RibbonBtn_CREATE_Script", "Lbl", "Script" },
+  { "RibbonBtn_CREATE_UI", "Lbl", "Interface" },
+  { "RibbonBtn_CREATE_Animate", "Lbl", "Animar" },
+  { "RibbonBtn_CREATE_FX", "Lbl", "Efeitos" },
+  { "RibbonBtn_RUN_Play", "Lbl", "Jogar" },
+  { "RibbonBtn_RUN_Pause", "Lbl", "Pausar" },
+  { "RibbonBtn_RUN_Stop", "Lbl", "Parar" },
+  { "RibbonBtn_TRANSFORM_Select", "Lbl", "Selecionar" },
+  { "RibbonBtn_TRANSFORM_MoveScale", "Lbl", "Mover" },
+  { "RibbonBtn_TRANSFORM_Rotate", "Lbl", "Girar" },
+  { "RibbonBtn_TRANSFORM_Scale", "Lbl", "Escala" },
+  { "RibbonBtn_TRANSFORM_Transform", "Lbl", "Transformar" },
+  { "RibbonBtn_TRANSFORM_Lock", "Lbl", "Travar" },
+  { "RibbonBtn_TRANSFORM_LocalGlobal", "Lbl", "Local\nGlobal" },
+  { "RibbonBtn_SETTINGS_Data", "Lbl", "Dados" },
+  { "RibbonBtn_SETTINGS_Localization", "Lbl", "Idioma" },
+  { "RibbonBtn_SETTINGS_Settings", "Lbl", "Config" },
+  { "RibbonBtn_PLUGINS_ArkherCloud", "Lbl", "Nuvem\nInfo" },
+  { "RibbonBtn_PLUGINS_PluginToolbar", "Lbl", "Plugins" },
+  { "RibbonBtn_TEAM_Toolbox", "Lbl", "Toolbox" },
+  { "RibbonBtn_TEAM_CollaborationSettings", "Lbl", "Colab" },
+  { "RibbonBtn_TEAM_Collaborate", "Lbl", "Colaborar" },
+  { "RibbonBtn_TEAM_Invites", "Lbl", "Convites" },
+  { "RibbonBtn_TEAM_Changes", "Lbl", "Mudanças" },
+  { "RibbonBtn_TEAM_Account", "Lbl", "Conta" },
   { "C_Numeric", "Title", "TRANSFORMAR NUMÉRICO" },
   { "FR2_Help", "Title", "TECLAS" },
 }
@@ -1559,18 +1599,9 @@ on("V_Teleport", Actions.frame)
 on("V_Editors", function(o) menu("Tools", o) end)
 on("V_Spatial", function() Spatial.toggle() end)
 
--- DESKTOP: R2 extras (Anchor/Snap/Group) via endpoints compartilhados
-on("R2_Anchor", function()
-  local id = selId()
-  if not id then say("Anchor: select an object first.", true) return end
-  local pr = api("PropsAll", { id = id })
-  local cur = nil
-  if pr and pr.fields then for _, f in ipairs(pr.fields) do if f.key == "Anchored" then cur = f.value break end end end
-  local _, err = api("SetAny", { id = id, name = "Anchored", kind = "b", value = not cur })
-  if err then say("Anchor: " .. err, true) else say("Anchor " .. ((not cur) and "ON." or "OFF.")) end
-end)
-on("R2_Snap", Actions.snap)
-on("R2_Group", Actions.group)
+-- R18: botoes R2_* nao existem mais (topbar unica e do 09_Topbar, via
+-- MENUS XAnchor/XSnap/XGroup). Snap/Group seguem nos endpoints
+-- compartilhados (atalhos N / Ctrl+G + botoes mobile/console/VR).
 
 -- DESKTOP: D_Settings (remap + idioma + escala)
 for _, s in ipairs(REMAP_SLOTS) do
