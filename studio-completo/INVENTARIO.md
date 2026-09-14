@@ -1,7 +1,7 @@
-# ARKHER STUDIO — INVENTÁRIO (R18, 2026-09-14)
+# ARKHER STUDIO — INVENTÁRIO (R19, 2026-09-14)
 
 Base: `ArkherStudio_Completo_X.rbxl` → `ArkherStudio_Completo_GUIX.rbxl`
-(422123 bytes, 10975 instâncias, VERIFY OK). Suite: **1153/1153**.
+(422148 bytes, 10975 instâncias, VERIFY OK). Suite: **1153/1153**.
 Audits: botões mortos 0, drops 0, layout 0 violações,
 P0 75 ok / 1 parcial / 0 ausente.
 
@@ -64,6 +64,13 @@ P0 75 ok / 1 parcial / 0 ausente.
   MenusBus sem fallback (cmds externos viravam no-op silencioso) e
   propOf `.key` vs PropsAll `.name` (Anchor/Snap travados) — 12 testes
   novos (incl. Anchor toggle full-stack true→false no server real).
+- **Faixas mortas R19** (`hide_base_chrome.py` estendido): DocumentTabs
+  (a 2ª "faixa de abas" sob a topbar), LeftTabs, ChatBar e, no footer,
+  CommandBar + botão Arkher — TODOS os botões eram WIP ("Em
+  desenvolvimento", sem função) e os 2 inputs sem fiação; escondidos no
+  bake (8 refs Visible=false). Funções reais correspondentes: Places
+  (M2_Game), Team (TM2 + aba TEAM), Command Bar executável (M2_Scripts),
+  Help (aba FILE). ResetLayout não restaura mais as faixas mortas.
 - Correções R16: ScriptGet duplicado removido (1 definição), pyCompile
   (elif/else após dedent, range 1-arg com fold, indent 4sp validado,
   range-step recusado), exclusão mútua 12–22 completa.
@@ -98,5 +105,5 @@ P0 75 ok / 1 parcial / 0 ausente.
 ## % FALTANTE p/ superar a indústria: ~3%
 
 R18 entregou a topbar única (18 menus + 9 abas + 42 botões, 0 mortos,
-+12 testes, 2 bugs reais corrigidos). Falta: polish/acessibilidade/
-docs (3%).
++12 testes, 2 bugs reais corrigidos); R19 removeu as 5 faixas mortas
+que pareciam "2º ribbon/abas". Falta: polish/acessibilidade/docs (3%).

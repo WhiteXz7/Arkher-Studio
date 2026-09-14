@@ -324,8 +324,8 @@ actions.ResetLayout = function()
     local o = g:FindFirstChild(nm, true)
     if o then o.Visible = true end
   end
-  local tabs = g:FindFirstChild("DocumentTabs")
-  if tabs then for _, c in ipairs(tabs:GetChildren()) do if c:IsA("GuiObject") then c.Visible = true end end end
+  -- R19: DocumentTabs/LeftTabs/ChatBar sao faixas mortas escondidas no
+  -- bake (hide_base_chrome.py) — NAO restaurar (eram so botoes WIP).
   say("Layout restaurado.")
 end
 
