@@ -35,5 +35,34 @@ function TS.audit()
   end
   E().out.log(string.format("Place: %d parts, %d scripts, %d sounds.", parts, scripts, sounds))
 end
+TS.asserts = {}
+function TS.tick(dt)
+  TS._acc = (TS._acc or 0) + dt
+  if TS._acc < 0.5 or #TS.asserts == 0 then return end
+  TS._acc = 0
+  for _, a in ipairs(TS.asserts) do
+    if a.enabled ~= false then
+      local fn, err = loadstring("return (" .. (a.expr or "false") .. ")")
+      local ok, res = fn and pcall(fn)
+      local pass = ok and res == true
+      if pass ~= a._last then
+        a._last = pass
+        E().out.log("ASSERT " .. a.name .. ": " .. (pass and "PASS" or "FAIL"))
+      end
+    end
+  end
+end
+function TS.coverage()
+  local used, total = {}, 0
+  for _, h in ipairs(E().cmd.history) do used[h.id] = true end
+  local byTab = {}
+  for _, t in ipairs(E().registry.tabs) do
+    local u = 0
+    for _, c in ipairs(t.commands) do total = total + 1 if used[c.id] then u = u + 1 end end
+    byTab[#byTab + 1] = { tab = t.label, used = u, total = #t.commands }
+  end
+  local nu = 0 for _, _ in pairs(used) do nu = nu + 1 end
+  return { used = nu, total = total, byTab = byTab }
+end
 E().systems.test = TS
 return TS

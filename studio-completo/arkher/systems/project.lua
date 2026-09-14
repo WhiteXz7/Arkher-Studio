@@ -36,7 +36,12 @@ function PR.new(a)
     if (d:IsA("BasePart") or d:IsA("Model") or d:IsA("Folder")) and d ~= workspace.Terrain and d.Name ~= "Camera" then d:Destroy() end
   end
   workspace.Terrain:Clear()
-  if (a.template or "baseplate") ~= "empty" then
+  if (a.template or "baseplate") == "obby" then
+    local b = Instance.new("Part") b.Name = "Baseplate" b.Anchored = true b.Size = Vector3.new(120, 1, 120) b.Position = Vector3.new(0, -0.5, 0) b.Color = Color3.fromRGB(90, 160, 90) b.Parent = workspace
+    local sp = Instance.new("SpawnLocation") sp.Anchored = true sp.Size = Vector3.new(6, 1, 6) sp.Position = Vector3.new(0, 0.5, -40) sp.Parent = workspace
+    for i = 1, 6 do local p = Instance.new("Part") p.Name = "Step" .. i p.Anchored = true p.Size = Vector3.new(6, 1, 6) p.Position = Vector3.new((i % 2 == 0) and 8 or -8, i * 3, -40 + i * 12) p.Color = Color3.fromRGB(60, 140, 230) p.Material = Enum.Material.Plastic p.Parent = workspace end
+    local fin = Instance.new("Part") fin.Name = "Finish" fin.Anchored = true fin.Size = Vector3.new(10, 1, 10) fin.Position = Vector3.new(0, 21, 40) fin.Color = Color3.fromRGB(0, 200, 100) fin.Material = Enum.Material.Neon fin.Parent = workspace
+  elseif (a.template or "baseplate") ~= "empty" then
     local b = Instance.new("Part") b.Name = "Baseplate" b.Anchored = true b.Size = Vector3.new(512, 1, 512) b.Position = Vector3.new(0, -0.5, 0) b.Color = Color3.fromRGB(90, 160, 90) b.Parent = workspace
     local sp = Instance.new("SpawnLocation") sp.Anchored = true sp.Size = Vector3.new(6, 1, 6) sp.Position = Vector3.new(0, 0.5, 0) sp.Parent = workspace
   end
@@ -102,6 +107,71 @@ function PR.validate()
   E().out.log("Validate: " .. #errs .. " errors, " .. #warns .. " warnings.")
   for _, w in ipairs(warns) do E().out.warn(w) end
   E().panel.open("project_validate", { errs = errs, warns = warns })
+end
+function PR.listSlots(prefix)
+  local out = {}
+  for _, v in ipairs(PR.folder():GetChildren()) do
+    if v:IsA("StringValue") and (not prefix or v.Name:sub(1, #prefix) == prefix) then out[#out + 1] = v end
+  end
+  table.sort(out, function(a, b) return a.Name < b.Name end)
+  return out
+end
+function PR.deleteSlot(slot)
+  local v = PR.folder():FindFirstChild(slot)
+  if v then v:Destroy() E().toast("Deleted " .. slot) else E().toast("Not found.") end
+end
+function PR.slotInfo(slot)
+  local d = PR.readSlot(slot)
+  if not d then return nil end
+  return { name = d.name or slot, parts = #(d.parts or {}), t = d.t or 0, bytes = #(PR.folder():FindFirstChild(slot).Value) }
+end
+function PR.importJSON(text)
+  local ok, d = pcall(function() return HS():JSONDecode(text or "") end)
+  if not ok or type(d) ~= "table" then E().toast("Invalid JSON.") return end
+  local parts = d.parts or (d.n and { d } or d)
+  if type(parts) ~= "table" then E().toast("No parts found.") return end
+  local n = 0
+  for _, p in ipairs(parts) do
+    if type(p) == "table" and p.cf and p.sz then
+      local ok2, inst = pcall(Instance.new, p.c or "Part")
+      if ok2 and inst:IsA("BasePart") then
+        inst.Name = p.n or "Part" inst.CFrame = CFrame.new(unpack(p.cf)) inst.Size = Vector3.new(unpack(p.sz))
+        if p.col then inst.Color = Color3.new(unpack(p.col)) end
+        if p.mat then pcall(function() inst.Material = Enum.Material[p.mat] end) end
+        if p.an ~= nil then inst.Anchored = p.an end
+        inst.Parent = workspace E().undo.created(inst) n = n + 1
+      end
+    end
+  end
+  E().undo.commit("import json")
+  E().toast("Imported " .. n .. " parts.")
+end
+function PR.cfgGet(key)
+  local f = E().store.cfgFolder()
+  local v = f:FindFirstChild("cfg_" .. key)
+  if not v or v.Value == "" then return {} end
+  local ok, d = pcall(function() return HS():JSONDecode(v.Value) end)
+  return ok and d or {}
+end
+function PR.cfgSet(key, tbl)
+  local f = E().store.cfgFolder()
+  local v = f:FindFirstChild("cfg_" .. key) or Instance.new("StringValue") v.Name = "cfg_" .. key v.Parent = f
+  v.Value = HS():JSONEncode(tbl or {})
+end
+function PR.tr(key) local t = PR.cfgGet("locale") return t[key] or key end
+function PR.cloudQuota()
+  local bytes, n = 0, 0
+  for _, v in ipairs(PR.listSlots("cloud_")) do bytes = bytes + #v.Value n = n + 1 end
+  return { slots = n, bytes = bytes }
+end
+function PR.publishCheck()
+  local perms = PR.cfgGet("perms")
+  if perms.canPublish == false then return false, "Publishing disabled in Permissions." end
+  local errs, warns = {}, {}
+  local spawns = 0
+  for _, d in ipairs(workspace:GetDescendants()) do if d:IsA("SpawnLocation") then spawns = spawns + 1 end end
+  if spawns == 0 then errs[#errs + 1] = "No SpawnLocation" end
+  return #errs == 0, errs, warns
 end
 E().systems.project = PR
 return PR

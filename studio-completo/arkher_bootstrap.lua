@@ -4132,6 +4132,389 @@ reg("__generic", function(w, p)
   end
 end)
 end
+-- ===== shell/panels_d.lua =====
+do
+-- arkher/shell/panels_d.lua — bespoke panels: File block.
+local function E() return _G.ARKHER end
+local function K() return E().kit end
+local function reg(n, f) E().panel.reg(n, f) end
+local function PR() return E().systems.project end
+reg("project_import", function(w)
+  w.setTitle("Import JSON")
+  local k, c = K(), w.content
+  k.label(c, "Paste place/selection JSON (from Export).", true)
+  local tb = Instance.new("TextBox")
+  tb.Size = UDim2.new(1, 0, 0, 180) tb.Font = Enum.Font.Code tb.TextSize = 11 tb.Text = ""
+  tb.BackgroundColor3 = E().shell.theme().input tb.TextColor3 = E().shell.theme().text
+  tb.TextXAlignment = Enum.TextXAlignment.Left tb.TextYAlignment = Enum.TextYAlignment.Top
+  tb.MultiLine = true tb.ClearTextOnFocus = false tb.TextWrapped = true tb.Parent = c
+  k.button(c, "Import parts", function() PR().importJSON(tb.Text) end)
+end)
+reg("project_export", function(w)
+  w.setTitle("Export Selection")
+  local k, c = K(), w.content
+  local n = #E().sel.get()
+  k.label(c, n .. " object(s) selected.")
+  k.button(c, "Export to Output", function() PR().exportsel(E().sel.get()) end)
+  k.button(c, "Export whole place", function() PR().exportplace() end)
+end)
+reg("project_publish", function(w)
+  w.setTitle("Publish")
+  local k, c = K(), w.content
+  local ok, errs = PR().publishCheck()
+  if ok then k.label(c, "Checks passed.") else for _, e in ipairs(errs or {}) do k.label(c, "ERR: " .. e) end end
+  k.button(c, "Re-check", function() E().panel.close("project_publish") E().panel.open("project_publish", {}) end)
+  k.sep(c)
+  k.label(c, "Real publish happens in Studio: File > Publish to Roblox. This flow validates + snapshots first.", true)
+  k.button(c, "Snapshot + open Studio publish", function()
+    local ok2, e2 = PR().publishCheck()
+    if not ok2 then E().toast("Fix errors first.") return end
+    PR().snapshot("prepublish")
+    E().out.log("Ready for Studio publish: save this place file, then File > Publish to Roblox.")
+    E().toast("Snapshotted. Publish via Studio File menu.")
+  end)
+end)
+reg("project_cloud", function(w)
+  w.setTitle("Cloud Slots")
+  local k, c = K(), w.content
+  local q = PR().cloudQuota()
+  k.label(c, q.slots .. " slots, " .. math.floor(q.bytes / 1024) .. " KB.")
+  for _, v in ipairs(PR().listSlots("cloud_")) do
+    k.button(c, v.Name, function() PR().openSlot(v.Name) end)
+  end
+  k.button(c, "Save current to cloud", function() PR().cloudsave() end)
+end)
+reg("cloud", function(w)
+  w.setTitle("Cloud Info")
+  local k, c = K(), w.content
+  local q = PR().cloudQuota()
+  k.label(c, "Slots used: " .. q.slots)
+  k.label(c, "Bytes: " .. q.bytes)
+  k.label(c, "Backend: project storage in this place (works offline, travels with the file).", true)
+  k.button(c, "Open cloud slots", function() E().panel.open("project_cloud", {}) end)
+end)
+reg("project_settings", function(w)
+  w.setTitle("Project Settings")
+  local k, c = K(), w.content
+  local s = PR().cfgGet("settings")
+  local nm, genre = s.name or PR().name, s.genre or "All"
+  k.text(c, "Name", function() return nm end, function(v) nm = v end)
+  k.dropdown(c, "Genre", { "All", "Adventure", "Obby", "Roleplay", "Horror", "Simulator", "Other" }, function() return genre end, function(v) genre = v end)
+  k.button(c, "Save", function() PR().name = nm PR().cfgSet("settings", { name = nm, genre = genre }) E().toast("Settings saved.") end)
+end)
+reg("project_snapshot", function(w)
+  w.setTitle("Snapshot")
+  local k, c = K(), w.content
+  local nm = "snap1"
+  k.text(c, "Name", function() return nm end, function(v) nm = v end)
+  k.button(c, "Save snapshot", function() PR().snapshot(nm) end)
+  k.sep(c)
+  for _, v in ipairs(PR().listSlots("snap_")) do
+    k.button(c, "Restore " .. v.Name, function() PR().openSlot(v.Name) end)
+  end
+end)
+reg("files", function(w)
+  w.setTitle("File Manager")
+  local k, c = K(), w.content
+  local f = PR().folder()
+  for _, v in ipairs(f:GetChildren()) do
+    local info = v.Name .. " (" .. math.floor(#(v:IsA("StringValue") and v.Value or "") / 1024) .. " KB)"
+    k.button(c, info, function() end)
+  end
+  k.sep(c)
+  local del = ""
+  k.text(c, "Delete slot (exact name)", function() return del end, function(v) del = v end)
+  k.button(c, "Delete", function() PR().deleteSlot(del) E().panel.close("files") E().panel.open("files", {}) end)
+end)
+reg("templates", function(w)
+  w.setTitle("Templates")
+  local k, c = K(), w.content
+  k.button(c, "Baseplate + spawn", function() PR().new({ name = "Baseplate", template = "baseplate" }) end)
+  k.button(c, "Empty", function() PR().new({ name = "Empty", template = "empty" }) end)
+  k.button(c, "Obby starter", function() PR().new({ name = "Obby", template = "obby" }) end)
+  k.label(c, "Terrain template: New Project > Empty, then Terrain > Generate.", true)
+end)
+reg("versions", function(w)
+  w.setTitle("Versions")
+  local k, c = K(), w.content
+  for _, v in ipairs(PR().listSlots("save_")) do
+    local info = PR().slotInfo(v.Name)
+    k.button(c, v.Name .. " (" .. (info and info.parts or "?") .. " parts)", function() PR().openSlot(v.Name) end)
+  end
+  k.sep(c)
+  k.button(c, "Compare two versions", function() E().panel.open("versions_diff", {}) end)
+  k.button(c, "Backups", function() E().panel.open("backup", {}) end)
+end)
+reg("versions_diff", function(w)
+  w.setTitle("Compare Versions")
+  local k, c = K(), w.content
+  local slots = {}
+  for _, v in ipairs(PR().listSlots("save_")) do slots[#slots + 1] = v.Name end
+  for _, v in ipairs(PR().listSlots("snap_")) do slots[#slots + 1] = v.Name end
+  if #slots < 2 then k.label(c, "Need 2+ saves/snapshots.") return end
+  local a, b = slots[1], slots[2]
+  k.dropdown(c, "A", slots, function() return a end, function(v) a = v end)
+  k.dropdown(c, "B", slots, function() return b end, function(v) b = v end)
+  k.button(c, "Diff", function()
+    local da, db = PR().readSlot(a), PR().readSlot(b)
+    if not (da and db) then E().toast("Unreadable slot.") return end
+    local na = {}
+    for _, p in ipairs(da.parts or {}) do na[p.n or "?"] = (na[p.n or "?"] or 0) + 1 end
+    local added, removed = 0, 0
+    local nb = {}
+    for _, p in ipairs(db.parts or {}) do nb[p.n or "?"] = (nb[p.n or "?"] or 0) + 1 end
+    for n, x in pairs(nb) do if (na[n] or 0) < x then added = added + (x - (na[n] or 0)) end end
+    for n, x in pairs(na) do if (nb[n] or 0) < x then removed = removed + (x - (nb[n] or 0)) end end
+    E().out.log(string.format("Diff %s -> %s: +%d -%d parts (%d -> %d).", a, b, added, removed, #(da.parts or {}), #(db.parts or {})))
+    E().toast(string.format("+%d -%d (see Output).", added, removed))
+  end)
+end)
+reg("backup", function(w)
+  w.setTitle("Backups")
+  local k, c = K(), w.content
+  k.button(c, "Backup now", function() PR().backup() end)
+  k.storeSlider(c, "Keep slots", "backup_keep", 1, 20, 1)
+  for _, v in ipairs(PR().listSlots("backup_")) do
+    k.button(c, "Restore " .. v.Name, function() PR().openSlot(v.Name) end)
+  end
+  k.button(c, "Prune to keep-limit", function()
+    local l = PR().listSlots("backup_")
+    local keep = tonumber(E().store.get("backup_keep")) or 5
+    while #l > keep do local v = table.remove(l, 1) v:Destroy() end
+    E().toast("Pruned.")
+  end)
+end)
+reg("permissions", function(w)
+  w.setTitle("Permissions")
+  local k, c = K(), w.content
+  local p = PR().cfgGet("perms")
+  local ce = p.canEdit ~= false
+  local cp = p.canPublish ~= false
+  k.toggle(c, "Editing allowed", function() return ce end, function(v) ce = v end)
+  k.toggle(c, "Publishing allowed", function() return cp end, function(v) cp = v end)
+  k.button(c, "Save", function() PR().cfgSet("perms", { canEdit = ce, canPublish = cp }) E().toast("Permissions saved.") end)
+  k.label(c, "Publish flow blocks when publishing is off.", true)
+end)
+reg("localization", function(w)
+  w.setTitle("Localization")
+  local k, c = K(), w.content
+  local t = PR().cfgGet("locale")
+  local key, val = "", ""
+  k.text(c, "Key", function() return key end, function(v) key = v end)
+  k.text(c, "Text", function() return val end, function(v) val = v end)
+  k.button(c, "Add/Update", function()
+    if key == "" then return end
+    t[key] = val PR().cfgSet("locale", t)
+    E().panel.close("localization") E().panel.open("localization", {})
+  end)
+  k.sep(c)
+  for kk, vv in pairs(t) do k.label(c, kk .. " = " .. tostring(vv):sub(1, 60), true) end
+  k.label(c, "Lookup: project.tr(key) in console/plugins.", true)
+end)
+reg("team", function(w)
+  w.setTitle("Team")
+  local k, c = K(), w.content
+  local t = PR().cfgGet("team")
+  local nm = ""
+  k.text(c, "Invite name", function() return nm end, function(v) nm = v end)
+  k.button(c, "Create invite code", function()
+    if nm == "" then return end
+    local code = "ARK-" .. string.char(math.random(65, 90), math.random(65, 90)) .. "-" .. math.random(1000, 9999)
+    t[nm] = code PR().cfgSet("team", t)
+    E().out.log("Invite for " .. nm .. ": " .. code)
+    E().panel.close("team") E().panel.open("team", {})
+  end)
+  k.sep(c)
+  for kk, vv in pairs(t) do k.label(c, kk .. ": " .. vv, true) end
+  k.label(c, "Online now:", true)
+  for _, pl in ipairs(game:GetService("Players"):GetPlayers()) do k.label(c, pl.Name, true) end
+end)
+end
+-- ===== shell/panels_e.lua =====
+do
+-- arkher/shell/panels_e.lua — bespoke panels: Edit/View/Insert/Run blocks.
+local function E() return _G.ARKHER end
+local function K() return E().kit end
+local function reg(n, f) E().panel.reg(n, f) end
+reg("edit_rename", function(w)
+  w.setTitle("Rename")
+  local k, c = K(), w.content
+  local s = E().sel.get()
+  k.label(c, #s .. " object(s) selected.")
+  local nm = (s[1] and s[1].Name) or ""
+  k.text(c, "Name", function() return nm end, function(v) nm = v end)
+  k.button(c, "Apply", function() E().cmd.run("edit_rename", { name = nm }) E().panel.close("edit_rename") end)
+  if #s > 1 then k.label(c, "Multi-select gets Name_1, Name_2...", true) end
+end)
+reg("insert_full", function(w)
+  w.setTitle("Insert Class")
+  local k, c = K(), w.content
+  local q = ""
+  local classes = { "Part", "WedgePart", "CornerWedgePart", "TrussPart", "MeshPart", "SpawnLocation", "Seat", "VehicleSeat", "Folder", "Model", "Tool", "Attachment", "Script", "LocalScript", "ModuleScript", "BindableEvent", "BindableFunction", "RemoteEvent", "RemoteFunction", "Sound", "ParticleEmitter", "Fire", "Smoke", "Sparkles", "PointLight", "SpotLight", "SurfaceLight", "Decal", "Texture", "ScreenGui", "Frame", "TextButton", "TextLabel", "TextBox", "ImageLabel", "ImageButton", "ScrollingFrame", "ViewportFrame", "UIListLayout", "UIGridLayout", "UIPadding", "UICorner", "UIStroke", "UIGradient", "UIScale", "ProximityPrompt", "ClickDetector", "Dialog", "DialogChoice", "ForceField", "Explosion", "Beam", "Trail", "WeldConstraint", "HingeConstraint", "RopeConstraint", "RodConstraint", "SpringConstraint", "PrismaticConstraint", "BallSocketConstraint", "AlignPosition", "AlignOrientation", "VectorForce", "LinearVelocity", "AngularVelocity", "Torque", "BodyGyro", "BodyVelocity", "NumberValue", "StringValue", "BoolValue", "IntValue", "ObjectValue", "CFrameValue", "Color3Value" }
+  local listF = Instance.new("Frame") listF.BackgroundTransparency = 1 listF.Size = UDim2.new(1, 0, 0, 300) listF.LayoutOrder = 99 listF.Parent = c
+  local lay = Instance.new("UIListLayout") lay.Parent = listF
+  local function render()
+    for _, ch in ipairs(listF:GetChildren()) do if ch:IsA("TextButton") then ch:Destroy() end end
+    local n = 0
+    for _, cls in ipairs(classes) do
+      if q == "" or cls:lower():find(q:lower(), 1, true) then
+        n = n + 1 if n > 40 then return end
+        local b = Instance.new("TextButton")
+        b.Size = UDim2.new(1, 0, 0, 24) b.Font = Enum.Font.Gotham b.TextSize = 12
+        b.Text = "  + " .. cls b.TextXAlignment = Enum.TextXAlignment.Left
+        b.BackgroundColor3 = E().shell.theme().btn b.TextColor3 = E().shell.theme().text b.BorderSizePixel = 0 b.Parent = listF
+        b.MouseButton1Click:Connect(function() E().ACTIONS.create(nil, { class = cls }) end)
+      end
+    end
+  end
+  k.text(c, "Filter", function() return q end, function(v) q = v render() end)
+  render()
+end)
+reg("run_speed", function(w)
+  w.setTitle("Sim Speed")
+  local k, c = K(), w.content
+  k.storeSlider(c, "Multiplier", "sim_speed", 0, 4, 0.25)
+  for _, v in ipairs({ 0.25, 0.5, 1, 2, 4 }) do
+    k.button(c, v .. "x", function() E().store.set("sim_speed", v) end)
+  end
+end)
+reg("run_help", function(w)
+  w.setTitle("Preview Limits")
+  local k, c = K(), w.content
+  k.label(c, "Preview-play CAN: run NPC/AI brains, cutscenes, clips, day cycle, weather, script loops, sim timescale.")
+  k.label(c, "Preview-play CANNOT: run real server Scripts (Edit mode has no server), replicate, or publish. Use Run Loop + bots for logic tests.", true)
+end)
+reg("breakpoints", function(w)
+  w.setTitle("Breakpoints")
+  local k, c = K(), w.content
+  local SC = E().systems.script
+  SC.bp = SC.bp or {}
+  local m = ""
+  k.text(c, "Match text in source", function() return m end, function(v) m = v end)
+  k.button(c, "Add", function()
+    if m == "" then return end
+    SC.bp[#SC.bp + 1] = { match = m, name = "bp" .. (#SC.bp + 1), enabled = true }
+    E().panel.close("breakpoints") E().panel.open("breakpoints", {})
+  end)
+  k.sep(c)
+  for i, b in ipairs(SC.bp) do
+    k.toggle(c, (b.name or ("bp" .. i)) .. ": " .. b.match, function() return b.enabled end, function(v) b.enabled = v end)
+  end
+  if #SC.bp > 0 then k.button(c, "Clear all", function() SC.bp = {} E().panel.close("breakpoints") E().panel.open("breakpoints", {}) end) end
+  k.label(c, "Hit = log + pause preview when executed code contains the match.", true)
+end)
+reg("watch", function(w)
+  w.setTitle("Watch")
+  local k, c = K(), w.content
+  local SC = E().systems.script
+  SC.watch = SC.watch or {}
+  local ex = ""
+  k.text(c, "Expression", function() return ex end, function(v) ex = v end)
+  k.button(c, "Add", function()
+    if ex == "" then return end
+    SC.watch[#SC.watch + 1] = { expr = ex, value = "?" }
+    E().panel.close("watch") E().panel.open("watch", {})
+  end)
+  k.sep(c)
+  for _, x in ipairs(SC.watch) do k.label(c, x.expr .. " = " .. tostring(x.value or "?"), true) end
+  k.button(c, "Refresh", function() E().panel.close("watch") E().panel.open("watch", {}) end)
+  if #SC.watch > 0 then k.button(c, "Clear", function() SC.watch = {} end) end
+  k.label(c, "Evaluated 2x/sec while preview plays.", true)
+end)
+reg("callstack", function(w)
+  w.setTitle("Call Stack")
+  local k, c = K(), w.content
+  k.label(c, E().systems.script.stack(), true)
+  k.button(c, "Clear", function() E().systems.script._lastErr = nil E().panel.close("callstack") E().panel.open("callstack", {}) end)
+end)
+reg("debug_eval", function(w)
+  w.setTitle("Evaluate")
+  local k, c = K(), w.content
+  local ex, out = "", ""
+  k.text(c, "Expression", function() return ex end, function(v) ex = v end)
+  k.button(c, "Run", function()
+    local ok, res = E().systems.script.eval(ex)
+    out = (ok and "= " or "ERR ") .. tostring(res):sub(1, 200)
+    E().out.log("eval " .. ex .. " -> " .. out)
+    E().panel.close("debug_eval") E().panel.open("debug_eval", {})
+  end)
+  k.label(c, "Runs with engine permissions (documented).", true)
+end)
+reg("test_asserts", function(w)
+  w.setTitle("Assertions")
+  local k, c = K(), w.content
+  local TS = E().systems.test
+  local nm, ex = "", ""
+  k.text(c, "Name", function() return nm end, function(v) nm = v end)
+  k.text(c, "Expr (true=PASS)", function() return ex end, function(v) ex = v end)
+  k.button(c, "Add", function()
+    if nm == "" or ex == "" then return end
+    TS.asserts[#TS.asserts + 1] = { name = nm, expr = ex, enabled = true }
+    E().panel.close("test_asserts") E().panel.open("test_asserts", {})
+  end)
+  k.sep(c)
+  for _, a in ipairs(TS.asserts) do
+    k.toggle(c, a.name .. " [" .. (a._last == nil and "?" or (a._last and "PASS" or "FAIL")) .. "]", function() return a.enabled ~= false end, function(v) a.enabled = v end)
+  end
+  k.label(c, "Checked 2x/sec while preview plays; transitions logged.", true)
+end)
+reg("test_coverage", function(w)
+  w.setTitle("Coverage")
+  local k, c = K(), w.content
+  local cov = E().systems.test.coverage()
+  k.label(c, cov.used .. " / " .. cov.total .. " commands used this session.")
+  for _, b in ipairs(cov.byTab) do
+    if b.used > 0 then k.label(c, b.tab .. ": " .. b.used .. "/" .. b.total, true) end
+  end
+  k.button(c, "Refresh", function() E().panel.close("test_coverage") E().panel.open("test_coverage", {}) end)
+end)
+reg("net_graph", function(w)
+  w.setTitle("Net Graph")
+  local k, c = K(), w.content
+  local lbl = k.label(c, "sampling...", true)
+  local alive = true
+  local oldClose = w.frame.Destroy
+  coroutine.wrap(function()
+    for i = 1, 20 do
+      if not alive or not lbl.Parent then return end
+      local s = E().systems.perf.stats()
+      local up = tonumber(s.send) or 0
+      local dn = tonumber(s.recv) or 0
+      pcall(function()
+        lbl.Text = string.format("up %s kbps %s\ndown %s kbps %s", tostring(s.send or "?"), string.rep("#", math.clamp(math.floor(up / 50), 0, 30)), tostring(s.recv or "?"), string.rep("#", math.clamp(math.floor(dn / 50), 0, 30)))
+      end)
+      wait(0.5)
+    end
+  end)()
+  k.button(c, "Resample", function() E().panel.close("net_graph") E().panel.open("net_graph", {}) end)
+end)
+reg("script_activity", function(w)
+  w.setTitle("Script Activity")
+  local k, c = K(), w.content
+  local n = 0
+  for _, d in ipairs(game:GetDescendants()) do
+    if d:IsA("LuaSourceContainer") and d.Parent then
+      n = n + 1
+      if n <= 40 then
+        local dis = ""
+        pcall(function() dis = d.Disabled and " [OFF]" or "" end)
+        k.button(c, d.ClassName .. ": " .. d.Name .. dis, function() E().sel.set({ d }) E().props.show(d) end)
+      end
+    end
+  end
+  k.label(c, n .. " script(s) in place.", true)
+end)
+reg("error_list", function(w)
+  w.setTitle("Error List")
+  local k, c = K(), w.content
+  for i = math.max(1, #E().out.problems - 30), #E().out.problems do
+    local e = E().out.problems[i]
+    k.label(c, "[" .. e.kind .. "] " .. e.msg:sub(1, 120), true)
+  end
+  if #E().out.problems == 0 then k.label(c, "No errors collected.") end
+  k.button(c, "Clear", function() E().out.clear() E().panel.close("error_list") end)
+end)
+end
 -- ===== shell/shell.lua =====
 do
 -- arkher/shell/shell.lua — engine UI root: topbar/ribbon/docks/windows/theme.
@@ -6167,9 +6550,22 @@ function SC.runCode(src, where)
   -- Luau has no setfenv: console runs with engine permissions (power tool, documented).
   local fn, err = loadstring(src or "")
   if not fn then E().out.err("compile: " .. tostring(err)) return false end
+  SC.bp = SC.bp or {}
+  for _, b in ipairs(SC.bp) do
+    if b.enabled and b.match ~= "" and (src or ""):find(b.match, 1, true) then
+      E().out.warn("BREAK @" .. (b.name or b.match))
+      if E().sim.playing then E().sim.pause() end
+    end
+  end
   local ok, res = pcall(fn)
   if not ok then E().out.err("runtime: " .. tostring(res)) E().systems.script._lastErr = debug.traceback(tostring(res)) end
   return ok
+end
+function SC.eval(expr)
+  local fn, err = loadstring("return " .. (expr or ""))
+  if not fn then return false, err end
+  local ok, res = pcall(fn)
+  return ok, res
 end
 function SC.runOnce(o)
   local src = o and SC.getSource(o)
@@ -6183,7 +6579,17 @@ function SC.runLoop(o, on)
   SC.loopSrc = src
   E().toast("Loop running (Stop Loop to end).")
 end
-function SC.tick(dt) if SC.loopSrc then SC.runCode(SC.loopSrc) SC.loopSrc = nil E().toast("Loop tick done (single re-run; re-arm via Run Loop).") end end
+function SC.tick(dt)
+  if SC.loopSrc then SC.runCode(SC.loopSrc) SC.loopSrc = nil E().toast("Loop tick done (single re-run; re-arm via Run Loop).") end
+  SC._wacc = (SC._wacc or 0) + dt
+  if SC._wacc >= 0.5 and SC.watch and #SC.watch > 0 then
+    SC._wacc = 0
+    for _, w in ipairs(SC.watch) do
+      local ok, res = SC.eval(w.expr)
+      w.value = ok and tostring(res):sub(1, 80) or ("ERR " .. tostring(res):sub(1, 40))
+    end
+  end
+end
 function SC.toServer(o)
   local src = o and SC.getSource(o) or "--"
   E().bridge.call("exec", { src = src }, function(ok, res) E().out.log("server exec: " .. tostring(ok)) end)
@@ -6335,7 +6741,12 @@ function PR.new(a)
     if (d:IsA("BasePart") or d:IsA("Model") or d:IsA("Folder")) and d ~= workspace.Terrain and d.Name ~= "Camera" then d:Destroy() end
   end
   workspace.Terrain:Clear()
-  if (a.template or "baseplate") ~= "empty" then
+  if (a.template or "baseplate") == "obby" then
+    local b = Instance.new("Part") b.Name = "Baseplate" b.Anchored = true b.Size = Vector3.new(120, 1, 120) b.Position = Vector3.new(0, -0.5, 0) b.Color = Color3.fromRGB(90, 160, 90) b.Parent = workspace
+    local sp = Instance.new("SpawnLocation") sp.Anchored = true sp.Size = Vector3.new(6, 1, 6) sp.Position = Vector3.new(0, 0.5, -40) sp.Parent = workspace
+    for i = 1, 6 do local p = Instance.new("Part") p.Name = "Step" .. i p.Anchored = true p.Size = Vector3.new(6, 1, 6) p.Position = Vector3.new((i % 2 == 0) and 8 or -8, i * 3, -40 + i * 12) p.Color = Color3.fromRGB(60, 140, 230) p.Material = Enum.Material.Plastic p.Parent = workspace end
+    local fin = Instance.new("Part") fin.Name = "Finish" fin.Anchored = true fin.Size = Vector3.new(10, 1, 10) fin.Position = Vector3.new(0, 21, 40) fin.Color = Color3.fromRGB(0, 200, 100) fin.Material = Enum.Material.Neon fin.Parent = workspace
+  elseif (a.template or "baseplate") ~= "empty" then
     local b = Instance.new("Part") b.Name = "Baseplate" b.Anchored = true b.Size = Vector3.new(512, 1, 512) b.Position = Vector3.new(0, -0.5, 0) b.Color = Color3.fromRGB(90, 160, 90) b.Parent = workspace
     local sp = Instance.new("SpawnLocation") sp.Anchored = true sp.Size = Vector3.new(6, 1, 6) sp.Position = Vector3.new(0, 0.5, 0) sp.Parent = workspace
   end
@@ -6402,6 +6813,71 @@ function PR.validate()
   for _, w in ipairs(warns) do E().out.warn(w) end
   E().panel.open("project_validate", { errs = errs, warns = warns })
 end
+function PR.listSlots(prefix)
+  local out = {}
+  for _, v in ipairs(PR.folder():GetChildren()) do
+    if v:IsA("StringValue") and (not prefix or v.Name:sub(1, #prefix) == prefix) then out[#out + 1] = v end
+  end
+  table.sort(out, function(a, b) return a.Name < b.Name end)
+  return out
+end
+function PR.deleteSlot(slot)
+  local v = PR.folder():FindFirstChild(slot)
+  if v then v:Destroy() E().toast("Deleted " .. slot) else E().toast("Not found.") end
+end
+function PR.slotInfo(slot)
+  local d = PR.readSlot(slot)
+  if not d then return nil end
+  return { name = d.name or slot, parts = #(d.parts or {}), t = d.t or 0, bytes = #(PR.folder():FindFirstChild(slot).Value) }
+end
+function PR.importJSON(text)
+  local ok, d = pcall(function() return HS():JSONDecode(text or "") end)
+  if not ok or type(d) ~= "table" then E().toast("Invalid JSON.") return end
+  local parts = d.parts or (d.n and { d } or d)
+  if type(parts) ~= "table" then E().toast("No parts found.") return end
+  local n = 0
+  for _, p in ipairs(parts) do
+    if type(p) == "table" and p.cf and p.sz then
+      local ok2, inst = pcall(Instance.new, p.c or "Part")
+      if ok2 and inst:IsA("BasePart") then
+        inst.Name = p.n or "Part" inst.CFrame = CFrame.new(unpack(p.cf)) inst.Size = Vector3.new(unpack(p.sz))
+        if p.col then inst.Color = Color3.new(unpack(p.col)) end
+        if p.mat then pcall(function() inst.Material = Enum.Material[p.mat] end) end
+        if p.an ~= nil then inst.Anchored = p.an end
+        inst.Parent = workspace E().undo.created(inst) n = n + 1
+      end
+    end
+  end
+  E().undo.commit("import json")
+  E().toast("Imported " .. n .. " parts.")
+end
+function PR.cfgGet(key)
+  local f = E().store.cfgFolder()
+  local v = f:FindFirstChild("cfg_" .. key)
+  if not v or v.Value == "" then return {} end
+  local ok, d = pcall(function() return HS():JSONDecode(v.Value) end)
+  return ok and d or {}
+end
+function PR.cfgSet(key, tbl)
+  local f = E().store.cfgFolder()
+  local v = f:FindFirstChild("cfg_" .. key) or Instance.new("StringValue") v.Name = "cfg_" .. key v.Parent = f
+  v.Value = HS():JSONEncode(tbl or {})
+end
+function PR.tr(key) local t = PR.cfgGet("locale") return t[key] or key end
+function PR.cloudQuota()
+  local bytes, n = 0, 0
+  for _, v in ipairs(PR.listSlots("cloud_")) do bytes = bytes + #v.Value n = n + 1 end
+  return { slots = n, bytes = bytes }
+end
+function PR.publishCheck()
+  local perms = PR.cfgGet("perms")
+  if perms.canPublish == false then return false, "Publishing disabled in Permissions." end
+  local errs, warns = {}, {}
+  local spawns = 0
+  for _, d in ipairs(workspace:GetDescendants()) do if d:IsA("SpawnLocation") then spawns = spawns + 1 end end
+  if spawns == 0 then errs[#errs + 1] = "No SpawnLocation" end
+  return #errs == 0, errs, warns
+end
 E().systems.project = PR
 end
 -- ===== systems/test.lua =====
@@ -6442,6 +6918,35 @@ function TS.audit()
     if d:IsA("BasePart") then parts = parts + 1 elseif d:IsA("LuaSourceContainer") then scripts = scripts + 1 elseif d:IsA("Sound") then sounds = sounds + 1 end
   end
   E().out.log(string.format("Place: %d parts, %d scripts, %d sounds.", parts, scripts, sounds))
+end
+TS.asserts = {}
+function TS.tick(dt)
+  TS._acc = (TS._acc or 0) + dt
+  if TS._acc < 0.5 or #TS.asserts == 0 then return end
+  TS._acc = 0
+  for _, a in ipairs(TS.asserts) do
+    if a.enabled ~= false then
+      local fn, err = loadstring("return (" .. (a.expr or "false") .. ")")
+      local ok, res = fn and pcall(fn)
+      local pass = ok and res == true
+      if pass ~= a._last then
+        a._last = pass
+        E().out.log("ASSERT " .. a.name .. ": " .. (pass and "PASS" or "FAIL"))
+      end
+    end
+  end
+end
+function TS.coverage()
+  local used, total = {}, 0
+  for _, h in ipairs(E().cmd.history) do used[h.id] = true end
+  local byTab = {}
+  for _, t in ipairs(E().registry.tabs) do
+    local u = 0
+    for _, c in ipairs(t.commands) do total = total + 1 if used[c.id] then u = u + 1 end end
+    byTab[#byTab + 1] = { tab = t.label, used = u, total = #t.commands }
+  end
+  local nu = 0 for _, _ in pairs(used) do nu = nu + 1 end
+  return { used = nu, total = total, byTab = byTab }
 end
 E().systems.test = TS
 end

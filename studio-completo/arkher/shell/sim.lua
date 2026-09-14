@@ -33,6 +33,7 @@ function SIM.tick(dt)
   if sys.game and sys.game.tick then pcall(sys.game.tick, sdt) end
   if sys.fx and sys.fx.tick then pcall(sys.fx.tick, sdt) end
   if sys.script and sys.script.tick then pcall(sys.script.tick, sdt) end
+  if sys.test and sys.test.tick then pcall(sys.test.tick, sdt) end
   for _, l in ipairs(SIM.loops) do pcall(l, sdt) end
   if SIM.rec then SIM.events[#SIM.events + 1] = { t = SIM.t } end
 end

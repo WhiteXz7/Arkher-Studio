@@ -16,6 +16,7 @@ ORDER = [
     "shell/camera.lua", "shell/clip.lua", "shell/mode.lua", "shell/tools.lua",
     "shell/panelmgr.lua", "shell/panelkit.lua",
     "shell/panels_a.lua", "shell/panels_b.lua", "shell/panels_c.lua",
+    "shell/panels_d.lua", "shell/panels_e.lua",
     "shell/shell.lua", "shell/explorer.lua", "shell/props.lua",
     "shell/bottom.lua", "shell/shortcuts.lua",
     "systems/terrain.lua", "systems/model.lua", "systems/char.lua",
@@ -127,7 +128,8 @@ def main():
     print("icones usados: %d, faltando: %d" % (len(used_ic), len(missing_ic)))
     bespoke = set()
     for rel in ("shell/panels_a.lua", "shell/panels_b.lua",
-                "shell/panels_c.lua"):
+                "shell/panels_c.lua", "shell/panels_d.lua",
+                "shell/panels_e.lua"):
         bespoke |= set(re.findall(r'reg\("([a-z_0-9]+)"', mods.get(rel, "")))
     print("paineis bespoke: %d (+fallback generico funcional)" % len(bespoke))
     if errors:

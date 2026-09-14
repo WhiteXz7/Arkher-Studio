@@ -20,9 +20,22 @@ function SC.runCode(src, where)
   -- Luau has no setfenv: console runs with engine permissions (power tool, documented).
   local fn, err = loadstring(src or "")
   if not fn then E().out.err("compile: " .. tostring(err)) return false end
+  SC.bp = SC.bp or {}
+  for _, b in ipairs(SC.bp) do
+    if b.enabled and b.match ~= "" and (src or ""):find(b.match, 1, true) then
+      E().out.warn("BREAK @" .. (b.name or b.match))
+      if E().sim.playing then E().sim.pause() end
+    end
+  end
   local ok, res = pcall(fn)
   if not ok then E().out.err("runtime: " .. tostring(res)) E().systems.script._lastErr = debug.traceback(tostring(res)) end
   return ok
+end
+function SC.eval(expr)
+  local fn, err = loadstring("return " .. (expr or ""))
+  if not fn then return false, err end
+  local ok, res = pcall(fn)
+  return ok, res
 end
 function SC.runOnce(o)
   local src = o and SC.getSource(o)
@@ -36,7 +49,17 @@ function SC.runLoop(o, on)
   SC.loopSrc = src
   E().toast("Loop running (Stop Loop to end).")
 end
-function SC.tick(dt) if SC.loopSrc then SC.runCode(SC.loopSrc) SC.loopSrc = nil E().toast("Loop tick done (single re-run; re-arm via Run Loop).") end end
+function SC.tick(dt)
+  if SC.loopSrc then SC.runCode(SC.loopSrc) SC.loopSrc = nil E().toast("Loop tick done (single re-run; re-arm via Run Loop).") end
+  SC._wacc = (SC._wacc or 0) + dt
+  if SC._wacc >= 0.5 and SC.watch and #SC.watch > 0 then
+    SC._wacc = 0
+    for _, w in ipairs(SC.watch) do
+      local ok, res = SC.eval(w.expr)
+      w.value = ok and tostring(res):sub(1, 80) or ("ERR " .. tostring(res):sub(1, 40))
+    end
+  end
+end
 function SC.toServer(o)
   local src = o and SC.getSource(o) or "--"
   E().bridge.call("exec", { src = src }, function(ok, res) E().out.log("server exec: " .. tostring(ok)) end)
