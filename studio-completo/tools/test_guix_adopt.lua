@@ -128,15 +128,31 @@ if ribbon then for _, pg in ipairs(ribbon:GetChildren()) do
     end
   end
 end end
-check(nTabs == 9, "9 abas Tab_* (" .. nTabs .. ")")
-check(nPages == 9, "9 paginas Page_* (" .. nPages .. ")")
-check(nBtns == 42, "42 botoes RibbonBtn_* (" .. nBtns .. ")")
+check(nTabs == 18, "18 abas Tab_* (" .. nTabs .. ")")
+check(nPages == 18, "18 paginas Page_* (" .. nPages .. ")")
+check(nBtns == 162, "162 botoes RibbonBtn_* (" .. nBtns .. ")")
+local over20 = 0
+if ribbon then for _, pg in ipairs(ribbon:GetChildren()) do
+  if pg.Name:sub(1, 5) == "Page_" then
+    local nb = 0
+    for _, ch in ipairs(pg:GetChildren()) do
+      if ch:IsA("GuiButton") and ch.Name:sub(1, 10) == "RibbonBtn_" then nb = nb + 1 end
+    end
+    if nb > 20 then over20 = over20 + 1 end
+  end
+end end
+check(over20 == 0, "max 20 botoes por pagina")
+local hdr = top and top:FindFirstChild("HeaderRow")
+local nH = 0
+if hdr then for _, hn in ipairs({ "H_Logo", "H_Slogan", "H_Search", "H_Bell", "H_User" }) do
+  if hdr:FindFirstChild(hn, true) then nH = nH + 1 end
+end end
+check(nH == 5, "header: logo + slogan + search + bell + user (" .. nH .. "/5)")
 local nM2 = 0
 if top then for _, d in ipairs(top:GetDescendants()) do
-  if d:IsA("GuiButton") and d.Name:match("^M2_")
-     and d.Name ~= "M2_Bell" and d.Name ~= "M2_User" then nM2 = nM2 + 1 end
+  if d.Name:match("^M2_") then nM2 = nM2 + 1 end
 end end
-check(nM2 == 18, "18 menus M2_* na topbar unica (" .. nM2 .. ")")
+check(nM2 == 0, "dropdowns M2_* aposentados (" .. nM2 .. " restantes)")
 local S1 = census()
 print("   census bake total=" .. total(S1))
 
@@ -219,53 +235,65 @@ check(loadClient("studio-completo/scripts/09_Topbar.lua", "Arkher_09_Topbar"), "
 local S5 = census()
 local ok5, diff5 = same(S4, S5)
 check(ok5, "09 cria ZERO instancias" .. (ok5 and "" or (" diff=" .. diff5)))
-local mnu = top:FindFirstChild("M2_Terrain", true)
-if mnu then
-  local m0 = #menusCalls
-  mnu.MouseButton1Click:Fire()
-  check(menusCalls[m0 + 1] == "Menu", "M2_Terrain abre dropdown (bus Menu)")
+local bell = top:FindFirstChild("H_Bell", true)
+if bell then
+  local m0 = #messages
+  bell.MouseButton1Click:Fire()
+  check(messages[m0 + 1] == "No new notifications.", "H_Bell: sem notificacoes")
 end
-local mfile = top:FindFirstChild("M2_File", true)
-if mfile then
-  local m0 = #menusCalls
-  mfile.MouseButton1Click:Fire()
-  check(menusCalls[m0 + 1] == "Menu", "M2_File abre dropdown (bus Menu)")
+local usr = top:FindFirstChild("H_User", true)
+if usr then
+  local m0 = #messages
+  usr.MouseButton1Click:Fire()
+  check(messages[m0 + 1] and messages[m0 + 1]:sub(1, 14) == "Signed in as @", "H_User: anuncia login")
 end
-local rp = top:FindFirstChild("RibbonBtn_RUN_Play", true)
+local rp = top:FindFirstChild("RibbonBtn_HOME_Play", true)
 if rp then
   local m0 = #menusCalls
   rp.MouseButton1Click:Fire()
-  check(menusCalls[m0 + 1] == "RunToggle", "RUN_Play chama menus RunToggle")
+  check(menusCalls[m0 + 1] == "RunToggle", "HOME_Play chama menus RunToggle")
 end
-local ru = top:FindFirstChild("RibbonBtn_EDIT_Undo", true)
+local ru = top:FindFirstChild("RibbonBtn_HOME_Undo", true)
 if ru then
   local n0 = #apiCalls
   ru.MouseButton1Click:Fire()
-  check(apiCalls[n0 + 1] == "Undo", "EDIT_Undo chama bus Undo")
+  check(apiCalls[n0 + 1] == "Undo", "HOME_Undo chama bus Undo")
 end
-local rs2 = top:FindFirstChild("RibbonBtn_TRANSFORM_Select", true)
+local rs2 = top:FindFirstChild("RibbonBtn_TOOLS_Select", true)
 if rs2 then
   rs2.MouseButton1Click:Fire()
-  check(setModes[#setModes] == "Select", "TRANSFORM_Select -> SetMode Select")
+  check(setModes[#setModes] == "Select", "TOOLS_Select -> SetMode Select")
 end
-local lg = top:FindFirstChild("RibbonBtn_TRANSFORM_LocalGlobal", true)
+local lg = top:FindFirstChild("RibbonBtn_OBJECTS_LocalGlobal", true)
 if lg then
   local m0 = #messages
   lg.MouseButton1Click:Fire()
   check(messages[m0 + 1] == "Space toggled (Local/Global).", "LocalGlobal alterna espaco")
 end
-local lk = top:FindFirstChild("RibbonBtn_TRANSFORM_Lock", true)
+local lk = top:FindFirstChild("RibbonBtn_OBJECTS_Lock", true)
 if lk then
   local m0 = #messages
   lk.MouseButton1Click:Fire()
   check(messages[m0 + 1] == "Lock: select an object first.", "Lock sem selecao: erro honesto")
 end
-local tabE = top:FindFirstChild("Tab_EDIT", true)
+local an = top:FindFirstChild("RibbonBtn_TOOLS_Animator", true)
+if an then
+  local m0 = #menusCalls
+  an.MouseButton1Click:Fire()
+  check(menusCalls[m0 + 1] == "XOpenAnimator", "TOOLS_Animator chama menus XOpenAnimator")
+end
+local tb = top:FindFirstChild("RibbonBtn_PLUGINS_Toolbox", true)
+if tb then
+  local m0 = #menusCalls
+  tb.MouseButton1Click:Fire()
+  check(menusCalls[m0 + 1] == "OpenToolbox", "PLUGINS_Toolbox chama menus OpenToolbox")
+end
+local tabE = top:FindFirstChild("Tab_TERRAIN", true)
 if tabE then
   tabE.MouseButton1Click:Fire()
-  local pF = top:FindFirstChild("Page_FILE", true)
-  local pE = top:FindFirstChild("Page_EDIT", true)
-  check(pF and not pF.Visible and pE and pE.Visible, "Tab_EDIT troca pagina (FILE some, EDIT aparece)")
+  local pF = top:FindFirstChild("Page_HOME", true)
+  local pE = top:FindFirstChild("Page_TERRAIN", true)
+  check(pF and not pF.Visible and pE and pE.Visible, "Tab_TERRAIN troca pagina (HOME some, TERRAIN aparece)")
 end
 
 print("\n================================")

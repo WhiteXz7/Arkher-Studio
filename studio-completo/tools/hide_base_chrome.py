@@ -8,8 +8,8 @@ PoE em bake-time Visible=false em:
        CommandBar, Arkher (filhos de Footer) — faixas 100% decorativas:
        todos os botoes sao WIP ("Em desenvolvimento", 01_Nucleo cz) e os
        2 inputs (CommandBar/Chat) nao tem fiacao. As funcoes reais moram
-       em: Places (M2_Game), Team (TM2 + aba TEAM), Command Bar real
-       (M2_Scripts > XOpenComando), Help (aba FILE).
+       em: Places (aba SCENES), Team (TM2 + aba PLUGINS), Command Bar real
+       (aba SCRIPTS > XOpenComando), Help (aba HELP).
 Todo o resto (docks, viewport, footer, status) intacto.
 
 Patch cirurgico: re-emite o arquivo com N bytes alterados nos chunks

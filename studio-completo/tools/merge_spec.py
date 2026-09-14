@@ -40,7 +40,7 @@ def main():
     errs = []
     n_act = 0
     for tab, btns in TABS:
-        for bid, _label, _icon, act in btns:
+        for bid, _label, _icon, act, _pt in btns:
             n_act += 1
             kind = act[0]
             if kind in ("open", "toggle"):

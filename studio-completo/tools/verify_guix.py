@@ -12,7 +12,7 @@ RBXL = os.path.normpath(RBXL)
 
 NODES = ["LangPy", "Suggest", "Sug0", "Sug7", "NewPlace", "SaveAcct", "Abrir", "Export", "Conta",
          "Publish", "V2_ArkherSaveOpen", "V2_ArkherScriptEditor", "V2_ArkherInsert", "IRow0", "IRow7",
-         "ArkherShell2", "ArkherTop", "MenuRow", "TabStrip", "Page_FILE", "M2_Terrain", "M2_File", "RibbonBtn_FILE_Save", "RibbonBtn_EDIT_Undo", "RibbonBtn_TRANSFORM_Lock", "T2_Panel", "C2_Log", "TL2_Panel", "FR2_Panel", "F2_Publish",
+         "ArkherShell2", "ArkherTop", "HeaderRow", "H_Search", "TabStrip", "Tab_TERRAIN", "Page_HOME", "RibbonBtn_HOME_Save", "RibbonBtn_HOME_Undo", "RibbonBtn_OBJECTS_Lock", "RibbonBtn_TOOLS_Animator", "T2_Panel", "C2_Log", "TL2_Panel", "FR2_Panel", "F2_Publish",
          "DesktopRoot", "MobileRoot", "ConsoleRoot", "VRoot", "M_Numeric", "C_Numeric", "C_Radial", "V_Panel",
          "D_Settings", "D_S_B1", "D_S_Reset", "D_Marquee", "M_Marquee", "C_Marquee", "M_Cat_Assets", "M_B_Del", "V_Editors", "V_Spatial", "Shell2Scale",
          "TE3_Rail", "TE3_Brush", "TE3_Mat", "TE3_Layers", "TE3_History", "TE3_Gen", "TE3_Water", "TE3_Status", "M_TE",

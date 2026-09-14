@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
-"""Gera tools/shellspec.json — a TOPBAR UNICA do Arkher Studio (R18).
+"""Gera tools/shellspec.json — a TOPBAR UNICA do Arkher Studio (R20).
 
 ArkherTop (Frame 1568x120, y0) — o unico ribbon/topbar do Studio:
-  MenuRow (Frame 30px): logo + 18 menus (File/Edit/View/Insert/Run/Game +
-      Assets/Models/Terrain/Animation/Audio/Scripts/UI/FX/Lighting/Gameplay/
-      Physics/Tools) + M2_Search + M2_Bell + M2_User
-  TabStrip (ScrollingFrame 26px): 9 abas Tab_<T>
-  Ribbon (Frame 63px): Page_<T> (ScrollingFrame) por aba, cada uma com
-    RibbonBtn_<T>_<id> (TextButton 64x58 + Icon 30x30 + Lbl 2 linhas)
+  HeaderRow (Frame 26px): H_Logo + H_Slogan + H_Search + H_Bell + H_User
+  TabStrip (ScrollingFrame 34px): 18 abas Tab_<T> (icone + Lbl, 80x30)
+  Ribbon (Frame 58px): Page_<T> (ScrollingFrame) por aba, cada uma com
+    RibbonBtn_<T>_<id> (TextButton 62x54 + Icon 28x28 + Lbl 2 linhas)
+  Maximo 20 botoes por aba (regra do quadro-1 da referencia Renascido).
 ArkherMsg (toast inferior-direito, Visible=false)
 Icones: kids copiados de tools/iconspec.json (posicoes em escala -> adaptam).
 
-FONTE UNICA da tabela abas/botoes/acoes — 09_Topbar.lua consome ACTIONS.
+FONTE UNICA da tabela abas/botoes/acoes — 09_Topbar.lua consome BUTTONS.
 Acao: ("menus", cmd)      -> MenusBus:Invoke(cmd)
-       ("menu", name)       -> MenusBus:Invoke("Menu", {name=name, button=btn})
        ("core", key)        -> ClientBus SetMode/SetSpace
        ("api", action)      -> ClientBus API (Undo/Redo)
        ("lock",)            -> PropsAll + SetAny Locked (09_Topbar).
+Linha: (bid, label EN, icon, acao, label PT). Dropdowns desktop aposentados
+no R20 (todos os 166 itens de menu viraram botoes de pagina); o caminho
+"menu"/buildMenu segue vivo p/ mobile/console/VR (11_Input) e 05_StudioX.
 """
 import copy
 import json
@@ -24,83 +25,233 @@ import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-# (name, text, width) — menus clássicos (base File/Edit/... preservados)
-MENUS_BASE = [
-    ("M2_File", "File", 52), ("M2_Edit", "Edit", 52),
-    ("M2_View", "View", 50), ("M2_Insert", "Insert", 56),
-    ("M2_Run", "Run", 50), ("M2_Game", "Game", 58),
-]
-# (name, text, width) — menus X (geração shell2, preservados)
-MENUS_X = [
-    ("M2_Assets", "Assets", 64), ("M2_Models", "Models", 64),
-    ("M2_Terrain", "Terrain", 64), ("M2_Animation", "Animation", 76),
-    ("M2_Audio", "Audio", 56), ("M2_Scripts", "Scripts", 64),
-    ("M2_UI", "UI", 40), ("M2_FX", "FX", 44),
-    ("M2_Lighting", "Lighting", 66), ("M2_Gameplay", "Gameplay", 74),
-    ("M2_Physics", "Physics", 66), ("M2_Tools", "Tools", 56),
-]
+# (tab, [botoes]) — icone/PT da aba em TABMETA (abaixo)
+# Regra: <= 20 botoes por aba. Cobertura: 166 itens dos 18 menus + funcoes
+# ribbon-only do R18 (Select/Move/Rotate/Scale, Lock, LocalGlobal, Undo/Redo,
+# SavePlaceAccount, OpenPublish, OpenData, OpenLocalization, OpenToolbox,
+# OpenCloud, OpenPlugins, OpenCollaboration, Collaborate, Invites, Changes,
+# Account) = 163 botoes. "Menu"-openers do CREATE eram navegacao (dropdowns),
+# aposentados: os ITENS que eles abriam estao todos nas paginas.
+TABMETA = {
+    "HOME": ("home", "Início"),
+    "TERRAIN": ("terrain", "Terreno"),
+    "OBJECTS": ("boxG", "Objetos"),
+    "LANDSCAPE": ("cubeT", "Paisagem"),
+    "SCENES": ("ws", "Cenas"),
+    "UI": ("dock", "Interface"),
+    "SCRIPTS": ("script", "Scripts"),
+    "PLUGINS": ("plug", "Plugins"),
+    "WORLD": ("globe", "Mundo"),
+    "MODELS": ("model", "Modelos"),
+    "MATERIALS": ("gem", "Materiais"),
+    "LIGHTING": ("bulb", "Iluminação"),
+    "CLIMATE": ("cloud", "Clima"),
+    "WATER": ("drop", "Água"),
+    "CAMERA": ("camera", "Câmera"),
+    "TOOLS": ("plugin", "Ferramentas"),
+    "SETTINGS": ("settings", "Configurações"),
+    "HELP": ("info", "Ajuda"),
+}
 
-# (tab, id, label, icon, acao...)
+
 TABS = [
-    ("FILE", [
-        ("Save", "Save", "save", ("menus", "Save")),
-        ("Open", "Open", "open", ("menus", "Open")),
-        ("SaveToArkher", "Save to\nArkher", "cloud", ("menus", "SavePlaceAccount")),
-        ("Publish", "Publish", "share", ("menus", "OpenPublish")),
-        ("Help", "Help", "bulb", ("menus", "HelpStudio")),
+    ("HOME", [
+        ("New", "New", "plus", ("menus", "New"), "Novo"),
+        ("Open", "Open", "open", ("menus", "Open"), "Abrir"),
+        ("OpenEmpty", "Open\nEmpty", "minus", ("menus", "OpenEmpty"), "Abrir\nVazio"),
+        ("OpenTerrain", "Terrain", "terrain", ("menus", "OpenTerrain"), "Terreno"),
+        ("Save", "Save", "save", ("menus", "Save"), "Salvar"),
+        ("SaveCloud", "Cloud", "cloud", ("menus", "SaveCloud"), "Nuvem"),
+        ("Export", "Export", "share", ("menus", "Export"), "Exportar"),
+        ("Import", "Import", "folder", ("menus", "Import"), "Importar"),
+        ("Exit", "Exit", "close", ("menus", "Exit"), "Sair"),
+        ("Undo", "Undo", "undo", ("api", "Undo"), "Desfazer"),
+        ("Redo", "Redo", "redo", ("api", "Redo"), "Refazer"),
+        ("Cut", "Cut", "cut", ("menus", "Cut"), "Cortar"),
+        ("Copy", "Copy", "copy", ("menus", "Copy"), "Copiar"),
+        ("Paste", "Paste", "paste", ("menus", "Paste"), "Colar"),
+        ("Duplicate", "Duplicate", "plus", ("menus", "Duplicate"), "Duplicar"),
+        ("Rename", "Rename", "textA", ("menus", "Rename"), "Renomear"),
+        ("Delete", "Delete", "minus", ("menus", "Delete"), "Excluir"),
+        ("Play", "Play", "play", ("menus", "RunToggle"), "Jogar"),
+        ("Pause", "Pause", "pause", ("menus", "RunPause"), "Pausar"),
+        ("Stop", "Stop", "close", ("menus", "RunStop"), "Parar"),
     ]),
-    ("EDIT", [
-        ("Undo", "Undo", "undo", ("api", "Undo")),
-        ("Redo", "Redo", "redo", ("api", "Redo")),
-        ("Anchor", "Anchor", "anchor", ("menus", "XAnchor")),
-        ("Snap", "Snap", "snap", ("menus", "XSnap")),
-        ("Group", "Group", "group", ("menus", "XGroup")),
-        ("Ungroup", "Ungroup", "ungroup", ("menus", "XUngroup")),
+    ("TERRAIN", [
+        ("TerrainEditor", "Terrain\nEditor", "terrain", ("menus", "XTerrainEditor"), "Editor de\nTerreno"),
+        ("TerrainX", "Terrain X", "open", ("menus", "XOpenTerrain"), "Terreno X"),
+        ("TerrainGen", "Generator", "open", ("menus", "XOpenTerrainGen"), "Gerador"),
+        ("VoxelProbe", "Voxel\nProbe", "data", ("menus", "XOpenTerrainVoxel"), "Sonda\nVoxel"),
+        ("TerrainProbe", "Probe", "search", ("menus", "XOpenTerrainProbe"), "Sonda"),
+        ("Generate", "Generate", "plus", ("menus", "XTerrGen"), "Gerar"),
+        ("Erode", "Erosion", "minus", ("menus", "XTerrErode"), "Erosão"),
+        ("Crater", "Crater", "plus", ("menus", "XTerrCrater"), "Cratera"),
+        ("Flatten", "Flatten", "plate", ("menus", "XTerrFlat"), "Aplainar"),
+        ("Smooth", "Smooth", "share", ("menus", "XTerrSmooth"), "Suavizar"),
+        ("Noise", "Noise", "data", ("menus", "XTerrNoise"), "Ruído"),
     ]),
-    ("INSERT", [
-        ("Model", "Model", "model", ("menus", "InsertModel")),
-        ("Folder", "Folder", "folder", ("menus", "InsertFolder")),
-        ("Script", "Script", "script", ("menus", "InsertScript")),
-        ("Text", "Text", "textA", ("menus", "InsertTextLabel")),
+    ("OBJECTS", [
+        ("Part", "Part", "cubeW", ("menus", "InsertPart"), "Peça"),
+        ("Folder", "Folder", "folder", ("menus", "InsertFolder"), "Pasta"),
+        ("Model", "Model", "model", ("menus", "InsertModel"), "Modelo"),
+        ("Script", "Script", "script", ("menus", "InsertScript"), "Script"),
+        ("Text", "Text", "textA", ("menus", "InsertTextLabel"), "Texto"),
+        ("InsertFull", "Full\nInsert", "plus", ("menus", "InsertFull"), "Inserir\nTudo"),
+        ("Group", "Group", "group", ("menus", "XGroup"), "Agrupar"),
+        ("Ungroup", "Ungroup", "ungroup", ("menus", "XUngroup"), "Desagrupar"),
+        ("PivotReset", "Reset\nPivot", "share", ("menus", "XPivotReset"), "Zerar\nPivô"),
+        ("AlignX", "Align X", "share", ("menus", "XAlignX"), "Alinhar X"),
+        ("AlignY", "Align Y", "share", ("menus", "XAlignY"), "Alinhar Y"),
+        ("AlignZ", "Align Z", "share", ("menus", "XAlignZ"), "Alinhar Z"),
+        ("DistX", "Dist X", "share", ("menus", "XDistX"), "Distrib X"),
+        ("DistY", "Dist Y", "share", ("menus", "XDistY"), "Distrib Y"),
+        ("DistZ", "Dist Z", "share", ("menus", "XDistZ"), "Distrib Z"),
+        ("MirrX", "Mirror X", "share", ("menus", "XMirrX"), "Espelho X"),
+        ("MirrY", "Mirror Y", "share", ("menus", "XMirrY"), "Espelho Y"),
+        ("MirrZ", "Mirror Z", "share", ("menus", "XMirrZ"), "Espelho Z"),
+        ("Lock", "Lock", "lock", ("lock",), "Travar"),
+        ("LocalGlobal", "Local\nGlobal", "globe", ("core", "LocalGlobal"), "Local\nGlobal"),
     ]),
-    ("CREATE", [
-        ("Terrain", "Terrain", "terrain", ("menu", "Terrain")),
-        ("Insert", "Insert", "plus", ("menus", "Insert")),
-        ("Script", "Script", "script", ("menu", "Scripts")),
-        ("UI", "UI", "ws", ("menu", "UI")),
-        ("Animate", "Animate", "play", ("menu", "Animation")),
-        ("FX", "FX", "gem", ("menu", "FX")),
+    ("LANDSCAPE", [
+        ("Life", "Life", "open", ("menus", "XOpenVida"), "Vida"),
+        ("EcoSim", "Eco Sim", "globe", ("menus", "XVidaEco"), "Eco Sim"),
+        ("Human", "Human", "people", ("menus", "XVidaHumano"), "Humano"),
+        ("NPC", "NPC", "playercard", ("menus", "XVidaNpc"), "NPC"),
+        ("City", "City", "open", ("menus", "XOpenCidade"), "Cidade"),
+        ("Village", "Village", "home", ("menus", "XCidadeVila"), "Vila"),
+        ("Metro", "Metro", "model", ("menus", "XCidadeMetro"), "Metrô"),
     ]),
-    ("RUN", [
-        ("Play", "Play", "play", ("menus", "RunToggle")),
-        ("Pause", "Pause", "pause", ("menus", "RunPause")),
-        ("Stop", "Stop", "square", ("menus", "RunStop")),
+    ("SCENES", [
+        ("Places", "Places", "open", ("menus", "XPlaces"), "Lugares"),
+        ("PlacesProfile", "My\nPlaces", "folder", ("menus", "PlacesProfile"), "Meus\nLugares"),
+        ("HomeEditor", "Home", "home", ("menus", "XHome"), "Início"),
+        ("SaveToArkher", "Save to\nArkher", "data", ("menus", "SavePlaceAccount"), "Salvar na\nArkher"),
+        ("Publish", "Publish", "save", ("menus", "Publish"), "Publicar"),
+        ("PublishBridge", "Bridge", "cloud", ("menus", "XPublishBridge"), "Ponte"),
+        ("ResetWorkspace", "Reset\nWorld", "rotate", ("menus", "ResetWorkspace"), "Zerar\nMundo"),
+        ("RecKeyA", "Rec Key\nA", "pin", ("menus", "AnimKeyA"), "Gravar A"),
+        ("RecKeyB", "Rec Key\nB", "pin", ("menus", "AnimKeyB"), "Gravar B"),
+        ("PlayA", "Play A", "play", ("menus", "AnimGoA"), "Tocar A"),
+        ("PlayB", "Play B", "play", ("menus", "AnimGoB"), "Tocar B"),
+        ("AnimStop", "Stop", "close", ("menus", "AnimStop"), "Parar"),
     ]),
-    ("TRANSFORM", [
-        ("Select", "Select", "select", ("core", "Select")),
-        ("MoveScale", "Move", "move", ("core", "MoveScale")),
-        ("Rotate", "Rotate", "rotate", ("core", "Rotate")),
-        ("Scale", "Scale", "scaleI", ("core", "Scale")),
-        ("Transform", "Transform", "transform", ("menus", "XTransform")),
-        ("Lock", "Lock", "lock", ("lock",)),
-        ("LocalGlobal", "Local\nGlobal", "globe", ("core", "LocalGlobal")),
+    ("UI", [
+        ("UIEditor", "UI\nEditor", "open", ("menus", "XUI"), "Editor de\nUI"),
+        ("Colors", "Colors", "open", ("menus", "XOpenCores"), "Cores"),
+        ("PropsPlus", "Props+", "open", ("menus", "XOpenProps"), "Props+"),
+        ("Output", "Output", "open", ("menus", "XOpenOutput"), "Saída"),
+        ("ClearOutput", "Clear\nOutput", "minus", ("menus", "XOutputClear"), "Limpar\nSaída"),
+        ("Hierarchy", "Hierarchy", "share", ("menus", "ToggleHierarchy"), "Hierarquia"),
+        ("Properties", "Properties", "data", ("menus", "ToggleProperties"), "Props"),
     ]),
-    ("SETTINGS", [
-        ("Data", "Data", "data", ("menus", "OpenData")),
-        ("Localization", "Lang", "globe", ("menus", "OpenLocalization")),
-        ("Settings", "Settings", "settings", ("menus", "XSettings")),
+    ("SCRIPTS", [
+        ("ScriptStudio", "Script\nStudio", "script", ("menus", "ScriptStudio"), "Script\nStudio"),
+        ("AllScripts", "All\nScripts", "open", ("menus", "XOpenScripts"), "Todos\nScripts"),
+        ("Python", "Python", "open", ("menus", "XOpenPy"), "Python"),
+        ("CommandBar", "Command\nBar", "open", ("menus", "XOpenComando"), "Barra de\nComando"),
+        ("ScriptEditor", "Script\nEditor", "open", ("menus", "XScript"), "Editor de\nScript"),
     ]),
     ("PLUGINS", [
-        ("ArkherCloud", "Cloud\nInfo", "info", ("menus", "OpenCloud")),
-        ("PluginToolbar", "Plugins", "plugin", ("menus", "OpenPlugins")),
+        ("Plugins", "Plugins", "plug", ("menus", "OpenPlugins"), "Plugins"),
+        ("CloudInfo", "Cloud\nInfo", "cloud", ("menus", "OpenCloud"), "Nuvem\nInfo"),
+        ("Toolbox", "Toolbox", "toolbox", ("menus", "OpenToolbox"), "Toolbox"),
+        ("CreatorStore", "Creator\nStore", "open", ("menus", "XOpenToolbox"), "Loja"),
+        ("CollabSettings", "Collab", "people", ("menus", "OpenCollaboration"), "Colab"),
+        ("Collaborate", "Collaborate", "playersI", ("menus", "Collaborate"), "Colaborar"),
+        ("Invites", "Invites", "chat", ("menus", "Invites"), "Convites"),
+        ("Changes", "Changes", "repfirst", ("menus", "Changes"), "Mudanças"),
+        ("Account", "Account", "playercard", ("menus", "Account"), "Conta"),
     ]),
-    ("TEAM", [
-        ("Toolbox", "Toolbox", "toolbox", ("menus", "OpenToolbox")),
-        ("CollaborationSettings", "Collab", "people", ("menus", "OpenCollaboration")),
-        ("Collaborate", "Collaborate", "playersI", ("menus", "Collaborate")),
-        ("Invites", "Invites", "chat", ("menus", "Invites")),
-        ("Changes", "Changes", "repfirst", ("menus", "Changes")),
-        ("Account", "Account", "playercard", ("menus", "Account")),
+    ("WORLD", [
+        ("WorldEditor", "World", "globe", ("menus", "XWorld"), "Mundo"),
+        ("Space", "Space", "open", ("menus", "XOpenEspaco"), "Espaço"),
+        ("SolarSystem", "Solar\nSystem", "data", ("menus", "XEspacoSolar"), "Sistema\nSolar"),
+        ("EarthMoon", "Earth-\nMoon", "gem", ("menus", "XEspacoTerraLua"), "Terra-\nLua"),
+        ("GameProps", "Game\nProps", "settings", ("menus", "GameProperties"), "Props do\nJogo"),
+    ]),
+    ("MODELS", [
+        ("ModelerPRO", "Modeler\nPRO", "open", ("menus", "XModeler"), "Modeler\nPRO"),
+        ("Block", "Block", "plus", ("menus", "XSpawnBlock"), "Bloco"),
+        ("Wedge", "Wedge", "plus", ("menus", "XSpawnWedge"), "Cunha"),
+        ("Cylinder", "Cylinder", "plus", ("menus", "XSpawnCyl"), "Cilindro"),
+        ("Ball", "Ball", "plus", ("menus", "XSpawnBall"), "Esfera"),
+        ("Corner", "Corner", "plus", ("menus", "XSpawnCorner"), "Canto"),
+        ("Truss", "Truss", "plus", ("menus", "XSpawnTruss"), "Treliça"),
+        ("MeshPart", "Mesh", "plus", ("menus", "XMeshPart"), "Malha"),
+        ("Join", "Join", "group", ("menus", "XJoin"), "Unir"),
+        ("Split", "Split", "ungroup", ("menus", "XSplit"), "Separar"),
+        ("Modeler", "Modeler", "open", ("menus", "XOpenModeler"), "Modelador"),
+        ("ModelerPrims", "Prims", "open", ("menus", "XOpenModelerPrim"), "Primitivos"),
+        ("RopeDemo", "Rope\nDemo", "play", ("menus", "XCordaDemo"), "Demo\nCorda"),
+        ("RopeBridge", "Rope\nBridge", "plate", ("menus", "XCordaPonte"), "Ponte de\nCorda"),
+        ("Ropes", "Ropes", "open", ("menus", "XOpenCordas"), "Cordas"),
+    ]),
+    ("MATERIALS", [
+        ("Color", "Color", "data", ("menus", "XColor"), "Cor"),
+        ("Material", "Material", "gem", ("menus", "XMaterial"), "Material"),
+        ("Surface", "Surface", "plate", ("menus", "XSurface"), "Superfície"),
+        ("Decal", "Decal", "plus", ("menus", "XDecal"), "Decalque"),
+        ("Texture", "Texture", "plus", ("menus", "XTexture"), "Textura"),
+    ]),
+    ("LIGHTING", [
+        ("RRW", "RRW\nRender", "open", ("menus", "XRRW"), "RRW"),
+        ("Sky", "Sky", "cloud", ("menus", "XAtmosCeu"), "Céu"),
+        ("TimeOfDay", "Time", "rotate", ("menus", "XAtmosTempo"), "Hora"),
+        ("FXPanel", "FX", "open", ("menus", "XOpenFx"), "FX"),
+        ("Fire", "Fire", "fire", ("menus", "XFxFogo"), "Fogo"),
+        ("Atmosphere", "Atmo-\nsphere", "open", ("menus", "XOpenAtmos"), "Atmosfera"),
+        ("Light", "Light", "bulb", ("menus", "XLight"), "Luz"),
+        ("Particles", "Particles", "data", ("menus", "XParticles"), "Partículas"),
+    ]),
+    ("CLIMATE", [
+        ("Climate", "Climate", "open", ("menus", "XOpenClima"), "Clima"),
+        ("ClimateOn", "Climate\nOn", "check", ("menus", "XClimaOn"), "Clima\nOn"),
+        ("ClimateOff", "Climate\nOff", "close", ("menus", "XClimaOff"), "Clima\nOff"),
+        ("Rain", "Rain", "drop", ("menus", "XFxChuva"), "Chuva"),
+    ]),
+    ("WATER", [
+        ("Ocean", "Ocean", "drop", ("menus", "XAguaOceano"), "Oceano"),
+        ("Buoyancy", "Buoyancy", "anchor", ("menus", "XAguaFlutua"), "Flutuar"),
+        ("WaterTools", "Water\nTools", "open", ("menus", "XOpenWater"), "Ferram.\nÁgua"),
+    ]),
+    ("CAMERA", [
+        ("Camera", "Camera", "camera", ("menus", "XCamera"), "Câmera"),
+        ("Viewport", "Viewport", "open", ("menus", "XViewport"), "Viewport"),
+        ("Fullscreen", "Full-\nscreen", "expand", ("menus", "Fullscreen"), "Tela\ncheia"),
+        ("ResetLayout", "Reset\nLayout", "rotate", ("menus", "ResetLayout"), "Zerar\nLayout"),
+    ]),
+    ("TOOLS", [
+        ("Fabricate", "Fabricate", "open", ("menus", "XOpenFabricar"), "Fabricar"),
+        ("FabList", "Fab\nList", "textA", ("menus", "XFabricarList"), "Lista\nFab"),
+        ("Snap", "Snap", "snap", ("menus", "XSnap"), "Encaixe"),
+        ("Transform", "Transform", "transform", ("menus", "XTransform"), "Transformar"),
+        ("Sound", "Sound", "note", ("menus", "XSound"), "Som"),
+        ("DO15", "D-O15", "open", ("menus", "XDO15"), "D-O15"),
+        ("AnimatorPRO", "Animator\nPRO", "open", ("menus", "XAnimator"), "Animator\nPRO"),
+        ("Animator", "Animator", "open", ("menus", "XOpenAnimator"), "Animador"),
+        ("RigEditor", "Rig", "open", ("menus", "XOpenAnimatorRig"), "Rig"),
+        ("PhysAnim", "Phys\nAnim", "open", ("menus", "XOpenAnimatorPhys"), "Anim\nFísica"),
+        ("AudioTools", "Audio", "open", ("menus", "XOpenAudio"), "Áudio"),
+        ("AudioInt", "Audio\nInt", "play", ("menus", "XAudioInt"), "Áudio\nInter"),
+        ("Mixer", "Mixer", "share", ("menus", "XAudioMixer"), "Mixer"),
+        ("Anchor", "Anchor", "anchor", ("menus", "XAnchor"), "Ancorar"),
+        ("Collision", "Collision", "share", ("menus", "XCollision"), "Colisão"),
+        ("Select", "Select", "select", ("core", "Select"), "Selecionar"),
+        ("Move", "Move", "move", ("core", "MoveScale"), "Mover"),
+        ("Rotate", "Rotate", "rotate", ("core", "Rotate"), "Girar"),
+        ("Scale", "Scale", "scaleI", ("core", "Scale"), "Escala"),
+    ]),
+    ("SETTINGS", [
+        ("GameSettings", "Game\nSettings", "settings", ("menus", "OpenSettings"), "Config\nJogo"),
+        ("Data", "Data", "data", ("menus", "OpenData"), "Dados"),
+        ("Language", "Lang", "textA", ("menus", "OpenLocalization"), "Idioma"),
+        ("Settings", "Settings", "dock", ("menus", "XSettings"), "Ajustes"),
+        ("LangPT", "PT-BR", "globe", ("menus", "XLangPT"), "PT-BR"),
+        ("ProjSettings", "Project\nSettings", "folder", ("menus", "ProjectSettings"), "Config\nProjeto"),
+    ]),
+    ("HELP", [
+        ("StudioHelp", "Studio\nHelp", "bulb", ("menus", "HelpStudio"), "Ajuda do\nStudio"),
+        ("CommandHelp", "Command\nHelp", "textA", ("menus", "XComandoHelp"), "Ajuda\nComando"),
     ]),
 ]
 
@@ -132,9 +283,13 @@ GREEN = C3(55, 200, 90)
 TAB_ACTIVE_BG = C3(26, 42, 74)
 
 TOP_H = 120
-MENU_H = 30
-STRIP_H = 26
-RIBBON_H = TOP_H - MENU_H - STRIP_H - 2  # 62 (1px dividers x2)
+HEADER_H = 26
+STRIP_H = 34
+TAB_W = 80
+TAB_H = 30
+BTN_W = 62
+BTN_H = 54
+RIBBON_H = TOP_H - HEADER_H - STRIP_H - 2  # 58 (1px dividers x2)
 
 
 def N(cls, name, props=None, kids=None):
@@ -171,27 +326,29 @@ def main():
         src = icons["Icon_" + icon]["kids"]
         return copy.deepcopy(src)
 
-    # ---- MenuRow: logo + 18 menus + search + bell + user ----
-    row_kids = [N("TextLabel", "M2_Logo", {
-        "Size": U2(0, 130, 0, 24), "Position": U2(0, 8, 0, 3),
-        "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
-        "Text": "⬢  ARKHER STUDIO",
-        "Font": {"en": "Font.GothamBold"}, "TextSize": 12.0,
-        "TextColor3": GOLD, "TextXAlignment": {"en": "TextXAlignment.Left"},
-    }, [])]
-    mx = 144
-    for name, text, w in MENUS_BASE + MENUS_X:
-        row_kids.append(N("TextButton", name, {
-            "Size": U2(0, w, 0, 26), "Position": U2(0, mx, 0, 2),
+    # regra do quadro-1: <= 20 botoes por aba
+    for t, btns in TABS:
+        assert len(btns) <= 20, f"aba {t}: {len(btns)} botoes (>20)"
+
+    # ---- HeaderRow: logo + slogan + search + bell + user ----
+    search_x = 1568 - 8 - 82 - 4 - 28 - 4 - 180
+    header_kids = [
+        N("TextLabel", "H_Logo", {
+            "Size": U2(0, 170, 0, 22), "Position": U2(0, 8, 0, 2),
             "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
-            "Text": text, "Font": {"en": "Font.Gotham"}, "TextSize": 12.0,
-            "TextColor3": TXT, "AutoButtonColor": False, "Active": True,
-        }, []))
-        mx += w + 4
-    search_x = mx + 2
-    row_kids += [
-        N("TextBox", "M2_Search", {
-            "Size": U2(0, 180, 0, 24), "Position": U2(0, search_x, 0, 3),
+            "Text": "⬢  ARKHER STUDIOS",
+            "Font": {"en": "Font.GothamBold"}, "TextSize": 13.0,
+            "TextColor3": GOLD, "TextXAlignment": {"en": "TextXAlignment.Left"},
+        }, []),
+        N("TextLabel", "H_Slogan", {
+            "Size": U2(0, 800, 0, 22), "Position": U2(0, 384, 0, 2),
+            "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
+            "Text": "CREATE ANYTHING. AT ANY SCALE. ANYWHERE.",
+            "Font": {"en": "Font.Gotham"}, "TextSize": 11.0,
+            "TextColor3": MUTED, "TextXAlignment": {"en": "TextXAlignment.Center"},
+        }, []),
+        N("TextBox", "H_Search", {
+            "Size": U2(0, 180, 0, 22), "Position": U2(0, search_x, 0, 2),
             "BackgroundColor3": BTN_BG, "BorderSizePixel": 0,
             "Text": "", "PlaceholderText": "Search tools, assets...",
             "PlaceholderColor3": MUTED,
@@ -199,51 +356,64 @@ def main():
             "TextColor3": TXT, "TextXAlignment": {"en": "TextXAlignment.Left"},
             "ClearTextOnFocus": False,
         }, [corner(6), stroke(BTN_EDGE, 1), hpad(8, 0, 8)]),
-        N("TextButton", "M2_Bell", {
-            "Size": U2(0, 28, 0, 26), "Position": U2(0, search_x + 184, 0, 2),
+        N("TextButton", "H_Bell", {
+            "Size": U2(0, 28, 0, 24), "Position": U2(0, search_x + 184, 0, 1),
             "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
-            "Text": "🔔", "Font": {"en": "Font.Gotham"}, "TextSize": 14.0,
-            "TextColor3": TXT, "AutoButtonColor": False, "Active": True,
-        }, []),
-        N("TextButton", "M2_User", {
-            "Size": U2(0, 82, 0, 26), "Position": U2(0, search_x + 216, 0, 2),
+            "Text": "", "AutoButtonColor": False, "Active": True,
+        }, [N("Frame", "Icon", {
+            "Size": U2(0, 18, 0, 18), "Position": U2(0, 5, 0, 3),
+            "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
+        }, icon_kids("bell"))]),
+        N("TextButton", "H_User", {
+            "Size": U2(0, 82, 0, 24), "Position": U2(0, search_x + 216, 0, 1),
             "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
             "Text": "● dev", "Font": {"en": "Font.GothamBold"}, "TextSize": 12.0,
             "TextColor3": GREEN, "AutoButtonColor": False, "Active": True,
         }, []),
     ]
     right_edge = search_x + 216 + 82
-    assert right_edge <= 1568, f"menu row overflow: {right_edge}"
-    menu_row = N("Frame", "MenuRow", {
-        "Size": U2(1, 0, 0, MENU_H), "Position": U2(0, 0, 0, 0),
+    assert right_edge <= 1568, f"header overflow: {right_edge}"
+    header = N("Frame", "HeaderRow", {
+        "Size": U2(1, 0, 0, HEADER_H), "Position": U2(0, 0, 0, 0),
         "BackgroundColor3": STRIP_BG, "BorderSizePixel": 0,
         "ZIndex": 30, "Active": True, "ClipsDescendants": True,
-    }, row_kids)
+    }, header_kids)
 
-    tab_names = [t for t, _ in TABS]
-    # ---- TabStrip ----
+    tab_defs = [(t, TABMETA[t][0]) for t, _b in TABS]
+    # ---- TabStrip: 18 abas icone + Lbl ----
     tabs = []
-    for i, t in enumerate(tab_names):
+    for i, (t, ti) in enumerate(tab_defs):
         active = (i == 0)
         tab = N("TextButton", f"Tab_{t}", {
-            "Size": U2(0, 88, 0, 22), "Position": U2(0, 0, 0, 0),
+            "Size": U2(0, TAB_W, 0, TAB_H), "Position": U2(0, 0, 0, 0),
             "LayoutOrder": float(i),
             "BackgroundColor3": TAB_ACTIVE_BG if active else STRIP_BG,
             "BackgroundTransparency": 0.0 if active else 1.0,
-            "BorderSizePixel": 0, "ZIndex": 31, "Text": t,
-            "Font": {"en": "Font.GothamBold"}, "TextSize": 11.0,
-            "TextColor3": TXT if active else TXT2,
-            "TextXAlignment": {"en": "TextXAlignment.Center"},
+            "BorderSizePixel": 0, "ZIndex": 31, "Text": "",
             "AutoButtonColor": False, "Active": True,
-        }, [corner(6), N("Frame", "ActivePill", {
-            "Size": U2(0, 72, 0, 3), "Position": U2(0, 8, 0, 18),
-            "BackgroundColor3": ACCENT, "BorderSizePixel": 0,
-            "Visible": active}, [])])
+        }, [corner(6),
+            N("Frame", "Icon", {
+                "Size": U2(0, 16, 0, 16), "Position": U2(0, 32, 0, 1),
+                "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
+            }, icon_kids(ti)),
+            N("TextLabel", "Lbl", {
+                "Size": U2(0, TAB_W - 4, 0, 11), "Position": U2(0, 2, 0, 17),
+                "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
+                "Text": t, "Font": {"en": "Font.GothamBold"},
+                "TextSize": 10.0,
+                "TextColor3": TXT if active else TXT2,
+                "TextXAlignment": {"en": "TextXAlignment.Center"},
+                "TextTruncate": {"en": "TextTruncate.AtEnd"},
+            }, []),
+            N("Frame", "ActivePill", {
+                "Size": U2(0, TAB_W - 16, 0, 2), "Position": U2(0, 8, 0, 28),
+                "BackgroundColor3": ACCENT, "BorderSizePixel": 0,
+                "Visible": active}, [])])
         tabs.append(tab)
     strip = N("ScrollingFrame", "TabStrip", {
-        "Size": U2(1, 0, 0, STRIP_H), "Position": U2(0, 0, 0, MENU_H),
+        "Size": U2(1, 0, 0, STRIP_H), "Position": U2(0, 0, 0, HEADER_H),
         "BackgroundColor3": STRIP_BG, "BorderSizePixel": 0, "ZIndex": 30,
-        "CanvasSize": U2(0, len(tab_names) * 92 + 12, 0, 0),
+        "CanvasSize": U2(0, len(tab_defs) * (TAB_W + 4) + 12, 0, 0),
         "ScrollBarThickness": 3, "ScrollBarImageColor3": BTN_EDGE,
         "Active": True, "ClipsDescendants": True,
     }, [hlist(4), hpad(6, 2, 6)] + tabs)
@@ -253,21 +423,21 @@ def main():
     n_btns = 0
     for i, (t, btns) in enumerate(TABS):
         items = []
-        for j, (bid, label, icon, _act) in enumerate(btns):
+        for j, (bid, label, icon, _act, _pt) in enumerate(btns):
             n_btns += 1
             btn = N("TextButton", f"RibbonBtn_{t}_{bid}", {
-                "Size": U2(0, 64, 0, 58), "Position": U2(0, 0, 0, 0),
+                "Size": U2(0, BTN_W, 0, BTN_H), "Position": U2(0, 0, 0, 0),
                 "LayoutOrder": float(j),
                 "BackgroundColor3": BTN_BG, "BorderSizePixel": 0,
                 "ZIndex": 31, "Text": "",
                 "AutoButtonColor": False, "Active": True,
             }, [corner(8), stroke(BTN_EDGE, 1),
                 N("Frame", "Icon", {
-                    "Size": U2(0, 30, 0, 30), "Position": U2(0, 17, 0, 2),
+                    "Size": U2(0, 28, 0, 28), "Position": U2(0, 17, 0, 1),
                     "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
                 }, icon_kids(icon)),
                 N("TextLabel", "Lbl", {
-                    "Size": U2(0, 58, 0, 24), "Position": U2(0, 3, 0, 33),
+                    "Size": U2(0, BTN_W - 6, 0, 22), "Position": U2(0, 3, 0, 30),
                     "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
                     "Text": label, "Font": {"en": "Font.Gotham"},
                     "TextSize": 10.0, "TextColor3": TXT2,
@@ -276,7 +446,7 @@ def main():
                     "TextWrapped": True,
                 }, [])])
             items.append(btn)
-        page_w = len(btns) * (64 + 6) + 16
+        page_w = len(btns) * (BTN_W + 6) + 16
         page = N("ScrollingFrame", f"Page_{t}", {
             "Size": U2(1, 0, 1, 0), "Position": U2(0, 0, 0, 0),
             "BackgroundTransparency": 1.0, "BorderSizePixel": 0,
@@ -288,7 +458,7 @@ def main():
         pages.append(page)
     ribbon = N("Frame", "Ribbon", {
         "Size": U2(1, 0, 0, RIBBON_H),
-        "Position": U2(0, 0, 0, MENU_H + STRIP_H + 1),
+        "Position": U2(0, 0, 0, HEADER_H + STRIP_H + 1),
         "BackgroundColor3": RIBBON_BG, "BorderSizePixel": 0,
         "ZIndex": 30, "Active": True, "ClipsDescendants": True,
     }, pages)
@@ -296,14 +466,14 @@ def main():
         "Size": U2(1, 0, 0, TOP_H), "Position": U2(0, 0, 0, 0),
         "BackgroundColor3": TOP_BG, "BorderSizePixel": 0,
         "ZIndex": 30, "Active": True, "ClipsDescendants": True,
-    }, [menu_row,
-        N("Frame", "MenuDivider", {
-            "Size": U2(1, 0, 0, 1), "Position": U2(0, 0, 0, MENU_H - 1),
+    }, [header,
+        N("Frame", "HeaderDivider", {
+            "Size": U2(1, 0, 0, 1), "Position": U2(0, 0, 0, HEADER_H - 1),
             "BackgroundColor3": DIVIDER, "BorderSizePixel": 0}, []),
         strip,
         N("Frame", "TabDivider", {
             "Size": U2(1, 0, 0, 1),
-            "Position": U2(0, 0, 0, MENU_H + STRIP_H),
+            "Position": U2(0, 0, 0, HEADER_H + STRIP_H),
             "BackgroundColor3": DIVIDER, "BorderSizePixel": 0}, []),
         ribbon,
         N("Frame", "RibbonEdge", {
@@ -331,8 +501,7 @@ def main():
     def count(n):
         return 1 + sum(count(k) for k in n["kids"])
     total = sum(count(n) for n in out["shell"])
-    n_menus = len(MENUS_BASE) + len(MENUS_X)
-    print(f"shell: {n_menus} menus, {len(tab_names)} abas, {n_btns} botoes, "
+    print(f"shell: header + {len(tab_defs)} abas, {n_btns} botoes, "
           f"{total} instancias (topbar unica {TOP_H}px)")
     print(f"spec salva: tools/shellspec.json "
           f"({os.path.getsize(os.path.join(HERE, 'shellspec.json'))} bytes)")

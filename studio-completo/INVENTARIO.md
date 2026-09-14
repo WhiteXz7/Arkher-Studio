@@ -1,7 +1,7 @@
-# ARKHER STUDIO — INVENTÁRIO (R19, 2026-09-14)
+# ARKHER STUDIO — INVENTÁRIO (R20, 2026-09-14)
 
 Base: `ArkherStudio_Completo_X.rbxl` → `ArkherStudio_Completo_GUIX.rbxl`
-(422148 bytes, 10975 instâncias, VERIFY OK). Suite: **1153/1153**.
+(432379 bytes, 12647 instâncias, VERIFY OK). Suite: **1157/1157**.
 Audits: botões mortos 0, drops 0, layout 0 violações,
 P0 75 ok / 1 parcial / 0 ausente.
 
@@ -42,11 +42,11 @@ P0 75 ok / 1 parcial / 0 ausente.
   (CLI stdlib, dry-run honesto sem chave) — 29 testes.
 - **Infra**: server 174 handlers + undo/redo + rate limit;
   ARKHER Input System 4 plataformas (`11_Input` + layouts baked);
-  TOPBAR ÚNICA real (`09_Topbar` + `03_Menus`: 18 menus + 9 abas +
-  42 botões, tudo fiado); 4 plataformas sem conversão automática
+  TOPBAR ÚNICA real (`09_Topbar` + `03_Menus`: header + 18 abas +
+  162 botões, tudo fiado); 4 plataformas sem conversão automática
   de controles.
 - **Shell**: 22 LocalScripts assados (01–22), 2 servers; specs
-  shell 617 + shell2 1931 nós; 54 ícones vetoriais (0 emoji).
+  shell 2289 + shell2 1931 nós; 64 ícones vetoriais (0 emoji).
 - **Layout limpo R17** (`audit_layout.py`, 0 violações): 73 painéis dos
   editores saíram de baixo do ribbon (y100→128) e de cima do footer
   (status→y784); HUD O2 + FR2_Help agora escondem com os editores (DESK 19
@@ -69,8 +69,22 @@ P0 75 ok / 1 parcial / 0 ausente.
   CommandBar + botão Arkher — TODOS os botões eram WIP ("Em
   desenvolvimento", sem função) e os 2 inputs sem fiação; escondidos no
   bake (8 refs Visible=false). Funções reais correspondentes: Places
-  (M2_Game), Team (TM2 + aba TEAM), Command Bar executável (M2_Scripts),
-  Help (aba FILE). ResetLayout não restaura mais as faixas mortas.
+  (aba SCENES), Team (TM2 + aba PLUGINS), Command Bar executável
+  (aba SCRIPTS), Help (aba HELP). ResetLayout não restaura mais as
+  faixas mortas.
+- **Topbar quadro-1 R20** (`build_shell.py` + `gen_topbar_wiring.py` +
+  `09_Topbar` + LANG `11_Input`): dropdowns desktop aposentados (M2_* x0
+  no bake) — os 166 itens dos 18 menus + 17 funções ribbon-only do R18
+  viraram 162 botões em 18 páginas (HOME..HELP, ≤20/aba, regra do
+  quadro-1 da referência Renascido); header com logo/slogan/search/bell
+  vetorial/user; abas com ícone+selo. Cobertura: 140 acts diretos + 5
+  via equivalentes provados (RunToggle/Pause/Stop, api Undo/Redo);
+  OpenPublish removido (idêntico ao Publish — mesmo diálogo).
+  162/162 alvos resolvidos (audit 0 mortos, layout 0 violações);
+  10 ícones novos (copy/cut/paste/expand/bell/home/drop/plug/note/fire,
+  `record_icons_py.py` validou 25/25 bit-a-bit, 0 divergentes).
+  Testes novos: Group full-stack (Model real), RecKeyA honesto,
+  PlacesProfile (diálogo real), header bell/user, ≤20/aba.
 - Correções R16: ScriptGet duplicado removido (1 definição), pyCompile
   (elif/else após dedent, range 1-arg com fold, indent 4sp validado,
   range-step recusado), exclusão mútua 12–22 completa.
@@ -102,8 +116,11 @@ P0 75 ok / 1 parcial / 0 ausente.
 - Controles de janela da base (Minimize/Maximize/Close) aposentados com
   a TitleBar antiga: no Play, F8 mostra/esconde a UI (núcleo 01, real).
 
-## % FALTANTE p/ superar a indústria: ~3%
+## % FALTANTE p/ superar a indústria: ~15%
 
-R18 entregou a topbar única (18 menus + 9 abas + 42 botões, 0 mortos,
-+12 testes, 2 bugs reais corrigidos); R19 removeu as 5 faixas mortas
-que pareciam "2º ribbon/abas". Falta: polish/acessibilidade/docs (3%).
+R20 entregou o quadro-1 da referência Renascido (header + 18 abas +
+162 botões, 0 mortos, M2_* zerado no bake, +4 testes). Novo programa:
+cada quadro da referência é 1 UI — os ~60 quadros de editores (11+)
+mapeiam sobre os 10 editores reais existentes (remake visual +
+preencher lacunas, não do zero). Falta: remake dos editores pelos
+quadros (~12%) + polish/acessibilidade/docs (3%).

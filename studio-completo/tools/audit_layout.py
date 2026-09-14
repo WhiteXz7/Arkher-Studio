@@ -9,7 +9,7 @@ Checa em tools/shell2spec.json + tools/guix_spec.json (1568x882):
      footer; top/bottom no mobile; top/legend no console).
   4. Tudo dentro de 1568x882.
   5. (estatico) listas DESK/DESK_HIDE dos clients 12-22 contem os 19 nomes.
-  6. Topbar unica: ArkherTop 1568x120 em y0; MenuRow+TabStrip+Ribbon sem
+  6. Topbar unica: ArkherTop 1568x120 em y0; HeaderRow+TabStrip+Ribbon sem
      sobrepor; 18 menus + 9 abas + 9 paginas (1 visivel) + 42 botoes.
 
 Uso: audit_layout.py  (exit 1 se houver violacao)
@@ -147,8 +147,8 @@ def main():
             viol.append("topbar: ArkherTop %s != %s" % (tr, TOPBAR_RECT))
         tk = {k.get("name"): k for k in top.get("kids", [])}
         rows = {n: rect_abs(tk[n], tr[2] - tr[0], tr[3] - tr[1])
-                for n in ("MenuRow", "TabStrip", "Ribbon") if n in tk}
-        for n in ("MenuRow", "TabStrip", "Ribbon"):
+                for n in ("HeaderRow", "TabStrip", "Ribbon") if n in tk}
+        for n in ("HeaderRow", "TabStrip", "Ribbon"):
             if n not in tk:
                 viol.append("topbar: %s ausente em ArkherTop" % n)
         rn = sorted(rows)
@@ -160,48 +160,53 @@ def main():
         for n, r in rows.items():
             if r[1] < 0 or r[3] > TOPBAR_RECT[3]:
                 viol.append("topbar: %s %s fora de ArkherTop" % (n, r))
-        # menu row: 18 menus + logo + search + bell + user, sem sobrepor.
-        mk = tk.get("MenuRow", {}).get("kids", []) if "MenuRow" in tk else []
-        menus = [k for k in mk if k.get("name", "").startswith("M2_")
-                 and k.get("cls") == "TextButton"
-                 and k.get("name") not in ("M2_Bell", "M2_User")]
-        if len(menus) != 18:
-            viol.append("topbar: %d menus M2_* (esperado 18)" % len(menus))
+        # header row: logo + slogan + search + bell + user, sem sobrepor.
+        mk = tk.get("HeaderRow", {}).get("kids", []) if "HeaderRow" in tk else []
+        hdr = [k.get("name") for k in mk
+               if k.get("name", "").startswith("H_")]
+        for want in ("H_Logo", "H_Slogan", "H_Search", "H_Bell", "H_User"):
+            if want not in hdr:
+                viol.append("topbar: %s ausente no HeaderRow" % want)
         mr = [(k.get("name"), rect(k)) for k in mk
               if k.get("cls") in ("TextButton", "TextBox", "TextLabel")]
         for i in range(len(mr)):
             for j in range(i + 1, len(mr)):
                 if overlap(mr[i][1], mr[j][1]):
-                    viol.append("topbar: menu SOBREPOE %s x %s"
+                    viol.append("topbar: header SOBREPOE %s x %s"
                                 % (mr[i][0], mr[j][0]))
         for nm, r in mr:
-            if r[2] > W or r[1] < 0 or r[3] > rows.get("MenuRow", (0, 0, 0, 30))[3]:
-                viol.append("topbar: menu %s %s fora da MenuRow" % (nm, r))
-        # abas + paginas + botoes.
+            if r[2] > W or r[1] < 0 or r[3] > rows.get("HeaderRow", (0, 0, 0, 26))[3]:
+                viol.append("topbar: header %s %s fora da HeaderRow" % (nm, r))
+        # abas + paginas + botoes (max 20/aba).
         strip = tk.get("TabStrip", {}).get("kids", []) if "TabStrip" in tk else []
         tabs = [k for k in strip if k.get("name", "").startswith("Tab_")]
-        if len(tabs) != 9:
-            viol.append("topbar: %d abas Tab_* (esperado 9)" % len(tabs))
+        if len(tabs) != 18:
+            viol.append("topbar: %d abas Tab_* (esperado 18)" % len(tabs))
         pages = [k for k in tk.get("Ribbon", {}).get("kids", [])
                  if k.get("name", "").startswith("Page_")] if "Ribbon" in tk else []
-        if len(pages) != 9:
-            viol.append("topbar: %d paginas Page_* (esperado 9)" % len(pages))
+        if len(pages) != 18:
+            viol.append("topbar: %d paginas Page_* (esperado 18)" % len(pages))
         vispages = [k.get("name") for k in pages
                     if k.get("props", {}).get("Visible", True)]
-        if vispages != ["Page_FILE"]:
-            viol.append("topbar: paginas visiveis %s (esperado ['Page_FILE'])"
+        if vispages != ["Page_HOME"]:
+            viol.append("topbar: paginas visiveis %s (esperado ['Page_HOME'])"
                         % vispages)
         nbtn = 0
         for pg in pages:
+            nb = 0
             for k in pg.get("kids", []):
                 if k.get("name", "").startswith("RibbonBtn_"):
                     nbtn += 1
+                    nb += 1
                     s = k.get("props", {}).get("Size", {}).get("u2", [0, 0, 0, 0])
-                    if s[1] > 1568 or s[3] > 62:
+                    if s[1] > 1568 or s[3] > 58:
                         viol.append("topbar: botao %s %dx%d nao cabe no ribbon"
                                     % (k.get("name"), s[1], s[3]))
-        if nbtn != 42:
-            viol.append("topbar: %d botoes RibbonBtn_* (esperado 42)" % nbtn)
+            if nb > 20:
+                viol.append("topbar: %s com %d botoes (>20)"
+                            % (pg.get("name"), nb))
+        if nbtn != 162:
+            viol.append("topbar: %d botoes RibbonBtn_* (esperado 162)" % nbtn)
 
     # ---- desktop ----
     D = kids("DesktopRoot")
