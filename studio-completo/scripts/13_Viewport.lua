@@ -107,7 +107,9 @@ local HO10_ALL = { "HO10_Rail", "HO10_File", "HO10_Tree", "HO10_Props", "HO10_He
 local SC11_ALL = { "SC11_Rail", "SC11_List", "SC11_Edit", "SC11_Py", "SC11_Blk", "SC11_Out", "SC11_Status" }
 local PL12_ALL = { "PL12_Rail", "PL12_List", "PL12_New", "PL12_Cut", "PL12_Auto", "PL12_Status" }
 local DESK_HIDE = { "T2_Panel", "C2_Panel", "S2_Panel", "O2_Panel", "O2_WPanel",
-  "TL2_Panel", "CV2_Panel", "SM2_Panel", "TM2_Panel", "FR2_Panel" }
+  "TL2_Panel", "CV2_Panel", "SM2_Panel", "TM2_Panel", "FR2_Panel",
+  "O2_Crumb", "O2_Compass", "O2_Coords", "O2_Play",
+  "O2_Layers", "O2_Region", "O2_Map", "O2_Gizmo", "FR2_Help" }
 
 local function refreshStatus()
   local st = string.format("%s · fov %d · snap %s/%s · multi %d",

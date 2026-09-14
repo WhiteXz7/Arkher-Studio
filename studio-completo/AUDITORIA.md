@@ -10,8 +10,8 @@ Método: **grep honesto** nas fontes reais + marcadores dentro da placa X descom
 
 | Exigência | Status | Ocorrências | Evidência |
 |---|---|---|---|
-| Tese dos D como sistema de níveis funcionais (D-não-dimensão) | ✅ | 156 | `studio-completo/AUDITORIA.md:14` |
-| D-O15 como domínio de OTIMIZAÇÃO (budget adaptativo real) | ✅ | 156 | `studio-completo/AUDITORIA.md:14` |
+| Tese dos D como sistema de níveis funcionais (D-não-dimensão) | ✅ | 155 | `studio-completo/AUDITORIA.md:14` |
+| D-O15 como domínio de OTIMIZAÇÃO (budget adaptativo real) | ✅ | 155 | `studio-completo/AUDITORIA.md:14` |
 | Orçamento D-O15 de partículas (corte automático por nível) | ✅ | 13 | `studio-completo/scripts/engine_server.lua:1015` |
 
 ## RRW (UES)
@@ -19,7 +19,7 @@ Método: **grep honesto** nas fontes reais + marcadores dentro da placa X descom
 | Exigência | Status | Ocorrências | Evidência |
 |---|---|---|---|
 | RRW — Renderer of the Reality of Real World (não raster clássico) | ✅ | 216 | `studio-completo/AUDITORIA.md:17` |
-| Representação em níveis de descrição (LOD por contexto, não tudo o tempo todo) | ✅ | 99 | `studio-completo/AUDITORIA.md:22` |
+| Representação em níveis de descrição (LOD por contexto, não tudo o tempo todo) | ✅ | 100 | `studio-completo/AUDITORIA.md:22` |
 | Auto-bind: objetos do mundo entram no RRW sozinhos | ✅ | 14 | `studio-completo/LEIA-ME.md:430` |
 | Matéria/substâncias (química: H2O, densidades, salinidade…) | ✅ | 38 | `studio-completo/AUDITORIA.md:24` |
 | Óptica/luz espectro (Kelvin → RGB físico, Planck/CIE) | ✅ | 39 | `studio-completo/AUDITORIA.md:25` |
@@ -42,7 +42,7 @@ Método: **grep honesto** nas fontes reais + marcadores dentro da placa X descom
 
 | Exigência | Status | Ocorrências | Evidência |
 |---|---|---|---|
-| Topbar ORIGINAL + menus do STUDIO (não substituir a UI — expandir) | ✅ | 41 | `studio-completo/AUDITORIA.md:90` |
+| Topbar ORIGINAL + menus do STUDIO (não substituir a UI — expandir) | ✅ | 41 | `studio-completo/INVENTARIO.md:31` |
 | Ativação direta de TODOS os sistemas via botões na topbar (X-tier) | ✅ | 6 | `studio-completo/LEIA-ME.md:121` |
 | Hierarchy/Explorer próprio (árvore real do DataModel) | ✅ | 100 | `studio-completo/AUDITORIA.md:47` |
 | Properties nativas (schema por classe, edição validada) | ✅ | 104 | `studio-completo/LEIA-ME.md:149` |
@@ -59,8 +59,8 @@ Método: **grep honesto** nas fontes reais + marcadores dentro da placa X descom
 | UI adaptável a dispositivo (escala por largura + wrap de botões) | ✅ | 19 | `studio-completo/LEIA-ME.md:291` |
 | Abrir criar/projetos (New/Open; baseplates oficiais) | ✅ | 3 | `studio-completo/scripts/server.lua:677` |
 | Salvar na nuvem própria (CloudSave/List/Open) | ✅ | 88 | `studio-completo/LEIA-ME.md:9` |
-| Publicar jogo no PERFIL do dev (página estilo jogo do Roblox) | ✅ | 51 | `studio-completo/scripts/server.lua:872` |
-| Criar PLACES novas no perfil (AssetService.CreatePlaceAsync) | ✅ | 21 | `studio-completo/AUDITORIA.md:63` |
+| Publicar jogo no PERFIL do dev (página estilo jogo do Roblox) | ✅ | 51 | `studio-completo/scripts/17_RRW.lua:92` |
+| Criar PLACES novas no perfil (AssetService.CreatePlaceAsync) | ✅ | 22 | `studio-completo/AUDITORIA.md:63` |
 | Colaboração (equipe, convites, co-editores) | ✅ | 12 | `studio-completo/AUDITORIA.md:78` |
 | Datastores simulados (persistência DataSet/List/Get) | ✅ | 11 | `studio-completo/LEIA-ME.md:70` |
 | i18n/locale (strings por idioma) | ✅ | 16 | `studio-completo/AUDITORIA.md:66` |
@@ -88,7 +88,7 @@ Método: **grep honesto** nas fontes reais + marcadores dentro da placa X descom
 | Baseplate garantida (boot automatico + botao BASEPLATE) | ✅ | 7 | `studio-completo/scripts/server.lua:2235` |
 | Permissao estendida: WhiteXz73_Developer + tentandoserbanido_9 | ✅ | 7 | `studio-completo/AUDITORIA.md:89` |
 | Menus da faixa abrem o dropdown DIRETO ao clicar (buildMenu chamado no clique — antes ia ao barramento errado e nada abria) | ✅ | 19 | `studio-completo/scripts/03_Menus.lua:594` |
-| Menu LUGARES: salvar place na conta + criar place nova no perfil (AssetService: SavePlaceAsync / CreatePlaceAsync com erro honesto) | ✅ | 21 | `studio-completo/AUDITORIA.md:63` |
+| Menu LUGARES: salvar place na conta + criar place nova no perfil (AssetService: SavePlaceAsync / CreatePlaceAsync com erro honesto) | ✅ | 22 | `studio-completo/AUDITORIA.md:63` |
 | Botões X nunca mais 'somem': molde sintético se o Ribbon estiver sem botão-exemplo | ⚠ | 2 | `studio-completo/tools/auditoria.py:235` |
 | Re-skin profissional: sombra + faixa de título com acento + ✕ com hover (todas as janelas do deck e modais) | ✅ | 12 | `studio-completo/scripts/03_Menus.lua:789` |
 

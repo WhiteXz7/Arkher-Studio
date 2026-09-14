@@ -24,6 +24,9 @@ for _, n in ipairs({ "HO10_Rail", "HO10_File", "HO10_Tree", "HO10_Props", "HO10_
 end
 for _, n in ipairs({ "T2_Panel", "C2_Panel", "S2_Panel", "O2_Panel", "O2_WPanel",
 	"TL2_Panel", "CV2_Panel", "SM2_Panel", "TM2_Panel", "FR2_Panel" }) do W(shell, "Frame", n, true) end
+W(shell, "TextLabel", "O2_Crumb").Visible = true
+W(shell, "Frame", "O2_Region", true)
+W(shell, "Frame", "FR2_Help", true)
 for _, n in ipairs({ "TE3_Rail", "VP3_Rail", "MD4_Rail", "AN5_Rail", "UI6_Rail", "RW7_Rail", "DO8_Rail", "WO9_Rail", "SC11_Rail", "PL12_Rail" }) do
 	W(shell, "Frame", n, true)
 end
@@ -102,10 +105,12 @@ find("TE3_Rail").Visible = true; find("WO9_Rail").Visible = true; find("SC11_Rai
 HO.open()
 check(HO.isOpen() and find("HO10_Tree").Visible, "open mostra HO10")
 check(find("T2_Panel").Visible == false, "open esconde desktop")
+check(find("O2_Crumb").Visible == false and find("O2_Region").Visible == false and find("FR2_Help").Visible == false, "open esconde HUD O2 + FR2_Help (R17)")
 check(find("TE3_Rail").Visible == false and find("WO9_Rail").Visible == false and find("SC11_Rail").Visible == false, "open exclui editores (incl R16)")
 check(find("HO10_StatL").Text:find("nodes") ~= nil, "open carrega tree")
 HO.close()
 check(find("HO10_Rail").Visible == false and find("T2_Panel").Visible, "close restaura")
+check(find("O2_Crumb").Visible and find("FR2_Help").Visible, "close restaura HUD O2 + FR2_Help (R17)")
 HO.open()
 
 print("\n== HO20-C2: file via MenusBus ==")

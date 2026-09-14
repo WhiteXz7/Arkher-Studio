@@ -107,7 +107,9 @@ local OTHER_EDS = { "TE3_Rail", "TE3_Brush", "TE3_Mat", "TE3_Layers", "TE3_Histo
   "SC11_Rail", "SC11_List", "SC11_Edit", "SC11_Py", "SC11_Blk", "SC11_Out", "SC11_Status",
   "PL12_Rail", "PL12_List", "PL12_New", "PL12_Cut", "PL12_Auto", "PL12_Status" }
 local DESK_HIDE = { "T2_Panel", "C2_Panel", "S2_Panel", "O2_Panel", "O2_WPanel",
-  "TL2_Panel", "CV2_Panel", "SM2_Panel", "TM2_Panel", "FR2_Panel" }
+  "TL2_Panel", "CV2_Panel", "SM2_Panel", "TM2_Panel", "FR2_Panel",
+  "O2_Crumb", "O2_Compass", "O2_Coords", "O2_Play",
+  "O2_Layers", "O2_Region", "O2_Map", "O2_Gizmo", "FR2_Help" }
 
 local function curVert()
   if S.vertIdx >= 1 and S.vertIdx <= #S.verts then return S.verts[S.vertIdx] end

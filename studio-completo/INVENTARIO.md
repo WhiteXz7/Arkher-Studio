@@ -1,8 +1,9 @@
-# ARKHER STUDIO — INVENTÁRIO (R16, 2026-09-13)
+# ARKHER STUDIO — INVENTÁRIO (R17, 2026-09-14)
 
 Base: `ArkherStudio_Completo_X.rbxl` → `ArkherStudio_Completo_GUIX.rbxl`
-(419526 bytes, 10811 instâncias, VERIFY OK). Suite: **1139/1139**.
-Audits: botões mortos 0, drops 0, P0 75 ok / 1 parcial / 0 ausente.
+(419586 bytes, 10811 instâncias, VERIFY OK). Suite: **1141/1141**.
+Audits: botões mortos 0, drops 0, layout 0 violações,
+P0 75 ok / 1 parcial / 0 ausente.
 
 ## EXISTE (funcionando de verdade, com teste)
 
@@ -44,6 +45,12 @@ Audits: botões mortos 0, drops 0, P0 75 ok / 1 parcial / 0 ausente.
   topbar/ribbon/menus reais (`03/09/10`); 4 plataformas sem conversão
   automática de controles.
 - **Shell**: 22 LocalScripts assados (01–22), 2 servers; spec 2010 nós.
+- **Layout limpo R17** (`audit_layout.py`, 0 violações): 73 painéis dos
+  editores saíram de baixo do ribbon (y100→128) e de cima do footer
+  (status→y784); HUD O2 + FR2_Help agora escondem com os editores (DESK 19
+  nomes nos 11 clients); HO10_File/Tree descolados; TE3_Water para o canto
+  inferior (cobre só o quadrante, centro livre); mobile (strips/labels/
+  drawer/props) sem sobreposição; modais com ZIndex 50 — 2 testes novos.
 - Correções R16: ScriptGet duplicado removido (1 definição), pyCompile
   (elif/else após dedent, range 1-arg com fold, indent 4sp validado,
   range-step recusado), exclusão mútua 12–22 completa.
@@ -73,7 +80,7 @@ Audits: botões mortos 0, drops 0, P0 75 ok / 1 parcial / 0 ausente.
   (CreatePlace não funciona em Play Solo; template precisa ser seu).
 - C++/C# nunca executarão no Roblox — sem promessa futura.
 
-## % FALTANTE p/ superar a indústria: ~4%
+## % FALTANTE p/ superar a indústria: ~3%
 
-R16 entregou Home + Script Studio + Places (99 testes). Falta: polish/
-acessibilidade/docs (4%). Multi-place studio-side AUTORIZADO e entregue.
+R17 entregou layout limpo (0 violações, +2 testes). Falta: polish/
+acessibilidade/docs (3%).

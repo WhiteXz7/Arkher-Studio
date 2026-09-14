@@ -339,7 +339,7 @@ for i, key in enumerate(["draw", "sculpt", "raise", "lower", "flatten", "smooth"
                          "crater", "paint", "replace", "water", "drain"]):
     rail_kids.append(B("TE3_T_" + key, 8, 30 + i * 44, 56, 40, "", BTN, TEXT, 11, FG, CENTER, None, ICONS[key]))
 rail_kids.append(B("TE3_Close", 8, 30 + 12 * 44, 56, 32, "", BTN, TEXT, 11, FG, CENTER, None, ICON_X))
-te3_rail = F("TE3_Rail", 8, 100, 72, 600, PANEL, rail_kids, HID)
+te3_rail = F("TE3_Rail", 8, 128, 72, 600, PANEL, rail_kids, HID)
 
 brush_kids = [title("BRUSH")]
 _by = 30
@@ -355,7 +355,7 @@ brush_kids.append(B("TE3_PlaneSet", 8, 212, 90, 26, "SET PLANE", BTN, TEXT, 11))
 brush_kids.append(L("TE3_PlaneVal", 102, 212, 150, 26, "Y: --", TEXT, 12, FC))
 brush_kids.append(L("TE3_SrcL", 8, 244, 70, 24, "Source", MUTED, 12, FB))
 brush_kids.append(B("TE3_Src", 80, 244, 130, 24, "Grass", BTN, TEXT, 11))
-te3_brush = F("TE3_Brush", 88, 100, 272, 280, PANEL, brush_kids, HID)
+te3_brush = F("TE3_Brush", 88, 128, 272, 280, PANEL, brush_kids, HID)
 
 MATS21 = ["Grass", "LeafyGrass", "Ground", "Mud", "Sand", "Sandstone", "Rock", "Slate",
           "Basalt", "Limestone", "Pavement", "Concrete", "Brick", "Cobblestone", "Asphalt",
@@ -365,7 +365,7 @@ for i, m in enumerate(MATS21):
     c, r = i % 6, i // 6
     mat_kids.append(B("TE3_M_" + m, 8 + c * 43, 30 + r * 43, 38, 38, "", BTN))
 mat_kids.append(L("TE3_MatName", 8, 202, 256, 20, "Grass", GOLD, 12, FB))
-te3_mat = F("TE3_Mat", 88, 388, 272, 232, PANEL, mat_kids, HID)
+te3_mat = F("TE3_Mat", 88, 416, 272, 232, PANEL, mat_kids, HID)
 
 lay_rows = []
 for i in range(8):
@@ -382,7 +382,7 @@ lay_kids = [title("LAYERS"), SC("TE3_LScroll", 8, 28, 344, 150, INSET, lay_rows)
             B("TE3_LSizeL", 208, 184, 34, 24, "L", BTN, TEXT, 11),
             B("TE3_LAdd", 250, 184, 102, 24, "ADD", ACCENT, TEXT, 11),
             L("TE3_LHint", 8, 212, 344, 20, "8 max - regions cannot overlap", MUTED, 11)]
-te3_layers = F("TE3_Layers", 1200, 100, 360, 240, PANEL, lay_kids, HID)
+te3_layers = F("TE3_Layers", 1200, 128, 360, 240, PANEL, lay_kids, HID)
 
 his_kids = [title("HISTORY"),
             B("TE3_Undo", 8, 28, 120, 30, "UNDO", BTN, TEXT, 12, FB, CENTER, None, ICONS["undo"]),
@@ -390,7 +390,7 @@ his_kids = [title("HISTORY"),
             L("TE3_Depth", 264, 28, 88, 30, "0/0", MUTED, 12, FC)]
 for i in range(6):
     his_kids.append(L("TE3_H" + str(i), 8, 62 + i * 18, 344, 18, "", TEXT, 11, FC))
-te3_history = F("TE3_History", 1200, 348, 360, 180, PANEL, his_kids, HID)
+te3_history = F("TE3_History", 1200, 376, 360, 180, PANEL, his_kids, HID)
 
 gen_kids = [title("GENERATE"),
             L("TE3_GSeedL", 8, 30, 60, 24, "Seed", MUTED, 12, FB),
@@ -413,7 +413,7 @@ gen_kids += [B("TE3_Gen", 8, 154, 168, 30, "GENERATE", ACCENT, TEXT, 12, FB),
              B("TE3_Keep", 184, 154, 80, 30, "KEEP", BTN, GREEN, 12, FB),
              B("TE3_Discard", 268, 154, 84, 30, "UNDO", BTN, RED, 12, FB),
              L("TE3_GStat", 8, 188, 344, 36, "seed 7 - 128 - h48 - meadow", MUTED, 11, FC)]
-te3_gen = F("TE3_Gen", 1200, 536, 360, 232, PANEL, gen_kids, HID)
+te3_gen = F("TE3_Gen", 1200, 564, 360, 232, PANEL, gen_kids, HID)
 
 wat_kids = [title("WATER & GROWTH")]
 _wy = 30
@@ -434,9 +434,9 @@ wat_kids += [B("TE3_Rain", 280, 30, 150, 30, "RAIN: OFF", BTN, TEXT, 12, FB),
              B("TE3_Flood", 280, 92, 150, 30, "FLOOD", ACCENT, TEXT, 12, FB),
              B("TE3_Hydro", 280, 126, 150, 30, "SCAN WATER", BTN, TEXT, 12, FB),
              L("TE3_HydroV", 280, 160, 150, 44, "no scan", MUTED, 11, FC)]
-te3_water = F("TE3_Water", 376, 620, 440, 248, PANEL, wat_kids, HID)
+te3_water = F("TE3_Water", 752, 528, 440, 248, PANEL, wat_kids, HID)
 
-te3_status = F("TE3_Status", 368, 100, 824, 30, PANEL,
+te3_status = F("TE3_Status", 368, 784, 824, 30, PANEL,
                [L("TE3_StatL", 8, 5, 808, 20, "TERRAIN EDITOR", GOLD, 12, FB)], HID)
 
 mte_kids = [B("M_TE_Prev", 8, 8, 64, 64, "<", BTN, TEXT, 24),
@@ -447,7 +447,7 @@ mte_kids = [B("M_TE_Prev", 8, 8, 64, 64, "<", BTN, TEXT, 24),
             B("M_TE_SizeP", 520, 8, 64, 64, "+", BTN, TEXT, 24),
             B("M_TE_Mat", 592, 8, 150, 64, "Grass", BTN, TEXT, 14),
             L("M_TE_Hint", 750, 8, 500, 64, "drag on terrain to paint", MUTED, 13)]
-mte = F("M_TE", 0, 690, 1568, 80, MENU_BG, mte_kids, HID)
+mte = F("M_TE", 0, 698, 1568, 80, MENU_BG, mte_kids, HID)
 
 
 # ---------------- 12b. viewport editor R11 (VP3) ----------------
@@ -456,7 +456,7 @@ for i, key in enumerate(["Select", "Move", "Rotate", "Scale", "Measure"]):
     vp3_rail_kids.append(B("VP3_T_" + key, 8, 30 + i * 44, 56, 40,
                            key[:3].upper(), BTN, TEXT, 12, FB))
 vp3_rail_kids.append(B("VP3_Close", 8, 30 + 5 * 44, 56, 32, "X", BTN, RED, 14, FB))
-vp3_rail = F("VP3_Rail", 8, 100, 72, 300, PANEL, vp3_rail_kids, HID)
+vp3_rail = F("VP3_Rail", 8, 128, 72, 300, PANEL, vp3_rail_kids, HID)
 
 vp3_cam_kids = [title("CAMERA"),
     B("VP3_CamFront", 8, 30, 62, 26, "FRONT", BTN, TEXT, 10, FB),
@@ -472,7 +472,7 @@ vp3_cam_kids = [title("CAMERA"),
     B("VP3_RigSave", 8, 158, 98, 28, "SAVE RIG", BTN, TEXT, 11, FB),
     B("VP3_RigLoad", 110, 158, 98, 28, "LOAD RIG", BTN, TEXT, 11, FB),
     L("VP3_CamV", 8, 190, 200, 44, "cam -", MUTED, 11, FC)]
-vp3_cam = F("VP3_Cam", 88, 100, 216, 244, PANEL, vp3_cam_kids, HID)
+vp3_cam = F("VP3_Cam", 88, 128, 216, 244, PANEL, vp3_cam_kids, HID)
 
 vp3_tm_kids = [title("MULTI"),
     B("VP3_TM_Move", 8, 30, 64, 26, "MOVE", ACCENT, TEXT, 10, FB),
@@ -493,14 +493,14 @@ vp3_tm_kids = [title("MULTI"),
     B("VP3_TM_Apply", 8, 154, 98, 30, "APPLY", ACCENT, TEXT, 12, FB),
     B("VP3_TM_Reset", 110, 154, 98, 30, "RESET", BTN, TEXT, 12, FB),
     L("VP3_TM_Count", 8, 190, 200, 22, "0 selected", MUTED, 11)]
-vp3_tm = F("VP3_Trans", 88, 352, 216, 220, PANEL, vp3_tm_kids, HID)
+vp3_tm = F("VP3_Trans", 88, 380, 216, 220, PANEL, vp3_tm_kids, HID)
 
 vp3_meas_kids = [title("MEASURE"),
     B("VP3_M_D1", 8, 30, 104, 30, "SET A", BTN, TEXT, 12, FB),
     B("VP3_M_D2", 116, 30, 104, 30, "SET B", BTN, TEXT, 12, FB),
     L("VP3_M_Val", 8, 66, 214, 30, "dist -", GOLD, 14, FC, CENTER, INSET),
     B("VP3_M_Clear", 8, 102, 214, 28, "CLEAR", BTN, TEXT, 12, FB)]
-vp3_meas = F("VP3_Meas", 1330, 100, 230, 140, PANEL, vp3_meas_kids, HID)
+vp3_meas = F("VP3_Meas", 1330, 128, 230, 140, PANEL, vp3_meas_kids, HID)
 
 vp3_snap_kids = [title("SNAP"),
     B("VP3_G_Snap", 8, 30, 214, 30, "SNAP: ON", BTN, TEXT, 12, FB),
@@ -508,15 +508,15 @@ vp3_snap_kids = [title("SNAP"),
     B("VP3_G_StepM", 70, 66, 40, 26, "-", BTN, TEXT, 14),
     L("VP3_G_StepV", 114, 66, 64, 26, "1", TEXT, 12, FC, CENTER, INSET),
     B("VP3_G_StepP", 182, 66, 40, 26, "+", BTN, TEXT, 14)]
-vp3_snap = F("VP3_Snap", 1330, 248, 230, 102, PANEL, vp3_snap_kids, HID)
+vp3_snap = F("VP3_Snap", 1330, 276, 230, 102, PANEL, vp3_snap_kids, HID)
 
-vp3_status = F("VP3_Status", 88, 820, 700, 30, PANEL,
+vp3_status = F("VP3_Status", 88, 784, 700, 30, PANEL,
                [L("VP3_StatL", 8, 4, 684, 22, "viewport", TEXT, 12, FC)], HID)
 
 mvp_kids = [B("M_VP_Frame", 8, 8, 200, 64, "FRAME", ACCENT, TEXT, 16, FB),
             B("M_VP_Meas", 216, 8, 200, 64, "MEASURE", BTN, TEXT, 16, FB),
             L("M_VP_Hint", 424, 8, 700, 64, "frame selection / tap 2 points", MUTED, 13)]
-mvp = F("M_VP", 0, 690, 1568, 80, MENU_BG, mvp_kids, HID)
+mvp = F("M_VP", 0, 698, 1568, 80, MENU_BG, mvp_kids, HID)
 
 
 # ---------------- 12c. modeler R12 (MD4) ----------------
@@ -525,7 +525,7 @@ for i, key in enumerate(["Select", "Move", "Near"]):
     md4_rail_kids.append(B("MD4_T_" + key, 8, 30 + i * 44, 56, 40,
                            key[:3].upper(), BTN, TEXT, 12, FB))
 md4_rail_kids.append(B("MD4_Close", 8, 30 + 3 * 44, 56, 32, "X", BTN, RED, 14, FB))
-md4_rail = F("MD4_Rail", 8, 100, 72, 220, PANEL, md4_rail_kids, HID)
+md4_rail = F("MD4_Rail", 8, 128, 72, 220, PANEL, md4_rail_kids, HID)
 
 md4_mesh_kids = [title("MESH"),
     B("MD4_P_Box", 8, 30, 100, 26, "BOX", ACCENT, TEXT, 11, FB),
@@ -535,7 +535,7 @@ md4_mesh_kids = [title("MESH"),
     B("MD4_New", 8, 92, 100, 30, "CREATE", ACCENT, TEXT, 12, FB),
     B("MD4_Adopt", 112, 92, 100, 30, "ADOPT SEL", BTN, TEXT, 11, FB),
     L("MD4_Info", 8, 128, 204, 44, "no mesh", MUTED, 11, FC)]
-md4_mesh = F("MD4_Mesh", 88, 100, 220, 180, PANEL, md4_mesh_kids, HID)
+md4_mesh = F("MD4_Mesh", 88, 128, 220, 180, PANEL, md4_mesh_kids, HID)
 
 md4_vert_kids = [title("VERTEX"),
     B("MD4_V_Prev", 8, 30, 50, 26, "<", BTN, TEXT, 14),
@@ -556,7 +556,7 @@ md4_vert_kids = [title("VERTEX"),
     B("MD4_V_Apply", 8, 154, 100, 30, "MOVE", ACCENT, TEXT, 12, FB),
     B("MD4_V_Del", 112, 154, 100, 30, "DELETE", BTN, RED, 12, FB),
     L("MD4_V_Hint", 8, 190, 204, 22, "Near: click mesh = nearest vert", MUTED, 10)]
-md4_vert = F("MD4_Vert", 88, 288, 220, 220, PANEL, md4_vert_kids, HID)
+md4_vert = F("MD4_Vert", 88, 316, 220, 220, PANEL, md4_vert_kids, HID)
 
 md4_top_kids = [title("TOPOLOGY"),
     L("MD4_S_IL", 8, 30, 70, 26, "SMOOTH", MUTED, 11, FB),
@@ -567,7 +567,7 @@ md4_top_kids = [title("TOPOLOGY"),
     B("MD4_M_X", 8, 98, 64, 28, "MIR X", BTN, TEXT, 11, FB),
     B("MD4_M_Y", 76, 98, 64, 28, "MIR Y", BTN, TEXT, 11, FB),
     B("MD4_M_Z", 144, 98, 64, 28, "MIR Z", BTN, TEXT, 11, FB)]
-md4_top = F("MD4_Top", 1330, 100, 220, 134, PANEL, md4_top_kids, HID)
+md4_top = F("MD4_Top", 1330, 128, 220, 134, PANEL, md4_top_kids, HID)
 
 md4_io_kids = [title("OBJ"),
     T("MD4_IO_Text", 8, 30, 204, 90, "paste OBJ here (v/f, tri+quad)", "", 11,
@@ -575,22 +575,22 @@ md4_io_kids = [title("OBJ"),
     B("MD4_IO_Import", 8, 126, 100, 30, "IMPORT", ACCENT, TEXT, 12, FB),
     B("MD4_IO_Export", 112, 126, 100, 30, "EXPORT", BTN, TEXT, 12, FB),
     L("MD4_IO_Stat", 8, 162, 204, 22, "obj -", MUTED, 11)]
-md4_io = F("MD4_IO", 1330, 242, 220, 192, PANEL, md4_io_kids, HID)
+md4_io = F("MD4_IO", 1330, 270, 220, 192, PANEL, md4_io_kids, HID)
 
-md4_status = F("MD4_Status", 88, 820, 700, 30, PANEL,
+md4_status = F("MD4_Status", 88, 784, 700, 30, PANEL,
                [L("MD4_StatL", 8, 4, 684, 22, "modeler", TEXT, 12, FC)], HID)
 
 mmd_kids = [B("M_MD_New", 8, 8, 200, 64, "NEW BOX", ACCENT, TEXT, 16, FB),
             B("M_MD_Smooth", 216, 8, 200, 64, "SMOOTH", BTN, TEXT, 16, FB),
             L("M_MD_Hint", 424, 8, 700, 64, "create + smooth current mesh", MUTED, 13)]
-mmd = F("M_MD", 0, 690, 1568, 80, MENU_BG, mmd_kids, HID)
+mmd = F("M_MD", 0, 698, 1568, 80, MENU_BG, mmd_kids, HID)
 # ---------------- 12d. animator R13 (AN5) ----------------
 an5_rail_kids = [title("ANIM")]
 for i, key in enumerate(["Select", "Pose"]):
     an5_rail_kids.append(B("AN5_T_" + key, 8, 30 + i * 44, 56, 40,
                             key[:3].upper(), BTN, TEXT, 11, FB))
 an5_rail_kids.append(B("AN5_Close", 8, 30 + 2 * 44, 56, 32, "X", BTN, RED, 14, FB))
-an5_rail = F("AN5_Rail", 8, 100, 72, 220, PANEL, an5_rail_kids, HID)
+an5_rail = F("AN5_Rail", 8, 128, 72, 220, PANEL, an5_rail_kids, HID)
 
 an5_rig_kids = [title("RIG + SEQ"),
     B("AN5_New", 8, 30, 100, 30, "NEW SEQ", ACCENT, TEXT, 12, FB),
@@ -599,7 +599,7 @@ an5_rig_kids = [title("RIG + SEQ"),
     L("AN5_J_Name", 62, 66, 100, 26, "joint -", GOLD, 11, FC, CENTER, INSET),
     B("AN5_J_Next", 166, 66, 50, 26, ">", BTN, TEXT, 14),
     L("AN5_Info", 8, 98, 204, 66, "no rig", MUTED, 11, FC)]
-an5_rig = F("AN5_Rig", 88, 100, 220, 172, PANEL, an5_rig_kids, HID)
+an5_rig = F("AN5_Rig", 88, 128, 220, 172, PANEL, an5_rig_kids, HID)
 
 an5_pose_kids = [title("POSE JOINT (live)")]
 for i, ax in enumerate(["X", "Y", "Z"]):
@@ -611,7 +611,7 @@ for i, ax in enumerate(["X", "Y", "Z"]):
 an5_pose_kids += [B("AN5_R_Apply", 8, 122, 100, 30, "APPLY", ACCENT, TEXT, 12, FB),
     B("AN5_R_Reset", 112, 122, 100, 30, "RESET", BTN, TEXT, 12, FB),
     L("AN5_Pose_Hint", 8, 158, 204, 40, "rot deg step 15; apply = live Transform", MUTED, 10)]
-an5_pose = F("AN5_Pose", 88, 280, 220, 206, PANEL, an5_pose_kids, HID)
+an5_pose = F("AN5_Pose", 88, 308, 220, 206, PANEL, an5_pose_kids, HID)
 
 an5_time_kids = [title("TIMELINE 30fps"),
     B("AN5_Play", 8, 30, 100, 30, "PLAY", ACCENT, TEXT, 12, FB),
@@ -623,7 +623,7 @@ an5_time_kids = [title("TIMELINE 30fps"),
     B("AN5_S_M", 112, 98, 30, 26, "-", BTN, TEXT, 14),
     L("AN5_SV", 146, 98, 36, 26, "1x", TEXT, 11, FC, CENTER, INSET),
     B("AN5_S_P", 186, 98, 26, 26, "+", BTN, TEXT, 14)]
-an5_time = F("AN5_Time", 1330, 100, 220, 132, PANEL, an5_time_kids, HID)
+an5_time = F("AN5_Time", 1330, 128, 220, 132, PANEL, an5_time_kids, HID)
 
 an5_keys_kids = [title("KEYS"),
     B("AN5_K_Prev", 8, 30, 50, 26, "<", BTN, TEXT, 14),
@@ -637,7 +637,7 @@ an5_keys_kids = [title("KEYS"),
     B("AN5_W_M", 80, 130, 40, 26, "-", BTN, TEXT, 14),
     L("AN5_WV", 124, 130, 44, 26, "1", TEXT, 12, FC, CENTER, INSET),
     B("AN5_W_P", 172, 130, 40, 26, "+", BTN, TEXT, 14)]
-an5_keys = F("AN5_Keys", 1330, 240, 220, 164, PANEL, an5_keys_kids, HID)
+an5_keys = F("AN5_Keys", 1330, 268, 220, 164, PANEL, an5_keys_kids, HID)
 
 an5_io_kids = [title("ANIM JSON"),
     T("AN5_IO_Text", 8, 30, 204, 90, "paste anim JSON here", "", 11,
@@ -645,23 +645,23 @@ an5_io_kids = [title("ANIM JSON"),
     B("AN5_IO_Import", 8, 126, 100, 30, "IMPORT", ACCENT, TEXT, 12, FB),
     B("AN5_IO_Export", 112, 126, 100, 30, "EXPORT", BTN, TEXT, 12, FB),
     L("AN5_IO_Stat", 8, 162, 204, 22, "anim -", MUTED, 11)]
-an5_io = F("AN5_IO", 1330, 412, 220, 192, PANEL, an5_io_kids, HID)
+an5_io = F("AN5_IO", 1330, 440, 220, 192, PANEL, an5_io_kids, HID)
 
-an5_status = F("AN5_Status", 88, 820, 700, 30, PANEL,
+an5_status = F("AN5_Status", 88, 784, 700, 30, PANEL,
                [L("AN5_StatL", 8, 4, 684, 22, "animator", TEXT, 12, FC)], HID)
 
 man_kids = [B("M_AN_New", 8, 8, 200, 64, "NEW SEQ", ACCENT, TEXT, 16, FB),
             B("M_AN_Play", 216, 8, 200, 64, "PLAY", BTN, TEXT, 16, FB),
             B("M_AN_Key", 424, 8, 200, 64, "ADD KEY", BTN, TEXT, 16, FB),
             L("M_AN_Hint", 632, 8, 700, 64, "new + play + key at cursor", MUTED, 13)]
-man = F("M_AN", 0, 690, 1568, 80, MENU_BG, man_kids, HID)
+man = F("M_AN", 0, 698, 1568, 80, MENU_BG, man_kids, HID)
 # ---------------- 12e. ui editor R14 (UI6) ----------------
 ui6_rail_kids = [title("UI")]
 for i, key in enumerate(["Select", "Move"]):
     ui6_rail_kids.append(B("UI6_T_" + key, 8, 30 + i * 44, 56, 40,
                             key[:3].upper(), BTN, TEXT, 11, FB))
 ui6_rail_kids.append(B("UI6_Close", 8, 30 + 2 * 44, 56, 32, "X", BTN, RED, 14, FB))
-ui6_rail = F("UI6_Rail", 8, 100, 72, 220, PANEL, ui6_rail_kids, HID)
+ui6_rail = F("UI6_Rail", 8, 128, 72, 220, PANEL, ui6_rail_kids, HID)
 
 ui6_new_kids = [title("NEW")]
 for i, (nm, tx) in enumerate([("Frame", "FRAME"), ("Label", "LABEL"), ("Button", "BUTTON"),
@@ -670,7 +670,7 @@ for i, (nm, tx) in enumerate([("Frame", "FRAME"), ("Label", "LABEL"), ("Button",
     ui6_new_kids.append(B("UI6_N_" + nm, 8 + (i % 2) * 104, 30 + (i // 2) * 34, 100, 30,
                            tx, ACCENT if i < 6 else BTN, TEXT, 11, FB))
 ui6_new_kids.append(L("UI6_Info", 8, 170, 204, 44, "no selection", MUTED, 11, FC))
-ui6_new = F("UI6_New", 88, 100, 220, 222, PANEL, ui6_new_kids, HID)
+ui6_new = F("UI6_New", 88, 128, 220, 222, PANEL, ui6_new_kids, HID)
 
 ui6_props_kids = [title("POS + SIZE")]
 for i, (ax, key) in enumerate([("X", "X"), ("Y", "Y")]):
@@ -689,7 +689,7 @@ ui6_props_kids += [T("UI6_Text", 8, 154, 140, 30, "text...", "", 12),
     B("UI6_T_Apply", 152, 154, 60, 30, "SET", ACCENT, TEXT, 12, FB),
     B("UI6_Dup", 8, 190, 100, 30, "DUPLI", BTN, TEXT, 12, FB),
     B("UI6_Del", 112, 190, 100, 30, "DEL", BTN, RED, 12, FB)]
-ui6_props = F("UI6_Props", 88, 330, 220, 228, PANEL, ui6_props_kids, HID)
+ui6_props = F("UI6_Props", 88, 358, 220, 228, PANEL, ui6_props_kids, HID)
 
 ui6_tree_kids = [title("TREE"),
     B("UI6_T_Prev", 8, 30, 50, 26, "<", BTN, TEXT, 14),
@@ -697,7 +697,7 @@ ui6_tree_kids = [title("TREE"),
     B("UI6_T_Next", 166, 30, 50, 26, ">", BTN, TEXT, 14),
     B("UI6_Pub", 8, 62, 204, 30, "PUBLISH UI", ACCENT, TEXT, 12, FB),
     L("UI6_T_Hint", 8, 98, 204, 40, "publish = StarterGui (respawn)", MUTED, 10)]
-ui6_tree = F("UI6_Tree", 1330, 100, 220, 146, PANEL, ui6_tree_kids, HID)
+ui6_tree = F("UI6_Tree", 1330, 128, 220, 146, PANEL, ui6_tree_kids, HID)
 
 ui6_io_kids = [title("UI JSON"),
     T("UI6_IO_Text", 8, 30, 204, 90, "paste UI JSON here", "", 11,
@@ -705,29 +705,29 @@ ui6_io_kids = [title("UI JSON"),
     B("UI6_IO_Import", 8, 126, 100, 30, "IMPORT", ACCENT, TEXT, 12, FB),
     B("UI6_IO_Export", 112, 126, 100, 30, "EXPORT", BTN, TEXT, 12, FB),
     L("UI6_IO_Stat", 8, 162, 204, 22, "ui -", MUTED, 11)]
-ui6_io = F("UI6_IO", 1330, 254, 220, 192, PANEL, ui6_io_kids, HID)
+ui6_io = F("UI6_IO", 1330, 282, 220, 192, PANEL, ui6_io_kids, HID)
 
-ui6_status = F("UI6_Status", 88, 820, 700, 30, PANEL,
+ui6_status = F("UI6_Status", 88, 784, 700, 30, PANEL,
                [L("UI6_StatL", 8, 4, 684, 22, "ui editor", TEXT, 12, FC)], HID)
 
 mui_kids = [B("M_UI_New", 8, 8, 200, 64, "NEW FRAME", ACCENT, TEXT, 16, FB),
             B("M_UI_Dup", 216, 8, 200, 64, "DUPLI", BTN, TEXT, 16, FB),
             B("M_UI_Del", 424, 8, 200, 64, "DEL", BTN, TEXT, 16, FB),
             L("M_UI_Hint", 632, 8, 700, 64, "frame + duplicate + delete", MUTED, 13)]
-mui = F("M_UI", 0, 690, 1568, 80, MENU_BG, mui_kids, HID)
+mui = F("M_UI", 0, 698, 1568, 80, MENU_BG, mui_kids, HID)
 
 # ---------------- 12f. rrw R14 (RW7) ----------------
 rw7_rail_kids = [title("RRW"),
     B("RW7_T_Place", 8, 30, 56, 40, "PLC", BTN, TEXT, 11, FB),
     B("RW7_Close", 8, 74, 56, 32, "X", BTN, RED, 14, FB)]
-rw7_rail = F("RW7_Rail", 8, 100, 72, 220, PANEL, rw7_rail_kids, HID)
+rw7_rail = F("RW7_Rail", 8, 128, 72, 220, PANEL, rw7_rail_kids, HID)
 
 rw7_prof_kids = [title("PROFILE")]
 for i, nm in enumerate(["Realista", "Showcase", "Horror", "Mobile", "Estudio"]):
     rw7_prof_kids.append(B("RW7_P_" + nm, 8 + (i % 2) * 104, 30 + (i // 2) * 34, 100, 30,
                             nm.upper(), ACCENT if i == 0 else BTN, TEXT, 11, FB))
 rw7_prof_kids.append(L("RW7_P_Info", 8, 136, 204, 44, "style -", MUTED, 11, FC))
-rw7_prof = F("RW7_Prof", 88, 100, 220, 188, PANEL, rw7_prof_kids, HID)
+rw7_prof = F("RW7_Prof", 88, 128, 220, 188, PANEL, rw7_prof_kids, HID)
 
 rw7_fx_kids = [title("POST FX")]
 for i, (nm, tx) in enumerate([("Bloom", "BLOOM"), ("Blur", "BLUR"), ("Color", "COLOR"),
@@ -739,7 +739,7 @@ rw7_fx_kids += [L("RW7_I_L", 8, 136, 70, 26, "INTEN", MUTED, 11, FB),
     L("RW7_IV", 124, 136, 44, 26, "1", TEXT, 12, FC, CENTER, INSET),
     B("RW7_I_P", 172, 136, 40, 26, "+", BTN, TEXT, 14),
     L("RW7_F_Info", 8, 168, 204, 40, "click = toggle; inten = main prop", MUTED, 10)]
-rw7_fx = F("RW7_FX", 88, 296, 220, 216, PANEL, rw7_fx_kids, HID)
+rw7_fx = F("RW7_FX", 88, 324, 220, 216, PANEL, rw7_fx_kids, HID)
 
 rw7_sky_kids = [title("SKY"),
     B("RW7_S_TM", 8, 30, 50, 26, "-1H", BTN, TEXT, 11, FB),
@@ -749,7 +749,7 @@ rw7_sky_kids = [title("SKY"),
     B("RW7_S_SM", 112, 62, 30, 30, "-", BTN, TEXT, 14),
     L("RW7_S_SV", 146, 62, 36, 30, ".1", TEXT, 11, FC, CENTER, INSET),
     B("RW7_S_SP", 186, 62, 26, 30, "+", BTN, TEXT, 14)]
-rw7_sky = F("RW7_Sky", 1330, 100, 220, 100, PANEL, rw7_sky_kids, HID)
+rw7_sky = F("RW7_Sky", 1330, 128, 220, 100, PANEL, rw7_sky_kids, HID)
 
 rw7_world_kids = [title("ATMO + VFX"),
     L("RW7_A_L", 8, 30, 70, 26, "ATMO", MUTED, 11, FB),
@@ -764,7 +764,7 @@ rw7_world_kids = [title("ATMO + VFX"),
     B("RW7_V_Smoke", 112, 94, 100, 28, "SMOKE", BTN, TEXT, 11, FB),
     B("RW7_V_Magic", 8, 126, 100, 28, "MAGIC", BTN, TEXT, 11, FB),
     B("RW7_V_Glow", 112, 126, 100, 28, "GLOW", BTN, TEXT, 11, FB)]
-rw7_world = F("RW7_World", 1330, 208, 220, 162, PANEL, rw7_world_kids, HID)
+rw7_world = F("RW7_World", 1330, 236, 220, 162, PANEL, rw7_world_kids, HID)
 
 rw7_lod_kids = [title("LOD"),
     T("RW7_L_Name", 8, 30, 120, 26, "group", "", 11),
@@ -772,16 +772,16 @@ rw7_lod_kids = [title("LOD"),
     L("RW7_L_Info", 8, 62, 204, 44, "tiers: select model, +tier xN", MUTED, 10),
     B("RW7_L_Reg", 8, 110, 100, 28, "REGISTER", ACCENT, TEXT, 11, FB),
     B("RW7_L_Del", 112, 110, 100, 28, "REMOVE", BTN, RED, 11, FB)]
-rw7_lod = F("RW7_LOD", 1330, 378, 220, 146, PANEL, rw7_lod_kids, HID)
+rw7_lod = F("RW7_LOD", 1330, 406, 220, 146, PANEL, rw7_lod_kids, HID)
 
-rw7_status = F("RW7_Status", 88, 820, 700, 30, PANEL,
+rw7_status = F("RW7_Status", 88, 784, 700, 30, PANEL,
                [L("RW7_StatL", 8, 4, 684, 22, "rrw", TEXT, 12, FC)], HID)
 
 mrw_kids = [B("M_RW_Prof", 8, 8, 200, 64, "PROFILE", ACCENT, TEXT, 16, FB),
             B("M_RW_FX", 216, 8, 200, 64, "BLOOM", BTN, TEXT, 16, FB),
             B("M_RW_Sky", 424, 8, 200, 64, "CYCLE", BTN, TEXT, 16, FB),
             L("M_RW_Hint", 632, 8, 700, 64, "cycle profile + bloom + day cycle", MUTED, 13)]
-mrw = F("M_RW", 0, 690, 1568, 80, MENU_BG, mrw_kids, HID)
+mrw = F("M_RW", 0, 698, 1568, 80, MENU_BG, mrw_kids, HID)
 
 
 
@@ -806,27 +806,27 @@ dset_kids += [B("D_S_Reset", 8, 366, 444, 34, "RESET DEFAULTS", BTN, TEXT, 14, F
               L("D_S_ScaleVal", 72, 494, 120, 32, "100%", TEXT, 14, FC, CENTER, INSET),
               B("D_S_ScalePlus", 196, 494, 60, 32, "+", BTN, TEXT, 20),
               L("D_S_Hint", 8, 534, 444, 56, "remap + language apply instantly (this session)", MUTED, 11)]
-dsettings = F("D_Settings", 554, 140, 460, 600, PANEL, dset_kids, {"Visible": False})
+dsettings = F("D_Settings", 554, 140, 460, 600, PANEL, dset_kids, {"Visible": False, "ZIndex": 50})
 desktop_kids.append(dsettings)
 
 # ---------------- 12g. d-o15 R15 (DO8) ----------------
-do8_rail = F("DO8_Rail", 8, 100, 72, 220, PANEL, [title("D-O15"),
+do8_rail = F("DO8_Rail", 8, 128, 72, 220, PANEL, [title("D-O15"),
     B("DO8_Scan", 8, 30, 56, 40, "SCAN", BTN, TEXT, 11, FB),
     B("DO8_Close", 8, 74, 56, 32, "X", BTN, RED, 14, FB)], HID)
-do8_stats = F("DO8_Stats", 88, 100, 220, 190, PANEL, [title("STATS"),
+do8_stats = F("DO8_Stats", 88, 128, 220, 190, PANEL, [title("STATS"),
     L("DO8_StatBig", 8, 30, 204, 118, "fps -", TEXT, 11, FC),
     B("DO8_S_Refresh", 8, 152, 100, 30, "REFRESH", BTN, TEXT, 11, FB),
     B("DO8_S_Report", 112, 152, 100, 30, "REPORT", ACCENT, TEXT, 11, FB)], HID)
-do8_audit = F("DO8_Audit", 88, 298, 220, 190, PANEL, [title("AUDIT"),
+do8_audit = F("DO8_Audit", 88, 326, 220, 190, PANEL, [title("AUDIT"),
     L("DO8_AuditBig", 8, 30, 204, 118, "run scan", MUTED, 11, FC),
     B("DO8_A_Scan", 8, 152, 204, 30, "SCAN WORLD", ACCENT, TEXT, 12, FB)], HID)
-do8_opt = F("DO8_Opt", 88, 496, 220, 170, PANEL, [title("OPTIMIZE"),
+do8_opt = F("DO8_Opt", 88, 524, 220, 170, PANEL, [title("OPTIMIZE"),
     B("DO8_O_Touch", 8, 30, 100, 30, "NO-TOUCH", BTN, TEXT, 11, FB),
     B("DO8_O_Shadow", 112, 30, 100, 30, "NO-SHADOW", BTN, TEXT, 11, FB),
     B("DO8_O_Anchor", 8, 64, 100, 30, "ANCHOR", BTN, GOLD, 11, FB),
     B("DO8_O_Undo", 112, 64, 100, 30, "UNDO", BTN, TEXT, 11, FB),
     L("DO8_O_Info", 8, 98, 204, 60, "touch+shadow safe; anchor=confirm", MUTED, 10)], HID)
-do8_rel = F("DO8_Rel", 1330, 100, 220, 206, PANEL, [title("RELEVANCE"),
+do8_rel = F("DO8_Rel", 1330, 128, 220, 206, PANEL, [title("RELEVANCE"),
     T("DO8_R_Name", 8, 30, 120, 26, "group", "", 11),
     B("DO8_R_Add", 132, 30, 80, 26, "+GRP", ACCENT, TEXT, 11, FB),
     L("DO8_R_RL", 8, 62, 60, 26, "RADIUS", MUTED, 11, FB),
@@ -840,40 +840,40 @@ do8_rel = F("DO8_Rel", 1330, 100, 220, 206, PANEL, [title("RELEVANCE"),
     B("DO8_R_Reg", 8, 124, 100, 28, "REGISTER", ACCENT, TEXT, 11, FB),
     B("DO8_R_Del", 112, 124, 100, 28, "REMOVE", BTN, RED, 11, FB),
     L("DO8_R_Info", 8, 156, 204, 42, "select model/folder, +grp", MUTED, 10)], HID)
-do8_mem = F("DO8_Mem", 1330, 314, 220, 150, PANEL, [title("MEMORY"),
+do8_mem = F("DO8_Mem", 1330, 342, 220, 150, PANEL, [title("MEMORY"),
     L("DO8_M_Info", 8, 30, 204, 44, "lua -", TEXT, 11, FC),
     T("DO8_M_Ids", 8, 78, 204, 26, "rbxassetid://..,..", "", 11),
     B("DO8_M_GC", 8, 110, 100, 30, "COLLECT", BTN, TEXT, 11, FB),
     B("DO8_M_Pre", 112, 110, 100, 30, "PRELOAD", BTN, TEXT, 11, FB)], HID)
-do8_status = F("DO8_Status", 88, 820, 700, 30, PANEL,
+do8_status = F("DO8_Status", 88, 784, 700, 30, PANEL,
                [L("DO8_StatL", 8, 4, 684, 22, "do15", TEXT, 12, FC)], HID)
 mdo_kids = [B("M_DO_Scan", 8, 8, 200, 64, "SCAN", ACCENT, TEXT, 16, FB),
             B("M_DO_Opt", 216, 8, 200, 64, "SAFE OPT", BTN, TEXT, 16, FB),
             B("M_DO_GC", 424, 8, 200, 64, "GC", BTN, TEXT, 16, FB),
             L("M_DO_Hint", 632, 8, 700, 64, "scan + safe optimize + collect", MUTED, 13)]
-mdo = F("M_DO", 0, 690, 1568, 80, MENU_BG, mdo_kids, HID)
+mdo = F("M_DO", 0, 698, 1568, 80, MENU_BG, mdo_kids, HID)
 
 # ---------------- 12h. world R15 (WO9) ----------------
-wo9_rail = F("WO9_Rail", 8, 100, 72, 140, PANEL, [title("WORLD"),
+wo9_rail = F("WO9_Rail", 8, 128, 72, 140, PANEL, [title("WORLD"),
     B("WO9_Close", 8, 30, 56, 32, "X", BTN, RED, 14, FB)], HID)
-wo9_info = F("WO9_Info", 88, 100, 220, 200, PANEL, [title("WORLD"),
+wo9_info = F("WO9_Info", 88, 128, 220, 200, PANEL, [title("WORLD"),
     L("WO9_InfoBig", 8, 30, 204, 128, "parts -", TEXT, 11, FC),
     B("WO9_I_Refresh", 8, 162, 204, 30, "REFRESH", ACCENT, TEXT, 12, FB)], HID)
-wo9_grav = F("WO9_Grav", 88, 308, 220, 140, PANEL, [title("GRAVITY"),
+wo9_grav = F("WO9_Grav", 88, 336, 220, 140, PANEL, [title("GRAVITY"),
     B("WO9_G_M", 8, 30, 50, 30, "-", BTN, TEXT, 14),
     L("WO9_GV", 62, 30, 100, 30, "196.2", GOLD, 13, FC, CENTER, INSET),
     B("WO9_G_P", 166, 30, 50, 30, "+", BTN, TEXT, 14),
     B("WO9_G_Set", 8, 66, 100, 30, "APPLY", ACCENT, TEXT, 11, FB),
     B("WO9_G_Reset", 112, 66, 100, 30, "EARTH", BTN, TEXT, 11, FB),
     L("WO9_G_Info", 8, 100, 204, 32, "killY -", MUTED, 10)], HID)
-wo9_spawn = F("WO9_Spawn", 88, 456, 220, 152, PANEL, [title("SPAWN"),
+wo9_spawn = F("WO9_Spawn", 88, 484, 220, 152, PANEL, [title("SPAWN"),
     L("WO9_S_Info", 8, 30, 204, 44, "no spawns", MUTED, 11, FC),
     B("WO9_S_Prev", 8, 78, 64, 28, "<", BTN, TEXT, 14),
     B("WO9_S_Next", 76, 78, 64, 28, ">", BTN, TEXT, 14),
     B("WO9_S_Add", 144, 78, 68, 28, "+ADD", ACCENT, TEXT, 11, FB),
     B("WO9_S_Toggle", 8, 110, 100, 28, "ON/OFF", BTN, TEXT, 11, FB),
     B("WO9_S_Del", 112, 110, 100, 28, "DEL", BTN, RED, 11, FB)], HID)
-wo9_save = F("WO9_Save", 1330, 100, 220, 178, PANEL, [title("SAVE/LOAD"),
+wo9_save = F("WO9_Save", 1330, 128, 220, 178, PANEL, [title("SAVE/LOAD"),
     T("WO9_V_Name", 8, 30, 120, 26, "name", "", 11),
     B("WO9_V_Save", 132, 30, 80, 26, "SAVE", ACCENT, TEXT, 11, FB),
     L("WO9_V_Info", 8, 62, 204, 44, "no saves", MUTED, 11, FC),
@@ -881,63 +881,63 @@ wo9_save = F("WO9_Save", 1330, 100, 220, 178, PANEL, [title("SAVE/LOAD"),
     B("WO9_V_Next", 76, 110, 64, 28, ">", BTN, TEXT, 14),
     B("WO9_V_Load", 144, 110, 68, 28, "LOAD", ACCENT, TEXT, 11, FB),
     B("WO9_V_Del", 8, 142, 204, 28, "DELETE SAVE", BTN, RED, 11, FB)], HID)
-wo9_clean = F("WO9_Clean", 1330, 286, 220, 178, PANEL, [title("CLEANUP"),
+wo9_clean = F("WO9_Clean", 1330, 314, 220, 178, PANEL, [title("CLEANUP"),
     T("WO9_C_Y", 8, 30, 120, 26, "-400", "-400", 11),
     B("WO9_C_Fallen", 132, 30, 80, 26, "FALLEN", BTN, TEXT, 11, FB),
     B("WO9_C_Loose", 8, 62, 100, 28, "LOOSE", BTN, TEXT, 11, FB),
     B("WO9_C_Restore", 112, 62, 100, 28, "RESTORE", BTN, TEXT, 11, FB),
     B("WO9_C_Clear", 8, 94, 204, 28, "CLEAR WORLD", BTN, RED, 11, FB),
     L("WO9_C_Info", 8, 126, 204, 44, "trash 0 (+autosafe)", MUTED, 10)], HID)
-wo9_status = F("WO9_Status", 88, 820, 700, 30, PANEL,
+wo9_status = F("WO9_Status", 88, 784, 700, 30, PANEL,
                [L("WO9_StatL", 8, 4, 684, 22, "world", TEXT, 12, FC)], HID)
 mwo_kids = [B("M_WO_Save", 8, 8, 200, 64, "SAVE", ACCENT, TEXT, 16, FB),
             B("M_WO_Spawn", 216, 8, 200, 64, "SPAWN", BTN, TEXT, 16, FB),
             B("M_WO_Clean", 424, 8, 200, 64, "FALLEN", BTN, TEXT, 16, FB),
             L("M_WO_Hint", 632, 8, 700, 64, "quicksave + spawn here + fallen", MUTED, 13)]
-mwo = F("M_WO", 0, 690, 1568, 80, MENU_BG, mwo_kids, HID)
+mwo = F("M_WO", 0, 698, 1568, 80, MENU_BG, mwo_kids, HID)
 
 
 # ---------------- 12i. home/explorer R16 (HO10) ----------------
-ho10_rail = F("HO10_Rail", 8, 100, 72, 140, PANEL, [title("HOME"),
+ho10_rail = F("HO10_Rail", 8, 128, 72, 140, PANEL, [title("HOME"),
     B("HO10_Close", 8, 30, 56, 32, "X", BTN, RED, 14, FB)], HID)
-ho10_file = F("HO10_File", 88, 100, 220, 172, PANEL, [title("PROJECT"),
+ho10_file = F("HO10_File", 88, 128, 220, 172, PANEL, [title("PROJECT"),
     B("HO10_F_New", 8, 30, 100, 30, "NEW", BTN, TEXT, 11, FB),
     B("HO10_F_Open", 112, 30, 100, 30, "OPEN", BTN, TEXT, 11, FB),
     B("HO10_F_Save", 8, 66, 100, 30, "SAVE", ACCENT, TEXT, 11, FB),
     B("HO10_F_Pub", 112, 66, 100, 30, "PUBLISH", BTN, TEXT, 11, FB),
     B("HO10_F_Undo", 8, 102, 204, 26, "UNDO", BTN, TEXT, 11, FB),
     L("HO10_F_Info", 8, 132, 204, 30, "file ops via menus", MUTED, 10)], HID)
-ho10_tree = F("HO10_Tree", 88, 258, 220, 196, PANEL, [title("EXPLORER"),
+ho10_tree = F("HO10_Tree", 88, 308, 220, 196, PANEL, [title("EXPLORER"),
     T("HO10_T_Filter", 8, 30, 204, 26, "filter", "", 11),
     L("HO10_T_Info", 8, 62, 204, 60, "no selection", TEXT, 11, FC),
     B("HO10_T_Prev", 8, 126, 64, 28, "<", BTN, TEXT, 14),
     B("HO10_T_Next", 76, 126, 64, 28, ">", BTN, TEXT, 14),
     B("HO10_T_Sel", 144, 126, 68, 28, "SELECT", ACCENT, TEXT, 11, FB),
     B("HO10_T_Refresh", 8, 158, 204, 28, "REFRESH", BTN, TEXT, 11, FB)], HID)
-ho10_props = F("HO10_Props", 1330, 100, 220, 182, PANEL, [title("PROPS"),
+ho10_props = F("HO10_Props", 1330, 128, 220, 182, PANEL, [title("PROPS"),
     L("HO10_P_Info", 8, 30, 204, 44, "-", MUTED, 11, FC),
     T("HO10_P_Name", 8, 78, 120, 26, "name", "", 11),
     B("HO10_P_Rename", 132, 78, 80, 26, "SET", ACCENT, TEXT, 11, FB),
     B("HO10_P_Vis", 8, 110, 100, 28, "SHOW/HIDE", BTN, TEXT, 11, FB),
     B("HO10_P_Dup", 112, 110, 100, 28, "DUPLI", BTN, TEXT, 11, FB),
     B("HO10_P_Del", 8, 142, 204, 28, "DELETE", BTN, RED, 11, FB)], HID)
-ho10_help = F("HO10_Help", 1330, 290, 220, 180, PANEL, [title("HELP"),
+ho10_help = F("HO10_Help", 1330, 318, 220, 180, PANEL, [title("HELP"),
     L("HO10_H_Text", 8, 30, 204, 142, "F5 play · F8 ui · Del delete · Ctrl+S save · Ctrl+Z undo", MUTED, 11)], HID)
-ho10_status = F("HO10_Status", 88, 820, 700, 30, PANEL,
+ho10_status = F("HO10_Status", 88, 784, 700, 30, PANEL,
                [L("HO10_StatL", 8, 4, 684, 22, "home", TEXT, 12, FC)], HID)
 mho_kids = [B("M_HO_Save", 8, 8, 200, 64, "SAVE", ACCENT, TEXT, 16, FB),
             B("M_HO_Refresh", 216, 8, 200, 64, "TREES", BTN, TEXT, 16, FB),
             B("M_HO_Del", 424, 8, 200, 64, "DEL", BTN, TEXT, 16, FB),
             L("M_HO_Hint", 632, 8, 700, 64, "save + refresh tree + delete", MUTED, 13)]
-mho = F("M_HO", 0, 690, 1568, 80, MENU_BG, mho_kids, HID)
+mho = F("M_HO", 0, 698, 1568, 80, MENU_BG, mho_kids, HID)
 
 # ---------------- 12j. script studio R16 (SC11) ----------------
-sc11_rail = F("SC11_Rail", 8, 100, 72, 200, PANEL, [title("SCRIPT"),
+sc11_rail = F("SC11_Rail", 8, 128, 72, 200, PANEL, [title("SCRIPT"),
     B("SC11_M_Lua", 8, 30, 56, 36, "LUA", ACCENT, TEXT, 11, FB),
     B("SC11_M_Py", 8, 70, 56, 36, "PY", BTN, TEXT, 11, FB),
     B("SC11_M_Blk", 8, 110, 56, 36, "BLK", BTN, TEXT, 11, FB),
     B("SC11_Close", 8, 150, 56, 32, "X", BTN, RED, 14, FB)], HID)
-sc11_list = F("SC11_List", 88, 100, 220, 200, PANEL, [title("SCRIPTS"),
+sc11_list = F("SC11_List", 88, 128, 220, 200, PANEL, [title("SCRIPTS"),
     L("SC11_L_Info", 8, 30, 204, 60, "no scripts", MUTED, 11, FC),
     B("SC11_L_Prev", 8, 94, 64, 28, "<", BTN, TEXT, 14),
     B("SC11_L_Next", 76, 94, 64, 28, ">", BTN, TEXT, 14),
@@ -946,18 +946,18 @@ sc11_list = F("SC11_List", 88, 100, 220, 200, PANEL, [title("SCRIPTS"),
     B("SC11_L_NewL", 76, 126, 64, 28, "+LOC", BTN, TEXT, 11, FB),
     B("SC11_L_NewM", 144, 126, 68, 28, "+MOD", BTN, TEXT, 11, FB),
     B("SC11_L_Del", 8, 158, 204, 28, "DELETE", BTN, RED, 11, FB)], HID)
-sc11_edit = F("SC11_Edit", 316, 100, 500, 340, PANEL, [title("LUA EDITOR"),
+sc11_edit = F("SC11_Edit", 316, 128, 500, 340, PANEL, [title("LUA EDITOR"),
     T("SC11_E_Code", 8, 30, 484, 262, "-- lua", "", 12, {"MultiLine": True, "Font": FC, "TextYAlignment": {"en": "TextYAlignment.Top"}}),
     B("SC11_E_Save", 8, 298, 120, 30, "SAVE", ACCENT, TEXT, 11, FB),
     B("SC11_E_Run", 132, 298, 120, 30, "RUN", BTN, TEXT, 11, FB),
     B("SC11_E_Stop", 256, 298, 120, 30, "STOP", BTN, TEXT, 11, FB),
     L("SC11_E_Info", 380, 298, 112, 30, "-", MUTED, 10)], HID)
-sc11_py = F("SC11_Py", 316, 448, 500, 200, PANEL, [title("PYTHON->LUA"),
+sc11_py = F("SC11_Py", 316, 476, 500, 200, PANEL, [title("PYTHON->LUA"),
     T("SC11_P_Code", 8, 30, 484, 100, "print('hi')", "", 12, {"MultiLine": True, "Font": FC, "TextYAlignment": {"en": "TextYAlignment.Top"}}),
     B("SC11_P_Comp", 8, 136, 120, 30, "COMPILE", ACCENT, TEXT, 11, FB),
     B("SC11_P_Save", 132, 136, 120, 30, "SAVE LUA", BTN, TEXT, 11, FB),
     L("SC11_P_Info", 256, 136, 236, 30, "subset: print/if/while/for/def", MUTED, 10)], HID)
-sc11_blk = F("SC11_Blk", 824, 100, 500, 300, PANEL, [title("BLOCKS"),
+sc11_blk = F("SC11_Blk", 824, 128, 500, 300, PANEL, [title("BLOCKS"),
     L("SC11_B_Chain", 8, 30, 484, 130, "chain: (empty)", TEXT, 11, FC),
     B("SC11_B_Ev", 8, 164, 120, 30, "+EVENT", ACCENT, TEXT, 11, FB),
     B("SC11_B_Act", 132, 164, 120, 30, "+ACTION", BTN, TEXT, 11, FB),
@@ -967,22 +967,22 @@ sc11_blk = F("SC11_Blk", 824, 100, 500, 300, PANEL, [title("BLOCKS"),
     B("SC11_B_Comp", 312, 200, 88, 26, "COMP", ACCENT, TEXT, 11, FB),
     B("SC11_B_Save", 404, 200, 88, 26, "SAVE", BTN, TEXT, 11, FB),
     L("SC11_B_Info", 8, 232, 484, 30, "-", MUTED, 10)], HID)
-sc11_out = F("SC11_Out", 824, 408, 500, 150, PANEL, [title("OUTPUT"),
+sc11_out = F("SC11_Out", 824, 436, 500, 150, PANEL, [title("OUTPUT"),
     L("SC11_O_Log", 8, 30, 484, 80, "(log)", TEXT, 10, FC),
     B("SC11_O_Clear", 8, 114, 120, 28, "CLEAR", BTN, TEXT, 11, FB),
     B("SC11_O_Err", 132, 114, 120, 28, "ERRORS", BTN, TEXT, 11, FB)], HID)
-sc11_status = F("SC11_Status", 88, 820, 700, 30, PANEL,
+sc11_status = F("SC11_Status", 88, 784, 700, 30, PANEL,
                [L("SC11_StatL", 8, 4, 684, 22, "script", TEXT, 12, FC)], HID)
 msc_kids = [B("M_SC_Save", 8, 8, 200, 64, "SAVE", ACCENT, TEXT, 16, FB),
             B("M_SC_Run", 216, 8, 200, 64, "RUN", BTN, TEXT, 16, FB),
             B("M_SC_Stop", 424, 8, 200, 64, "STOP", BTN, TEXT, 16, FB),
             L("M_SC_Hint", 632, 8, 700, 64, "save + run + stop script", MUTED, 13)]
-msc = F("M_SC", 0, 690, 1568, 80, MENU_BG, msc_kids, HID)
+msc = F("M_SC", 0, 698, 1568, 80, MENU_BG, msc_kids, HID)
 
 # ---------------- 12k. places R16 (PL12) ----------------
-pl12_rail = F("PL12_Rail", 8, 100, 72, 140, PANEL, [title("PLACES"),
+pl12_rail = F("PL12_Rail", 8, 128, 72, 140, PANEL, [title("PLACES"),
     B("PL12_Close", 8, 30, 56, 32, "X", BTN, RED, 14, FB)], HID)
-pl12_list = F("PL12_List", 88, 100, 220, 210, PANEL, [title("PLACES"),
+pl12_list = F("PL12_List", 88, 128, 220, 210, PANEL, [title("PLACES"),
     L("PL12_L_Info", 8, 30, 204, 60, "no places", MUTED, 11, FC),
     B("PL12_L_Prev", 8, 94, 64, 28, "<", BTN, TEXT, 14),
     B("PL12_L_Next", 76, 94, 64, 28, ">", BTN, TEXT, 14),
@@ -990,27 +990,27 @@ pl12_list = F("PL12_List", 88, 100, 220, 210, PANEL, [title("PLACES"),
     T("PL12_L_Id", 8, 126, 120, 26, "placeId", "", 11),
     B("PL12_L_GoId", 132, 126, 80, 26, "GO ID", BTN, TEXT, 11, FB),
     B("PL12_L_Refresh", 8, 158, 204, 28, "REFRESH", BTN, TEXT, 11, FB)], HID)
-pl12_new = F("PL12_New", 88, 318, 220, 162, PANEL, [title("NEW PLACE"),
+pl12_new = F("PL12_New", 88, 346, 220, 162, PANEL, [title("NEW PLACE"),
     T("PL12_N_Name", 8, 30, 204, 26, "name", "", 11),
     T("PL12_N_Tpl", 8, 62, 120, 26, "template?", "", 11),
     B("PL12_N_Create", 132, 62, 80, 26, "CREATE", ACCENT, TEXT, 11, FB),
     L("PL12_N_Info", 8, 94, 204, 60, "published game + online", MUTED, 10)], HID)
-pl12_cut = F("PL12_Cut", 1330, 100, 220, 184, PANEL, [title("CUTSCENE"),
+pl12_cut = F("PL12_Cut", 1330, 128, 220, 184, PANEL, [title("CUTSCENE"),
     B("PL12_C_A", 8, 30, 100, 30, "SET A", BTN, TEXT, 11, FB),
     B("PL12_C_B", 112, 30, 100, 30, "SET B", BTN, TEXT, 11, FB),
     T("PL12_C_T", 8, 66, 120, 26, "3", "3", 11),
     B("PL12_C_Play", 132, 66, 80, 26, "PLAY", ACCENT, TEXT, 11, FB),
     B("PL12_C_Stop", 8, 98, 204, 28, "STOP", BTN, TEXT, 11, FB),
     L("PL12_C_Info", 8, 130, 204, 46, "A/B = camera points", MUTED, 10)], HID)
-pl12_auto = F("PL12_Auto", 1330, 292, 220, 150, PANEL, [title("AUTOMATION"),
+pl12_auto = F("PL12_Auto", 1330, 320, 220, 150, PANEL, [title("AUTOMATION"),
     L("PL12_A_Text", 8, 30, 204, 112, "tools/place_automation.py (Open Cloud, needs API key)", MUTED, 11)], HID)
-pl12_status = F("PL12_Status", 88, 820, 700, 30, PANEL,
+pl12_status = F("PL12_Status", 88, 784, 700, 30, PANEL,
                [L("PL12_StatL", 8, 4, 684, 22, "places", TEXT, 12, FC)], HID)
 mpl_kids = [B("M_PL_Go", 8, 8, 200, 64, "GO", ACCENT, TEXT, 16, FB),
             B("M_PL_A", 216, 8, 200, 64, "SET A", BTN, TEXT, 16, FB),
             B("M_PL_Play", 424, 8, 200, 64, "PLAY", BTN, TEXT, 16, FB),
             L("M_PL_Hint", 632, 8, 700, 64, "teleport + cutscene A + play", MUTED, 13)]
-mpl = F("M_PL", 0, 690, 1568, 80, MENU_BG, mpl_kids, HID)
+mpl = F("M_PL", 0, 698, 1568, 80, MENU_BG, mpl_kids, HID)
 
 for _p in [te3_rail, te3_brush, te3_mat, te3_layers, te3_history, te3_gen, te3_water, te3_status]:
     desktop_kids.append(_p)
@@ -1056,16 +1056,16 @@ mtool_defs = [("M_T_Select", "⌖\nSELECT"), ("M_T_Move", "✥\nMOVE"),
 mtool_kids = []
 for i, (nm, tx) in enumerate(mtool_defs):
     mtool_kids.append(B(nm, 6, 6 + i * 78, 88, 72, tx, BTN, TEXT, 13, FB))
-mtools = F("M_Tools", 0, 70, 100, 640, PANEL, mtool_kids)
+mtools = F("M_Tools", 0, 70, 100, 628, PANEL, mtool_kids)
 mdrawer_kids = [title("TOOLS"), B("M_DrawerClose", 296, 4, 56, 26, "✕", BTN, TEXT, 14)]
 mcat_defs = ["Select", "Build", "Terrain", "Model", "Paint", "Light", "FX",
              "Sound", "UI", "Animate", "Physics", "Game", "Cloud", "Assets"]
 for i, cnm in enumerate(mcat_defs):
     mdrawer_kids.append(B("M_Cat_" + cnm, 8 + (i % 2) * 172, 34 + (i // 2) * 56,
                           168, 50, cnm, BTN, TEXT, 14, FB))
-mdrawer = F("M_Drawer", 104, 70, 360, 640, PANEL, mdrawer_kids,
+mdrawer = F("M_Drawer", 104, 70, 360, 432, PANEL, mdrawer_kids,
             {"Visible": False})
-mprops = F("M_PropsP", 1144, 70, 424, 640, PANEL,
+mprops = F("M_PropsP", 1144, 70, 424, 200, PANEL,
            [title("PROPERTIES"), B("M_PropsClose", 356, 4, 60, 26, "✕", BTN, TEXT, 14),
             B("M_PropsOpen", 8, 34, 408, 64, "OPEN PROPERTIES +", ACCENT, TEXT, 16, FB),
             L("M_PropsHint", 8, 106, 408, 60, "opens the real Properties panel (same data as desktop)", MUTED, 12)], {"Visible": False})
@@ -1081,9 +1081,9 @@ mnum_kids += [B("M_N_Rot", 304, 34, 120, 32, "ROTATE", BTN, TEXT, 13, FB),
               B("M_N_Apply", 304, 114, 120, 40, "✓ APPLY", ACCENT, TEXT, 15, FB),
               B("M_N_Cancel", 428, 114, 120, 40, "✕", BTN, TEXT, 18),
               B("M_N_Reset", 304, 158, 244, 32, "RESET", BTN, MUTED, 13)]
-mnum = F("M_Numeric", 504, 566, 560, 210, PANEL, mnum_kids, {"Visible": False})
-msel = L("M_Sel", 108, 716, 500, 34, "Selection: —", TEXT, 14, FC, LEFT, INSET)
-mhelp = L("M_Help", 1050, 716, 510, 34, "tap=select · 2×tap=frame · pinch=zoom", MUTED, 12, FG)
+mnum = F("M_Numeric", 504, 566, 560, 210, PANEL, mnum_kids, {"Visible": False, "ZIndex": 50})
+msel = L("M_Sel", 468, 70, 320, 34, "Selection: —", TEXT, 14, FC, LEFT, INSET)
+mhelp = L("M_Help", 796, 70, 340, 34, "tap=select · 2×tap=frame · pinch=zoom", MUTED, 12, FG)
 mbot_kids = [B("M_B_Confirm", 8, 8, 200, 80, "✓ CONFIRM", ACCENT, TEXT, 18, FB),
              B("M_B_Cancel", 212, 8, 140, 80, "✕", BTN, RED, 24),
              B("M_B_Undo", 356, 8, 110, 80, "↩", BTN, TEXT, 22),
@@ -1115,7 +1115,7 @@ crad_kids = [L("C_R_Title", 80, 8, 200, 30, "RADIAL", GOLD, 14, FB, CENTER)]
 crad_pos = [(130, 44), (220, 100), (220, 200), (130, 256), (40, 200), (40, 100)]
 for i, (cx, cy) in enumerate(crad_pos):
     crad_kids.append(B("C_R_%d" % i, cx, cy, 100, 52, "···", BTN, TEXT, 13, FB))
-cradial = F("C_Radial", 604, 200, 360, 330, PANEL, crad_kids, {"Visible": False})
+cradial = F("C_Radial", 604, 200, 360, 330, PANEL, crad_kids, {"Visible": False, "ZIndex": 50})
 ccursor = L("C_Cursor", 770, 425, 32, 32, "＋", GREEN, 24, FB, CENTER)
 cpanel = F("C_Panel", 1180, 160, 388, 500, PANEL,
            [title("PROPERTIES"), B("C_PropsOpen", 8, 34, 372, 64, "OPEN PROPERTIES +", ACCENT, TEXT, 16, FB),
@@ -1133,7 +1133,7 @@ for i, ax in enumerate(["X", "Y", "Z"]):
 cnum_kids += [B("C_N_Mode", 304, 34, 244, 40, "MODE: POS", BTN, TEXT, 14, FB),
               B("C_N_Apply", 304, 82, 120, 40, "\u2713 APPLY", ACCENT, TEXT, 15, FB),
               B("C_N_Cancel", 428, 82, 120, 40, "\u2715", BTN, TEXT, 18)]
-cnumeric = F("C_Numeric", 504, 566, 560, 210, PANEL, cnum_kids, {"Visible": False})
+cnumeric = F("C_Numeric", 504, 566, 560, 210, PANEL, cnum_kids, {"Visible": False, "ZIndex": 50})
 cmarquee = F("C_Marquee", 0, 0, 10, 10, INSET, [], {"Visible": False, "BackgroundTransparency": 0.45})
 cons = N("Frame", "ConsoleRoot",
          {"Position": P(0, 0), "Size": S(1568, 882),
